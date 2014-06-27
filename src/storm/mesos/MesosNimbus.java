@@ -45,7 +45,7 @@ public class MesosNimbus implements INimbus {
   Set<String> _allowedHosts;
   Set<String> _disallowedHosts;
   private RotatingMap<OfferID, Offer> _offers;
-  private storm.mesos.LocalFileServer _httpServer;
+  private LocalFileServer _httpServer;
   private java.net.URI _configUrl;
   private Map<TaskID, Offer> used_offers;
   private Map<ExecutorID, List<TaskID>> executors = Collections.synchronizedMap(new HashMap<ExecutorID, List<TaskID>>());
