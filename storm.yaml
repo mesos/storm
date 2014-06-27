@@ -1,0 +1,28 @@
+# Please change these for your cluster 
+# to reflect your cluster settings
+# -----------------------------------------------------------
+mesos.master.url: "zk://localhost:2181/mesos"
+storm.zookeeper.servers:
+    - "localhost"
+nimbus.host: "localhost"
+# -----------------------------------------------------------
+
+# You should not need to change anything below this line
+#--------------------------------------------------------
+
+# Use the public Mesosphere Storm build
+# Please note that it won't work with other distributions
+mesos.executor.uri: "http://downloads.mesosphere.io/storm/storm-mesos-0.9.0.1.tgz"
+
+# Use Netty to avoid ZMQ dependencies
+storm.messaging.transport: "backtype.storm.messaging.netty.Context"
+
+storm.local.dir: "storm-local"
+
+mesos.framework.role: "*"
+mesos.framework.checkpoint: false
+
+#mesos.allowed.hosts:
+#  - host1
+#mesos.disallowed.hosts:
+#  - host1

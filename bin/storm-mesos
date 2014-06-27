@@ -1,0 +1,25 @@
+#!/usr/bin/python
+
+import sys
+import os
+
+STORM_PATH = "/".join(os.path.abspath(__file__).split("/")[0:-1])
+STORM_CMD = STORM_PATH + "/storm"
+
+def nimbus():
+  os.chdir(STORM_PATH + "/..")
+  os.system(STORM_CMD + " nimbus storm.mesos.MesosNimbus")
+  
+def supervisor():
+  os.system(STORM_PATH + " supervisor storm.mesos.MesosSupervisor")
+
+COMMANDS = {"nimbus": nimbus, "supervisor": supervisor}
+
+
+def main():
+    COMMAND = sys.argv[1]
+    ARGS = sys.argv[2:]
+    (COMMANDS.get(COMMAND))(*ARGS)
+    
+if __name__ == "__main__":
+    main()
