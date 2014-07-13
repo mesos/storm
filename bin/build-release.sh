@@ -19,7 +19,7 @@ echo `cp $1 _release/storm.zip`
 cd _release
 echo `unzip storm.zip`
 echo `rm storm.zip`
-echo `mv storm* storm`
+echo `mv apache-storm* storm`
 cd ..
 echo `rm _release/storm/*.jar`
 
