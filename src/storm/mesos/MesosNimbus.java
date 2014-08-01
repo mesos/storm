@@ -31,6 +31,7 @@ import org.apache.mesos.Protos.Value.Scalar;
 import org.apache.mesos.Protos.Value.Type;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
+import org.apache.mesos.MesosSchedulerDriver;
 import org.json.simple.JSONValue;
 
 import java.io.IOException;
@@ -119,7 +120,27 @@ public class MesosNimbus implements INimbus {
         finfo.setId(FrameworkID.newBuilder().setValue(id).build());
       }
 
+      MesosSchedulerDriver driver = new MesosSchedulerDriver(
+                                    _scheduler,
+                                    finfo.build(),
+                                    (String)conf.get(CONF_MASTER_URL));
+
+      driver.start();
+      LOG.info("Waiting for scheduler to initialize...");
+      initter.acquire();
+      LOG.info("Scheduler initialized...");
+
+      _httpServer = new LocalFileServer();
+      _configUrl = _httpServer.serveDir("/conf","conf");
+      LOG.info("Started serving config dir under " + _configUrl);
+
     } catch (IOException e) {
+      throw new RuntimeException(e);
+    } catch (java.net.URISyntaxException e) {
+      throw new RuntimeException(e);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
