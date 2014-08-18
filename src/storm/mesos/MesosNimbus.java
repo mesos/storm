@@ -31,6 +31,7 @@ import org.apache.mesos.Protos.Value.Scalar;
 import org.apache.mesos.Protos.Value.Type;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
+import org.apache.mesos.MesosSchedulerDriver;
 import org.json.simple.JSONValue;
 
 import java.io.IOException;
@@ -119,7 +120,27 @@ public class MesosNimbus implements INimbus {
         finfo.setId(FrameworkID.newBuilder().setValue(id).build());
       }
 
+      MesosSchedulerDriver driver = new MesosSchedulerDriver(
+                                    _scheduler,
+                                    finfo.build(),
+                                    (String)conf.get(CONF_MASTER_URL));
+
+      driver.start();
+      LOG.info("Waiting for scheduler to initialize...");
+      initter.acquire();
+      LOG.info("Scheduler initialized...");
+
+      _httpServer = new LocalFileServer();
+      _configUrl = _httpServer.serveDir("/conf","conf");
+      LOG.info("Started serving config dir under " + _configUrl);
+
     } catch (IOException e) {
+      throw new RuntimeException(e);
+    } catch (java.net.URISyntaxException e) {
+      throw new RuntimeException(e);
+    } catch (InterruptedException e) {
+      throw new RuntimeException(e);
+    } catch (Exception e) {
       throw new RuntimeException(e);
     }
   }
@@ -444,20 +465,23 @@ public class MesosNimbus implements INimbus {
           }
         }
       }
-      List<TaskInfo> launchList = new ArrayList<>();
+
       List<OfferID> launchOffers = new ArrayList<>();
       for (OfferID id : toLaunch.keySet()) {
         List<LaunchTask> tasks = toLaunch.get(id);
+        List<TaskInfo> launchList = new ArrayList<>();
 
         LOG.info("Launching tasks for offer " + id.getValue() + "\n" + tasks.toString());
         for (LaunchTask t : tasks) {
           launchList.add(t.task);
           used_offers.put(t.task.getTaskId(), t.offer);
         }
-        launchOffers.add(id);
+
+        // We can only launch a set of tasks per single offer if we want
+        // to run single storm topology across multiple Mesos slaves
+        _driver.launchTasks(id, launchList);
         _offers.remove(id);
       }
-      _driver.launchTasks(launchOffers, launchList);
     }
   }
 
