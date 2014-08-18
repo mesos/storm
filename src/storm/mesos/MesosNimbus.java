@@ -23,6 +23,7 @@ import backtype.storm.utils.LocalState;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.log4j.Logger;
+import org.apache.mesos.MesosSchedulerDriver;
 import org.apache.mesos.Protos.*;
 import org.apache.mesos.Protos.CommandInfo.URI;
 import org.apache.mesos.Protos.Value.Range;
@@ -31,7 +32,6 @@ import org.apache.mesos.Protos.Value.Scalar;
 import org.apache.mesos.Protos.Value.Type;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
-import org.apache.mesos.MesosSchedulerDriver;
 import org.json.simple.JSONValue;
 
 import java.io.IOException;
@@ -66,7 +66,6 @@ public class MesosNimbus implements INimbus {
   private LocalFileServer _httpServer;
   private java.net.URI _configUrl;
   private Map<TaskID, Offer> used_offers;
-  private Map<ExecutorID, List<TaskID>> executors = Collections.synchronizedMap(new HashMap<ExecutorID, List<TaskID>>());
   private ScheduledExecutorService timerScheduler =
       Executors.newScheduledThreadPool(1);
 
@@ -116,30 +115,25 @@ public class MesosNimbus implements INimbus {
           .setUser("")
           .setRole(role)
           .setCheckpoint(checkpoint);
+
       if (id != null) {
         finfo.setId(FrameworkID.newBuilder().setValue(id).build());
       }
 
-      MesosSchedulerDriver driver = new MesosSchedulerDriver(
-                                    _scheduler,
-                                    finfo.build(),
-                                    (String)conf.get(CONF_MASTER_URL));
+      _httpServer = new LocalFileServer();
+      _configUrl = _httpServer.serveDir("/conf", "conf");
+      LOG.info("Started serving config dir under " + _configUrl);
+
+      MesosSchedulerDriver driver =
+          new MesosSchedulerDriver(
+              _scheduler,
+              finfo.build(),
+              (String) conf.get(CONF_MASTER_URL));
 
       driver.start();
       LOG.info("Waiting for scheduler to initialize...");
       initter.acquire();
       LOG.info("Scheduler initialized...");
-
-      _httpServer = new LocalFileServer();
-      _configUrl = _httpServer.serveDir("/conf","conf");
-      LOG.info("Started serving config dir under " + _configUrl);
-
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    } catch (java.net.URISyntaxException e) {
-      throw new RuntimeException(e);
-    } catch (InterruptedException e) {
-      throw new RuntimeException(e);
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -466,7 +460,6 @@ public class MesosNimbus implements INimbus {
         }
       }
 
-      List<OfferID> launchOffers = new ArrayList<>();
       for (OfferID id : toLaunch.keySet()) {
         List<LaunchTask> tasks = toLaunch.get(id);
         List<TaskInfo> launchList = new ArrayList<>();
@@ -477,9 +470,9 @@ public class MesosNimbus implements INimbus {
           used_offers.put(t.task.getTaskId(), t.offer);
         }
 
-        // We can only launch a set of tasks per single offer if we want
-        // to run single storm topology across multiple Mesos slaves
-        _driver.launchTasks(id, launchList);
+        List<OfferID> launchOffer = new ArrayList<>();
+        launchOffer.add(id);
+        _driver.launchTasks(launchOffer, launchList);
         _offers.remove(id);
       }
     }
@@ -629,6 +622,7 @@ public class MesosNimbus implements INimbus {
   private class LaunchTask {
     public final TaskInfo task;
     public final Offer offer;
+
     public LaunchTask(final TaskInfo task, final Offer offer) {
       this.task = task;
       this.offer = offer;
