@@ -35,6 +35,9 @@ import org.apache.mesos.SchedulerDriver;
 import org.json.simple.JSONValue;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -320,8 +323,6 @@ public class MesosNimbus implements INimbus {
             executorData.put(MesosCommon.SUPERVISOR_ID, slot.getNodeId() + "-" + details.getId());
             executorData.put(MesosCommon.ASSIGNMENT_ID, slot.getNodeId());
 
-            String wgetCmds = "wget " + _configUrl + "/storm.yaml";
-
             // Determine roles for cpu, mem, ports
             String cpuRole = null;
             String memRole = null;
@@ -418,6 +419,14 @@ public class MesosNimbus implements INimbus {
             if (memRole == null) memRole = "*";
             if (portsRole == null) portsRole = "*";
 
+            String configUri;
+            try {
+              configUri = new URL(_configUrl.toURL(),
+                  "/storm.yaml").toString();
+            } catch (MalformedURLException e) {
+              throw new RuntimeException(e);
+            }
+
             String executorDataStr = JSONValue.toJSONString(executorData);
             LOG.info("Launching task with executor data: <" + executorDataStr + ">");
             TaskInfo task = TaskInfo.newBuilder()
@@ -428,8 +437,9 @@ public class MesosNimbus implements INimbus {
                     .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
                     .setData(ByteString.copyFromUtf8(executorDataStr))
                     .setCommand(CommandInfo.newBuilder()
-                            .addUris(URI.newBuilder().setValue((String) _conf.get(CONF_EXECUTOR_URI)))
-                            .setValue("cd storm-mesos* && cd conf && rm -f storm.yaml && " + wgetCmds + " && cd .. && python bin/storm supervisor storm.mesos.MesosSupervisor")
+                            .addUris(URI.newBuilder().setValue((String)_conf.get(CONF_EXECUTOR_URI)))
+                            .addUris(URI.newBuilder().setValue(configUri))
+                            .setValue("cp storm.yaml storm-mesos*/conf && cd storm-mesos* && python bin/storm supervisor storm.mesos.MesosSupervisor")
                     ))
                 .addResources(Resource.newBuilder()
                     .setName("cpus")
