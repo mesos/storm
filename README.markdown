@@ -17,10 +17,6 @@ The Mesosphere site has a tutorial which goes into more [details](http://mesosph
 OpenJDK 1.7 might work too, but that has not been tested.
 The code was compiled with Oracle JDK 1.7 and will not work on Java 1.6.
 
-- wget
-The config files are being pulled onto the slaves from the master through wget. Please make sure it is installed.
-
-
 # Running Storm on Mesos
 Along with the Mesos master and Mesos cluster, you'll need to run the Storm master as well. Launch Nimbus with this command: 
 
