@@ -28,6 +28,7 @@ import org.mortbay.jetty.nio.SelectChannelConnector;
 
 import java.net.InetAddress;
 import java.net.URI;
+import java.util.Map;
 
 /**
  * Starts embedded Jetty server on random port to share a local directory.
@@ -37,13 +38,23 @@ import java.net.URI;
 public class LocalFileServer {
 
   public static final Logger LOG = Logger.getLogger(LocalFileServer.class);
+  public static final String CONF_NIMBUS_FILESERVER_PORT = "nimbus.fileserver.port";
   private Server _server = new Server();
+  private Map _conf;
+  private int _port;
 
   public static void main(String[] args) throws Exception {
 
     URI url = new LocalFileServer().serveDir("/tmp2", "/tmp");
     System.out.println("************ " + url);
 
+  }
+
+  public void prepare(Map conf) {
+    _conf = conf;
+    Integer port = conf.containsKey(CONF_NIMBUS_FILESERVER_PORT) ?
+      new Integer(String.valueOf(conf.get(CONF_NIMBUS_FILESERVER_PORT))) : Integer.valueOf(0);
+    _port = port;
   }
 
   /**
@@ -59,7 +70,7 @@ public class LocalFileServer {
 
     _server = new Server();
     SelectChannelConnector connector = new SelectChannelConnector();
-    connector.setPort(0);
+    connector.setPort(_port);
     _server.addConnector(connector);
 
     ResourceHandler resource_handler = new ResourceHandler();
