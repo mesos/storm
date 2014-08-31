@@ -17,6 +17,16 @@ The Mesosphere site has a tutorial which goes into more [details](http://mesosph
 OpenJDK 1.7 might work too, but that has not been tested.
 The code was compiled with Oracle JDK 1.7 and will not work on Java 1.6.
 
+# Building
+
+Once you have a Storm package, run the build script with the path to the Storm package as an argument:
+
+```shell
+bin/build-release.sh storm.zip
+```
+
+This will build a Mesos executor package.  You'll need to edit `storm.yaml` and supply the Mesos master configuration as well as the executor package URI (produced by the step above).
+
 # Running Storm on Mesos
 Along with the Mesos master and Mesos cluster, you'll need to run the Storm master as well. Launch Nimbus with this command: 
 
