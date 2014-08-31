@@ -56,8 +56,6 @@ The distribution does not rely on ZeroMQ anymore. It was replaced in favor of Ne
 
 2. `mesos.master.url`: URL for the Mesos master.
 
-3. `java.library.path`: Needs the location of the ZeroMQ libs and the Mesos native libraries. The Storm/Mesos distribution comes with the native ZeroMQ libraries in the "native" folder (for Linux). This config is typically set to "native:{location of mesos native libs}"
+3. `storm.zookeeper.servers`: The location of the Zookeeper servers to be used by the Storm master.
 
-4. `storm.zookeeper.servers`: The location of the Zookeeper servers to be used by the Storm master.
-
-5. `nimbus.host`: The hostname of where you run Nimbus.
+4. `nimbus.host`: The hostname of where you run Nimbus.
