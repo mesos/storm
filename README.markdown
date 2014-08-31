@@ -6,7 +6,7 @@ Storm on Mesos
 # Overview
 Storm integration with the Mesos cluster resource manager.
 
-To use a release, you first need to unpack the distribution, fill in configurations listed below into the conf/storm.yaml file and start Nimbus using `storm-mesos nimbus`. 
+To use a release, you first need to unpack the distribution, fill in configurations listed below into the `conf/storm.yaml` file and start Nimbus using `storm-mesos nimbus`. 
 
 The Mesosphere site has a tutorial which goes into more [details](http://mesosphere.io/learn/run-storm-on-mesos/).
 
