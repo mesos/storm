@@ -422,7 +422,7 @@ public class MesosNimbus implements INimbus {
             String configUri;
             try {
               configUri = new URL(_configUrl.toURL(),
-                  "/storm.yaml").toString();
+                  _configUrl.getPath() + "/storm.yaml").toString();
             } catch (MalformedURLException e) {
               throw new RuntimeException(e);
             }
