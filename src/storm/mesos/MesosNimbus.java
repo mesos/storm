@@ -142,7 +142,7 @@ public class MesosNimbus implements INimbus {
     }
   }
 
-  private OfferResources getResources(Offer offer, double cpu, double mem) {
+  private OfferResources getResources(Offer offer, double executorCpu, double executorMem, double cpu, double mem) {
     OfferResources resources = new OfferResources();
 
     double offerCpu = 0;
@@ -151,10 +151,10 @@ public class MesosNimbus implements INimbus {
     for (Resource r : offer.getResourcesList()) {
       if (r.getName().equals("cpus") && r.getScalar().getValue() > offerCpu) {
         offerCpu = r.getScalar().getValue();
-        resources.cpuSlots = (int) Math.floor(offerCpu / cpu);
+        resources.cpuSlots = (int) Math.floor((offerCpu - executorCpu) / cpu);
       } else if (r.getName().equals("mem") && r.getScalar().getValue() > offerMem) {
         offerMem = r.getScalar().getValue();
-        resources.memSlots = (int) Math.floor(offerMem / mem);
+        resources.memSlots = (int) Math.floor((offerMem - executorMem) / mem);
       }
     }
 
@@ -185,7 +185,12 @@ public class MesosNimbus implements INimbus {
   }
 
   private List<WorkerSlot> toSlots(Offer offer, double cpu, double mem) {
-    OfferResources resources = getResources(offer, cpu, mem);
+    OfferResources resources = getResources(
+        offer,
+        MesosCommon.executorCpu(_conf),
+        MesosCommon.executorMem(_conf),
+        cpu,
+        mem);
 
     List<WorkerSlot> ret = new ArrayList<WorkerSlot>();
     int availableSlots = Math.min(resources.cpuSlots, resources.memSlots);
@@ -223,8 +228,8 @@ public class MesosNimbus implements INimbus {
     // it will mess up scheduling on this cluster permanently
     for (String id : topologiesMissingAssignments) {
       TopologyDetails details = topologies.getById(id);
-      double tcpu = MesosCommon.topologyCpu(_conf, details);
-      double tmem = MesosCommon.topologyMem(_conf, details);
+      double tcpu = MesosCommon.topologyWorkerCpu(_conf, details);
+      double tmem = MesosCommon.topologyWorkerMem(_conf, details);
       if (cpu == null || tcpu > cpu) {
         cpu = tcpu;
       }
@@ -295,173 +300,201 @@ public class MesosNimbus implements INimbus {
     synchronized (OFFERS_LOCK) {
       Map<OfferID, List<LaunchTask>> toLaunch = new HashMap<>();
       for (String topologyId : slots.keySet()) {
+        Map<OfferID, List<WorkerSlot>> slotList = new HashMap<>();
         for (WorkerSlot slot : slots.get(topologyId)) {
           OfferID id = findOffer(slot);
-          Offer offer = _offers.get(id);
-          Boolean usingExistingOffer = false;
-
-          TaskID taskId = TaskID.newBuilder()
-              .setValue(MesosCommon.taskId(slot.getNodeId(), slot.getPort()))
-              .build();
-
-          if (id == null || offer == null && used_offers.containsKey(taskId)) {
-            offer = used_offers.get(taskId);
-            if (offer != null) {
-              id = offer.getId();
-              usingExistingOffer = true;
-            }
+          if (!slotList.containsKey(id)) {
+            slotList.put(id, new ArrayList<WorkerSlot>());
           }
-          if (id != null && offer != null) {
-            if (!toLaunch.containsKey(id)) {
-              toLaunch.put(id, new ArrayList());
-            }
-            TopologyDetails details = topologies.getById(topologyId);
-            double cpu = MesosCommon.topologyCpu(_conf, details);
-            double mem = MesosCommon.topologyMem(_conf, details);
+          slotList.get(id).add(slot);
+        }
 
-            Map executorData = new HashMap();
-            executorData.put(MesosCommon.SUPERVISOR_ID, slot.getNodeId() + "-" + details.getId());
-            executorData.put(MesosCommon.ASSIGNMENT_ID, slot.getNodeId());
+        for (OfferID id : slotList.keySet()) {
+          Offer offer = _offers.get(id);
+          List<WorkerSlot> workerSlots = slotList.get(id);
+          boolean usingExistingOffer = false;
+          boolean subtractedExecutorResources = false;
 
-            // Determine roles for cpu, mem, ports
-            String cpuRole = null;
-            String memRole = null;
-            String portsRole = null;
-
-            Offer.Builder newBuilder = Offer.newBuilder();
-            newBuilder.mergeFrom(offer);
-            newBuilder.clearResources();
-
-            Offer.Builder existingBuilder = Offer.newBuilder();
-            existingBuilder.mergeFrom(offer);
-            existingBuilder.clearResources();
-
-
-            List<Resource> offerResources = offer.getResourcesList();
-            List<Resource> reservedOfferResources = new ArrayList<>();
-            for (Resource r : offerResources) {
-              if (r.hasRole() && !r.getRole().equals("*")) {
-                reservedOfferResources.add(r);
-              }
-            }
-
-            Resource cpuResource = getResourceScalar(reservedOfferResources, cpu, "cpus");
-            if (cpuResource == null) {
-              cpuResource = getResourceScalar(offerResources, cpu, "cpus");
-            }
-            Resource memResource = getResourceScalar(reservedOfferResources, mem, "mem");
-            if (memResource == null) {
-              memResource = getResourceScalar(offerResources, mem, "mem");
-            }
-            Resource portsResource = getResourceRange(reservedOfferResources, slot.getPort(), slot.getPort(), "ports");
-            if (portsResource == null) {
-              portsResource = getResourceRange(offerResources, slot.getPort(), slot.getPort(), "ports");
-            }
-
-            List<Resource> resourceList = new ArrayList<>();
-            List<Resource> oldResourceList = new ArrayList<>();
-            for (Resource r : offer.getResourcesList()) {
-              Resource.Builder remnants = Resource.newBuilder();
-              remnants.mergeFrom(r);
-              Resource.Builder resource = Resource.newBuilder();
-              resource.mergeFrom(r);
-
-              if (r == cpuResource) {
-                cpuRole = r.getRole();
-                resource.setScalar(
-                    Scalar.newBuilder()
-                        .setValue(cpu));
-                resourceList.add(resource.build());
-                remnants.setScalar(
-                    Scalar.newBuilder()
-                        .setValue(r.getScalar().getValue() - cpu));
-              } else if (r == memResource) {
-                memRole = r.getRole();
-                resource.setScalar(
-                    Scalar.newBuilder()
-                        .setValue(mem));
-                resourceList.add(resource.build());
-                remnants.setScalar(
-                    Scalar.newBuilder()
-                        .setValue(r.getScalar().getValue() - mem));
-              } else if (r == portsResource) {
-                Ranges.Builder rb = Ranges.newBuilder();
-                for (Range range : r.getRanges().getRangeList()) {
-                  if (slot.getPort() >= range.getBegin() && slot.getPort() <= range.getEnd()) {
-                    portsRole = r.getRole();
-                    resource.setRanges(
-                        Ranges.newBuilder()
-                            .addRange(
-                                Range.newBuilder()
-                                    .setBegin(slot.getPort())
-                                    .setEnd(slot.getPort())
-                            ));
-                    resourceList.add(resource.build());
-                    rb.addRange(Range.newBuilder()
-                        .setBegin(slot.getPort() + 1)
-                        .setEnd(range.getEnd()));
-                    break;
-                  } else {
-                    rb.addRange(range);
-                  }
-                }
-              }
-              oldResourceList.add(remnants.build());
-            }
-            newBuilder.addAllResources(resourceList);
-            Offer newOffer = newBuilder.build();
-            Offer remainingOffer = existingBuilder.addAllResources(oldResourceList).build();
-
-            // Update the remaining offer list
-            _offers.put(id, remainingOffer);
-
-            if (cpuRole == null) cpuRole = "*";
-            if (memRole == null) memRole = "*";
-            if (portsRole == null) portsRole = "*";
-
-            String configUri;
-            try {
-              configUri = new URL(_configUrl.toURL(),
-                  _configUrl.getPath() + "/storm.yaml").toString();
-            } catch (MalformedURLException e) {
-              throw new RuntimeException(e);
-            }
-
-            String executorDataStr = JSONValue.toJSONString(executorData);
-            LOG.info("Launching task with executor data: <" + executorDataStr + ">");
-            TaskInfo task = TaskInfo.newBuilder()
-                .setName("worker " + slot.getNodeId() + ":" + slot.getPort())
-                .setTaskId(taskId)
-                .setSlaveId(offer.getSlaveId())
-                .setExecutor(ExecutorInfo.newBuilder()
-                    .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
-                    .setData(ByteString.copyFromUtf8(executorDataStr))
-                    .setCommand(CommandInfo.newBuilder()
-                            .addUris(URI.newBuilder().setValue((String)_conf.get(CONF_EXECUTOR_URI)))
-                            .addUris(URI.newBuilder().setValue(configUri))
-                            .setValue("cp storm.yaml storm-mesos*/conf && cd storm-mesos* && python bin/storm supervisor storm.mesos.MesosSupervisor")
-                    ))
-                .addResources(Resource.newBuilder()
-                    .setName("cpus")
-                    .setType(Type.SCALAR)
-                    .setScalar(Scalar.newBuilder().setValue(cpu))
-                    .setRole(cpuRole))
-                .addResources(Resource.newBuilder()
-                    .setName("mem")
-                    .setType(Type.SCALAR)
-                    .setScalar(Scalar.newBuilder().setValue(mem))
-                    .setRole(memRole))
-                .addResources(Resource.newBuilder()
-                    .setName("ports")
-                    .setType(Type.RANGES)
-                    .setRanges(Ranges.newBuilder()
-                        .addRange(Range.newBuilder()
-                            .setBegin(slot.getPort())
-                            .setEnd(slot.getPort())))
-                    .setRole(portsRole))
+          for (WorkerSlot slot : workerSlots) {
+            TaskID taskId = TaskID.newBuilder()
+                .setValue(MesosCommon.taskId(slot.getNodeId(), slot.getPort()))
                 .build();
 
-            toLaunch.get(id).add(new LaunchTask(task, newOffer));
+            if (id == null || offer == null && used_offers.containsKey(taskId)) {
+              offer = used_offers.get(taskId);
+              if (offer != null) {
+                id = offer.getId();
+                usingExistingOffer = true;
+              }
+            }
+            if (id != null && offer != null) {
+              if (!toLaunch.containsKey(id)) {
+                toLaunch.put(id, new ArrayList<LaunchTask>());
+              }
+              TopologyDetails details = topologies.getById(topologyId);
+              double cpu = MesosCommon.topologyWorkerCpu(_conf, details);
+              double mem = MesosCommon.topologyWorkerMem(_conf, details);
+              if (!subtractedExecutorResources) {
+                cpu += MesosCommon.executorCpu(_conf);
+                mem += MesosCommon.executorMem(_conf);
+                subtractedExecutorResources = true;
+              }
+
+              Map executorData = new HashMap();
+              executorData.put(MesosCommon.SUPERVISOR_ID, slot.getNodeId() + "-" + details.getId());
+              executorData.put(MesosCommon.ASSIGNMENT_ID, slot.getNodeId());
+
+              // Determine roles for cpu, mem, ports
+              String cpuRole = null;
+              String memRole = null;
+              String portsRole = null;
+
+              Offer.Builder newBuilder = Offer.newBuilder();
+              newBuilder.mergeFrom(offer);
+              newBuilder.clearResources();
+
+              Offer.Builder existingBuilder = Offer.newBuilder();
+              existingBuilder.mergeFrom(offer);
+              existingBuilder.clearResources();
+
+
+              List<Resource> offerResources = offer.getResourcesList();
+              List<Resource> reservedOfferResources = new ArrayList<>();
+              for (Resource r : offerResources) {
+                if (r.hasRole() && !r.getRole().equals("*")) {
+                  reservedOfferResources.add(r);
+                }
+              }
+
+              Resource cpuResource = getResourceScalar(reservedOfferResources, cpu, "cpus");
+              if (cpuResource == null) {
+                cpuResource = getResourceScalar(offerResources, cpu, "cpus");
+              }
+              Resource memResource = getResourceScalar(reservedOfferResources, mem, "mem");
+              if (memResource == null) {
+                memResource = getResourceScalar(offerResources, mem, "mem");
+              }
+              Resource portsResource = getResourceRange(reservedOfferResources, slot.getPort(), slot.getPort(), "ports");
+              if (portsResource == null) {
+                portsResource = getResourceRange(offerResources, slot.getPort(), slot.getPort(), "ports");
+              }
+
+              List<Resource> resourceList = new ArrayList<>();
+              List<Resource> oldResourceList = new ArrayList<>();
+              for (Resource r : offer.getResourcesList()) {
+                Resource.Builder remnants = Resource.newBuilder();
+                remnants.mergeFrom(r);
+                Resource.Builder resource = Resource.newBuilder();
+                resource.mergeFrom(r);
+
+                if (r == cpuResource) {
+                  cpuRole = r.getRole();
+                  resource.setScalar(
+                      Scalar.newBuilder()
+                          .setValue(cpu));
+                  resourceList.add(resource.build());
+                  remnants.setScalar(
+                      Scalar.newBuilder()
+                          .setValue(r.getScalar().getValue() - cpu));
+                } else if (r == memResource) {
+                  memRole = r.getRole();
+                  resource.setScalar(
+                      Scalar.newBuilder()
+                          .setValue(mem));
+                  resourceList.add(resource.build());
+                  remnants.setScalar(
+                      Scalar.newBuilder()
+                          .setValue(r.getScalar().getValue() - mem));
+                } else if (r == portsResource) {
+                  Ranges.Builder rb = Ranges.newBuilder();
+                  for (Range range : r.getRanges().getRangeList()) {
+                    if (slot.getPort() >= range.getBegin() && slot.getPort() <= range.getEnd()) {
+                      portsRole = r.getRole();
+                      resource.setRanges(
+                          Ranges.newBuilder()
+                              .addRange(
+                                  Range.newBuilder()
+                                      .setBegin(slot.getPort())
+                                      .setEnd(slot.getPort())
+                              ));
+                      resourceList.add(resource.build());
+                      rb.addRange(Range.newBuilder()
+                          .setBegin(slot.getPort() + 1)
+                          .setEnd(range.getEnd()));
+                      break;
+                    } else {
+                      rb.addRange(range);
+                    }
+                  }
+                }
+                oldResourceList.add(remnants.build());
+              }
+              newBuilder.addAllResources(resourceList);
+              Offer newOffer = newBuilder.build();
+              Offer remainingOffer = existingBuilder.addAllResources(oldResourceList).build();
+
+              // Update the remaining offer list
+              _offers.put(id, remainingOffer);
+
+              if (cpuRole == null) cpuRole = "*";
+              if (memRole == null) memRole = "*";
+              if (portsRole == null) portsRole = "*";
+
+              String configUri;
+              try {
+                configUri = new URL(_configUrl.toURL(),
+                    _configUrl.getPath() + "/storm.yaml").toString();
+              } catch (MalformedURLException e) {
+                throw new RuntimeException(e);
+              }
+
+              String executorDataStr = JSONValue.toJSONString(executorData);
+              LOG.info("Launching task with executor data: <" + executorDataStr + ">");
+              TaskInfo task = TaskInfo.newBuilder()
+                  .setName("worker " + slot.getNodeId() + ":" + slot.getPort())
+                  .setTaskId(taskId)
+                  .setSlaveId(offer.getSlaveId())
+                  .setExecutor(ExecutorInfo.newBuilder()
+                          .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
+                          .setData(ByteString.copyFromUtf8(executorDataStr))
+                          .setCommand(CommandInfo.newBuilder()
+                              .addUris(URI.newBuilder().setValue((String) _conf.get(CONF_EXECUTOR_URI)))
+                              .addUris(URI.newBuilder().setValue(configUri))
+                              .setValue("cp storm.yaml storm-mesos*/conf && cd storm-mesos* && python bin/storm " +
+                                  "supervisor storm.mesos.MesosSupervisor"))
+                          .addResources(Resource.newBuilder()
+                              .setName("cpus")
+                              .setType(Type.SCALAR)
+                              .setScalar(Scalar.newBuilder().setValue(cpu))
+                              .setRole(cpuRole))
+                          .addResources(Resource.newBuilder()
+                              .setName("mem")
+                              .setType(Type.SCALAR)
+                              .setScalar(Scalar.newBuilder().setValue(mem))
+                              .setRole(memRole))
+                  )
+                  .addResources(Resource.newBuilder()
+                      .setName("cpus")
+                      .setType(Type.SCALAR)
+                      .setScalar(Scalar.newBuilder().setValue(cpu))
+                      .setRole(cpuRole))
+                  .addResources(Resource.newBuilder()
+                      .setName("mem")
+                      .setType(Type.SCALAR)
+                      .setScalar(Scalar.newBuilder().setValue(mem))
+                      .setRole(memRole))
+                  .addResources(Resource.newBuilder()
+                      .setName("ports")
+                      .setType(Type.RANGES)
+                      .setRanges(Ranges.newBuilder()
+                          .addRange(Range.newBuilder()
+                              .setBegin(slot.getPort())
+                              .setEnd(slot.getPort())))
+                      .setRole(portsRole))
+                  .build();
+
+              toLaunch.get(id).add(new LaunchTask(task, newOffer));
+            }
 
             if (usingExistingOffer) {
               _driver.killTask(taskId);

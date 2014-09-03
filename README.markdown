@@ -50,7 +50,7 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 
 The distribution does not rely on ZeroMQ anymore. It was replaced in favor of Netty which eliminates the need to rely on system specific binaries.
 
-## Mandatory configurations:
+## Mandatory configuration
 
 1. `mesos.executor.uri`: Once you fill in the configs and repack the distribution, you need to place the distribution somewhere where Mesos executors can find it. Typically this is on HDFS, and this config is the location of where you put the distibution.
 
@@ -59,3 +59,14 @@ The distribution does not rely on ZeroMQ anymore. It was replaced in favor of Ne
 3. `storm.zookeeper.servers`: The location of the Zookeeper servers to be used by the Storm master.
 
 4. `nimbus.host`: The hostname of where you run Nimbus.
+
+## Resource configuration
+
+* `topology.mesos.worker.cpu`: CPUs per worker
+* `topology.mesos.worker.mem.mb`: Memory (in MiB) per worker
+  * `worker.childopts`: Use this for JVM opts.  You should have about 25% memory overhead for each task.  For 
+  example, with `-Xmx1000m`, you should set `topology.mesos.worker.mem.mb: 1250`
+* `topology.mesos.executor.cpu`: CPUs per executor
+* `topology.mesos.executor.mem.mb`: Memory (in MiB) per executor
+  * `supervisor.childopts`: Use this for executor (aka supervisor) JVM opts.  You should have about 25% memory 
+  overhead for each task.  For example, with `-Xmx500m`, you should set `topology.mesos.executor.mem.mb: 625`

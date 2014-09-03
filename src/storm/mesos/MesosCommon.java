@@ -25,8 +25,10 @@ import java.util.*;
 public class MesosCommon {
   public static final Logger LOG = Logger.getLogger(MesosCommon.class);
 
-  public static final String CPU_CONF = "topology.mesos.worker.cpu";
-  public static final String MEM_CONF = "topology.mesos.worker.mem.mb";
+  public static final String WORKER_CPU_CONF = "topology.mesos.worker.cpu";
+  public static final String WORKER_MEM_CONF = "topology.mesos.worker.mem.mb";
+  public static final String EXECUTOR_CPU_CONF = "topology.mesos.executor.cpu";
+  public static final String EXECUTOR_MEM_CONF = "topology.mesos.executor.mem.mb";
   public static final String SUICIDE_CONF = "mesos.supervisor.suicide.inactive.timeout.secs";
 
   public static final double DEFAULT_CPU = 1;
@@ -58,9 +60,9 @@ public class MesosCommon {
     return ret;
   }
 
-  public static double topologyCpu(Map conf, TopologyDetails info) {
+  public static double topologyWorkerCpu(Map conf, TopologyDetails info) {
     conf = getFullTopologyConfig(conf, info);
-    Object cpuObj = conf.get(CPU_CONF);
+    Object cpuObj = conf.get(WORKER_CPU_CONF);
     if (cpuObj != null && !(cpuObj instanceof Number)) {
       LOG.warn("Topology has invalid mesos cpu configuration: " + cpuObj + " for topology " + info.getId());
       cpuObj = null;
@@ -69,9 +71,9 @@ public class MesosCommon {
     else return ((Number) cpuObj).doubleValue();
   }
 
-  public static double topologyMem(Map conf, TopologyDetails info) {
+  public static double topologyWorkerMem(Map conf, TopologyDetails info) {
     conf = getFullTopologyConfig(conf, info);
-    Object memObj = conf.get(MEM_CONF);
+    Object memObj = conf.get(WORKER_MEM_CONF);
     if (memObj != null && !(memObj instanceof Number)) {
       LOG.warn("Topology has invalid mesos mem configuration: " + memObj + " for topology " + info.getId());
       memObj = null;
@@ -80,6 +82,25 @@ public class MesosCommon {
     else return ((Number) memObj).doubleValue();
   }
 
+  public static double executorCpu(Map conf) {
+    Object cpuObj = conf.get(EXECUTOR_CPU_CONF);
+    if (cpuObj != null && !(cpuObj instanceof Number)) {
+      LOG.warn("Cluster has invalid mesos cpu configuration: " + cpuObj);
+      cpuObj = null;
+    }
+    if (cpuObj == null) return DEFAULT_CPU;
+    else return ((Number) cpuObj).doubleValue();
+  }
+
+  public static double executorMem(Map conf) {
+    Object memObj = conf.get(EXECUTOR_MEM_CONF);
+    if (memObj != null && !(memObj instanceof Number)) {
+      LOG.warn("Cluster has invalid mesos mem configuration: " + memObj);
+      memObj = null;
+    }
+    if (memObj == null) return DEFAULT_MEM_MB;
+    else return ((Number) memObj).doubleValue();
+  }
   public static int numWorkers(Map conf, TopologyDetails info) {
     return info.getNumWorkers();
   }
