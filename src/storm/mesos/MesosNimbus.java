@@ -332,11 +332,13 @@ public class MesosNimbus implements INimbus {
                 toLaunch.put(id, new ArrayList<LaunchTask>());
               }
               TopologyDetails details = topologies.getById(topologyId);
-              double cpu = MesosCommon.topologyWorkerCpu(_conf, details);
-              double mem = MesosCommon.topologyWorkerMem(_conf, details);
+              double workerCpu = MesosCommon.topologyWorkerCpu(_conf, details);
+              double workerMem = MesosCommon.topologyWorkerMem(_conf, details);
+              double executorCpu = MesosCommon.executorCpu(_conf);
+              double executorMem = MesosCommon.executorMem(_conf);
               if (!subtractedExecutorResources) {
-                cpu += MesosCommon.executorCpu(_conf);
-                mem += MesosCommon.executorMem(_conf);
+                workerCpu += executorCpu;
+                workerMem += executorMem;
                 subtractedExecutorResources = true;
               }
 
@@ -366,13 +368,13 @@ public class MesosNimbus implements INimbus {
                 }
               }
 
-              Resource cpuResource = getResourceScalar(reservedOfferResources, cpu, "cpus");
+              Resource cpuResource = getResourceScalar(reservedOfferResources, workerCpu, "cpus");
               if (cpuResource == null) {
-                cpuResource = getResourceScalar(offerResources, cpu, "cpus");
+                cpuResource = getResourceScalar(offerResources, workerCpu, "cpus");
               }
-              Resource memResource = getResourceScalar(reservedOfferResources, mem, "mem");
+              Resource memResource = getResourceScalar(reservedOfferResources, workerMem, "mem");
               if (memResource == null) {
-                memResource = getResourceScalar(offerResources, mem, "mem");
+                memResource = getResourceScalar(offerResources, workerMem, "mem");
               }
               Resource portsResource = getResourceRange(reservedOfferResources, slot.getPort(), slot.getPort(), "ports");
               if (portsResource == null) {
@@ -391,20 +393,20 @@ public class MesosNimbus implements INimbus {
                   cpuRole = r.getRole();
                   resource.setScalar(
                       Scalar.newBuilder()
-                          .setValue(cpu));
+                          .setValue(workerCpu));
                   resourceList.add(resource.build());
                   remnants.setScalar(
                       Scalar.newBuilder()
-                          .setValue(r.getScalar().getValue() - cpu));
+                          .setValue(r.getScalar().getValue() - workerCpu));
                 } else if (r == memResource) {
                   memRole = r.getRole();
                   resource.setScalar(
                       Scalar.newBuilder()
-                          .setValue(mem));
+                          .setValue(workerMem));
                   resourceList.add(resource.build());
                   remnants.setScalar(
                       Scalar.newBuilder()
-                          .setValue(r.getScalar().getValue() - mem));
+                          .setValue(r.getScalar().getValue() - workerMem));
                 } else if (r == portsResource) {
                   Ranges.Builder rb = Ranges.newBuilder();
                   for (Range range : r.getRanges().getRangeList()) {
@@ -465,23 +467,23 @@ public class MesosNimbus implements INimbus {
                           .addResources(Resource.newBuilder()
                               .setName("cpus")
                               .setType(Type.SCALAR)
-                              .setScalar(Scalar.newBuilder().setValue(cpu))
+                              .setScalar(Scalar.newBuilder().setValue(executorCpu))
                               .setRole(cpuRole))
                           .addResources(Resource.newBuilder()
                               .setName("mem")
                               .setType(Type.SCALAR)
-                              .setScalar(Scalar.newBuilder().setValue(mem))
+                              .setScalar(Scalar.newBuilder().setValue(executorMem))
                               .setRole(memRole))
                   )
                   .addResources(Resource.newBuilder()
                       .setName("cpus")
                       .setType(Type.SCALAR)
-                      .setScalar(Scalar.newBuilder().setValue(cpu))
+                      .setScalar(Scalar.newBuilder().setValue(workerCpu))
                       .setRole(cpuRole))
                   .addResources(Resource.newBuilder()
                       .setName("mem")
                       .setType(Type.SCALAR)
-                      .setScalar(Scalar.newBuilder().setValue(mem))
+                      .setScalar(Scalar.newBuilder().setValue(workerMem))
                       .setRole(memRole))
                   .addResources(Resource.newBuilder()
                       .setName("ports")
