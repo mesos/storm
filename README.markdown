@@ -46,10 +46,6 @@ Topologies are submitted to a Storm/Mesos cluster the exact same way they are su
 
 Storm/Mesos provides resource isolation between topologies. So you don't need to worry about topologies interfering with one another.
 
-## Native libraries
-
-The distribution does not rely on ZeroMQ anymore. It was replaced in favor of Netty which eliminates the need to rely on system specific binaries.
-
 ## Mandatory configuration
 
 1. `mesos.executor.uri`: Once you fill in the configs and repack the distribution, you need to place the distribution somewhere where Mesos executors can find it. Typically this is on HDFS, and this config is the location of where you put the distibution.
