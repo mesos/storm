@@ -339,7 +339,6 @@ public class MesosNimbus implements INimbus {
               if (!subtractedExecutorResources) {
                 workerCpu += executorCpu;
                 workerMem += executorMem;
-                subtractedExecutorResources = true;
               }
 
               Map executorData = new HashMap();
@@ -448,6 +447,12 @@ public class MesosNimbus implements INimbus {
                     _configUrl.getPath() + "/storm.yaml").toString();
               } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
+              }
+
+              if (!subtractedExecutorResources) {
+                workerCpu -= executorCpu;
+                workerMem -= executorMem;
+                subtractedExecutorResources = true;
               }
 
               String executorDataStr = JSONValue.toJSONString(executorData);
