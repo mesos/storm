@@ -3,6 +3,13 @@ set -o errexit -o nounset -o pipefail
 
 RELEASE=`grep -1 -A 0 -B 0 '<version>' pom.xml | head -n 1 | awk '{print $1}' | sed -e 's/.*<version>//' | sed -e 's/<\/version>.*//'`
 
+RELEASE_ZIP_NAME=apache-storm-${RELEASE}.zip
+
+MIRROR=http://www.gtlib.gatech.edu/pub
+function downloadStormRelease {
+  wget --progress=dot:mega ${MIRROR}/apache/incubator/storm/apache-storm-${RELEASE}/apache-storm-${RELEASE}.zip
+}
+
 function clean {
   rm -rf _release || true
   rm -rf lib/ classes/ || true
@@ -45,7 +52,7 @@ function package {(
 function main {
   clean
   mvnPackage
-  release $1
+  release ${1:-${RELEASE_ZIP_NAME}}
   package
 }
 
