@@ -27,6 +27,42 @@ bin/build-release.sh storm.zip
 
 This will build a Mesos executor package.  You'll need to edit `storm.yaml` and supply the Mesos master configuration as well as the executor package URI (produced by the step above).
 
+## Sub-commands
+
+Sub-commands can be invoked similar to git sub-commands.
+
+For example the following command will download the Storm release zip into the current working directory.
+```bash
+bin/build-release.sh downloadStormRelease
+```
+
+* `clean`
+
+  Attempts to clean working files and directories created when building.
+
+* `mvnPackage`
+
+  Runs the maven targets necessary to build the Storm Mesos framework.
+
+* `prePackage`
+
+  Prepares the working directories to be able to package the Storm Mesos framework.
+  * Optional argument specifying the Storm release zip to package against.
+
+* `package`
+
+  Packages the Storm Mesos Framework.
+
+* `downloadStormRelease`
+
+  A utility function to download the Storm release zip for the targeted storm release.
+
+  _Set `MIRROR` environment variable to configure download mirror._
+
+* `help`
+
+  Prints out usage information about the build-release.sh script.
+
 # Running Storm on Mesos
 Along with the Mesos master and Mesos cluster, you'll need to run the Storm master as well. Launch Nimbus with this command: 
 
