@@ -124,6 +124,7 @@ public class MesosNimbus implements INimbus {
       }
 
       _httpServer = new LocalFileServer();
+      _httpServer.prepare(conf);
       _configUrl = _httpServer.serveDir("/conf", "conf");
       LOG.info("Started serving config dir under " + _configUrl);
 
