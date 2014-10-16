@@ -48,7 +48,7 @@ public class LocalFileServer {
   }
 
   /**
-   * Starts embedded Jetty server on random port to share a local directory.
+   * Starts embedded Jetty server to share a local directory.
    * Returns the full URL where files can be retrieved.
    *
    * @param uriPath  - URI Path component e.g. /config
