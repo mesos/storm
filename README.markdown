@@ -92,6 +92,10 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 
 4. `nimbus.host`: The hostname of where you run Nimbus.
 
+## Optional configuration
+
+* `mesos.local.file.server.port`: Port for the local file server to bind to. Defaults to a random port.
+
 ## Resource configuration
 
 * `topology.mesos.worker.cpu`: CPUs per worker
