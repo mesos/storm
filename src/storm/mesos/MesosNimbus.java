@@ -127,11 +127,12 @@ public class MesosNimbus implements INimbus {
         finfo.setId(FrameworkID.newBuilder().setValue(id).build());
       }
 
-      String portStr = (String) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_PORT);
-      if (portStr == null) {
+      Integer port = (Integer) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_PORT);
+      LOG.info("Using local port: " + port);
+      if (port == null) {
         _localFileServerPort = Optional.absent();
       } else {
-        _localFileServerPort = Optional.of(Integer.getInteger(portStr));
+        _localFileServerPort = Optional.of(port);
       }
 
       _httpServer = new LocalFileServer();

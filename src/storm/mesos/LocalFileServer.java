@@ -59,6 +59,7 @@ public class LocalFileServer {
   public URI serveDir(String uriPath, String filePath, Optional<Integer> port) throws Exception {
 
     if (port.isPresent()) {
+      LOG.info("Starting local file server on port: " + port.get());
       _server = new Server(port.get());
     } else {
       _server = new Server();
