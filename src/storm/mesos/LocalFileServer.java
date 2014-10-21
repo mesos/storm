@@ -17,6 +17,7 @@
  */
 package storm.mesos;
 
+import com.google.common.base.Optional;
 import org.apache.log4j.Logger;
 import org.mortbay.jetty.Connector;
 import org.mortbay.jetty.Handler;
@@ -41,13 +42,13 @@ public class LocalFileServer {
 
   public static void main(String[] args) throws Exception {
 
-    URI url = new LocalFileServer().serveDir("/tmp2", "/tmp");
+    URI url = new LocalFileServer().serveDir("/tmp2", "/tmp", Optional.<Integer>absent());
     System.out.println("************ " + url);
 
   }
 
   /**
-   * Starts embedded Jetty server on random port to share a local directory.
+   * Starts embedded Jetty server to share a local directory.
    * Returns the full URL where files can be retrieved.
    *
    * @param uriPath  - URI Path component e.g. /config
@@ -55,9 +56,14 @@ public class LocalFileServer {
    * @return Full URI including server, port and path of baselevel dir. Please note that the ancient Jetty 6.1 Storm uses can't be configured to return directory listings AFAIK.
    * @throws Exception
    */
-  public URI serveDir(String uriPath, String filePath) throws Exception {
+  public URI serveDir(String uriPath, String filePath, Optional<Integer> port) throws Exception {
 
-    _server = new Server();
+    if (port.isPresent()) {
+      LOG.info("Starting local file server on port: " + port.get());
+      _server = new Server(port.get());
+    } else {
+      _server = new Server();
+    }
     SelectChannelConnector connector = new SelectChannelConnector();
     connector.setPort(0);
     _server.addConnector(connector);

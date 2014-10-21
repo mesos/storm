@@ -20,6 +20,8 @@ package storm.mesos;
 import backtype.storm.Config;
 import backtype.storm.scheduler.*;
 import backtype.storm.utils.LocalState;
+import com.google.common.base.Function;
+import com.google.common.base.Optional;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.log4j.Logger;
@@ -53,6 +55,7 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_ROLE = "mesos.framework.role";
   public static final String CONF_MESOS_CHECKPOINT = "mesos.framework.checkpoint";
   public static final String CONF_MESOS_OFFER_LRU_CACHE_SIZE = "mesos.offer.lru.cache.size";
+  public static final String CONF_MESOS_LOCAL_FILE_SERVER_PORT = "mesos.local.file.server.port";
 
   public static final Logger LOG = Logger.getLogger(MesosNimbus.class);
 
@@ -65,6 +68,7 @@ public class MesosNimbus implements INimbus {
   Map _conf;
   Set<String> _allowedHosts;
   Set<String> _disallowedHosts;
+  Optional<Integer> _localFileServerPort;
   private RotatingMap<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
   private java.net.URI _configUrl;
@@ -123,8 +127,16 @@ public class MesosNimbus implements INimbus {
         finfo.setId(FrameworkID.newBuilder().setValue(id).build());
       }
 
+      Integer port = (Integer) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_PORT);
+      LOG.info("Using local port: " + port);
+      if (port == null) {
+        _localFileServerPort = Optional.absent();
+      } else {
+        _localFileServerPort = Optional.of(port);
+      }
+
       _httpServer = new LocalFileServer();
-      _configUrl = _httpServer.serveDir("/conf", "conf");
+      _configUrl = _httpServer.serveDir("/conf", "conf", _localFileServerPort);
       LOG.info("Started serving config dir under " + _configUrl);
 
       MesosSchedulerDriver driver =
