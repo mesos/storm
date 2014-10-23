@@ -56,6 +56,7 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_CHECKPOINT = "mesos.framework.checkpoint";
   public static final String CONF_MESOS_OFFER_LRU_CACHE_SIZE = "mesos.offer.lru.cache.size";
   public static final String CONF_MESOS_LOCAL_FILE_SERVER_PORT = "mesos.local.file.server.port";
+  public static final String CONF_MESOS_FRAMEWORK_NAME = "mesos.framework.name";
 
   public static final Logger LOG = Logger.getLogger(MesosNimbus.class);
 
@@ -115,9 +116,11 @@ public class MesosNimbus implements INimbus {
       if (role == null) role = new String("*");
       Boolean checkpoint = (Boolean) conf.get(CONF_MESOS_CHECKPOINT);
       if (checkpoint == null) checkpoint = new Boolean(false);
+      String framework_name = (String) conf.get(CONF_MESOS_FRAMEWORK_NAME);
+      if (framework_name == null) framework_name = new String("Storm!!!");
 
       FrameworkInfo.Builder finfo = FrameworkInfo.newBuilder()
-          .setName("Storm!!!")
+          .setName(framework_name)
           .setFailoverTimeout(failoverTimeout.doubleValue())
           .setUser("")
           .setRole(role)
