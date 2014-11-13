@@ -229,7 +229,7 @@ public class MesosNimbus implements INimbus {
       String offerHost = offer.getHostname();
       boolean _exists = false;
       for(SupervisorDetails d: existingSupervisors) {
-        if(d.getHost().equals(offerHost) && d.getId().equals(topologyId)) {
+        if(d.getId().equals(MesosCommon.supervisorId(offerHost, topologyId))) {
           _exists = true;
         }
       }
@@ -377,7 +377,7 @@ public class MesosNimbus implements INimbus {
               }
 
               Map executorData = new HashMap();
-              executorData.put(MesosCommon.SUPERVISOR_ID, slot.getNodeId() + "-" + details.getId());
+              executorData.put(MesosCommon.SUPERVISOR_ID, MesosCommon.supervisorId(slot.getNodeId(), details.getId()));
               executorData.put(MesosCommon.ASSIGNMENT_ID, slot.getNodeId());
 
               // Determine roles for cpu, mem, ports
