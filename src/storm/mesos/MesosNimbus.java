@@ -281,7 +281,12 @@ public class MesosNimbus implements INimbus {
       synchronized (OFFERS_LOCK) {
         for (Offer offer : _offers.newestValues()) {
           boolean _supervisorExists = supervisorExists(offer, existingSupervisors, topologiesMissingAssignments);
-          allSlots.addAll(toSlots(offer, cpu, mem, _supervisorExists));
+          List<WorkerSlot> offerSlots = toSlots(offer, cpu, mem, _supervisorExists);
+          if(offerSlots.isEmpty()) {
+            _offers.clearKey(offer.getId());
+          } else {
+            allSlots.addAll(offerSlots);
+          }
         }
       }
     }
