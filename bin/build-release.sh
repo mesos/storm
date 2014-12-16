@@ -30,7 +30,7 @@ USAGE
 }; function --help { help ;}; function -h { help ;}
 
 function downloadStormRelease {
-  wget --progress=dot:mega ${MIRROR}/apache/incubator/storm/apache-storm-${RELEASE}/apache-storm-${RELEASE}.zip
+  wget --progress=dot:mega ${MIRROR}/apache/storm/apache-storm-${RELEASE}/apache-storm-${RELEASE}.zip
 }
 
 function clean {
