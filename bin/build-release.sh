@@ -20,7 +20,6 @@ Usage: bin/build-release.sh <storm.zip>
   package                 Packages the Storm Mesos Framework.
   downloadStormRelease    A utility function to download the Storm release zip
                             for the targeted storm release.
-
   ENV
     MIRROR        Specify Apache Storm Mirror to download from
                     Default: ${MIRROR}
@@ -30,7 +29,7 @@ USAGE
 }; function --help { help ;}; function -h { help ;}
 
 function downloadStormRelease {
-  wget --progress=dot:mega ${MIRROR}/apache/incubator/storm/apache-storm-${RELEASE}/apache-storm-${RELEASE}.zip
+  wget --progress=dot:mega ${MIRROR}/apache/storm/apache-storm-${RELEASE}/apache-storm-${RELEASE}.zip
 }
 
 function clean {
