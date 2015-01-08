@@ -21,6 +21,7 @@ storm.local.dir: "storm-local"
 
 mesos.framework.role: "*"
 mesos.framework.checkpoint: false
+mesos.framework.name: "Storm!!!"
 
 #mesos.allowed.hosts:
 #  - host1
