@@ -109,15 +109,11 @@ public class MesosNimbus implements INimbus {
 
       Semaphore initter = new Semaphore(0);
       _scheduler = new NimbusScheduler(initter);
-      Number failoverTimeout = (Number) conf.get(CONF_MASTER_FAILOVER_TIMEOUT_SECS);
-      if (failoverTimeout == null) failoverTimeout = 3600;
 
-      String role = (String) conf.get(CONF_MESOS_ROLE);
-      if (role == null) role = new String("*");
-      Boolean checkpoint = (Boolean) conf.get(CONF_MESOS_CHECKPOINT);
-      if (checkpoint == null) checkpoint = new Boolean(false);
-      String framework_name = (String) conf.get(CONF_MESOS_FRAMEWORK_NAME);
-      if (framework_name == null) framework_name = new String("Storm!!!");
+      Number failoverTimeout = Optional.fromNullable((Number) conf.get(CONF_MASTER_FAILOVER_TIMEOUT_SECS)).or(3600);
+      String role = Optional.fromNullable((String) conf.get(CONF_MESOS_ROLE)).or("*");
+      Boolean checkpoint = Optional.fromNullable((Boolean) conf.get(CONF_MESOS_CHECKPOINT)).or(false);
+      String framework_name = Optional.fromNullable((String) conf.get(CONF_MESOS_FRAMEWORK_NAME)).or("Storm!!!");
 
       FrameworkInfo.Builder finfo = FrameworkInfo.newBuilder()
           .setName(framework_name)
@@ -132,11 +128,7 @@ public class MesosNimbus implements INimbus {
 
       Integer port = (Integer) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_PORT);
       LOG.info("Using local port: " + port);
-      if (port == null) {
-        _localFileServerPort = Optional.absent();
-      } else {
-        _localFileServerPort = Optional.of(port);
-      }
+      _localFileServerPort = Optional.fromNullable(port);
 
       _httpServer = new LocalFileServer();
       _configUrl = _httpServer.serveDir("/conf", "conf", _localFileServerPort);
@@ -199,11 +191,14 @@ public class MesosNimbus implements INimbus {
     return resources;
   }
 
-  private List<WorkerSlot> toSlots(Offer offer, double cpu, double mem) {
+  private List<WorkerSlot> toSlots(Offer offer, double cpu, double mem, boolean supervisorExists) {
+    double executorCpuDemand = supervisorExists ? 0 : MesosCommon.executorCpu(_conf);
+    double executorMemDemand = supervisorExists ? 0 : MesosCommon.executorMem(_conf);
+
     OfferResources resources = getResources(
         offer,
-        MesosCommon.executorCpu(_conf),
-        MesosCommon.executorMem(_conf),
+        executorCpuDemand,
+        executorMemDemand,
         cpu,
         mem);
 
@@ -214,6 +209,33 @@ public class MesosNimbus implements INimbus {
       ret.add(new WorkerSlot(offer.getHostname(), resources.ports.get(i)));
     }
     return ret;
+  }
+
+  /**
+   * Method checks if all topologies that need assignment already have supervisor running on the node where the Offer
+   * comes from. Required for more accurate available resource calculation where we can exclude supervisor's demand from
+   * the Offer.
+   * Unfortunately because of WorkerSlot type is not topology agnostic, we need to exclude supervisor's resources only
+   * in case where ALL topologies in 'allSlotsAvailableForScheduling' method satisfy condition of supervisor existence
+   * @param offer Offer
+   * @param existingSupervisors Supervisors which already placed on the node for the Offer
+   * @param topologiesMissingAssignments Topology ids required assignment
+   * @return Boolean value indicating supervisor existence
+   */
+  private boolean supervisorExists(
+      Offer offer, Collection<SupervisorDetails> existingSupervisors, Set<String> topologiesMissingAssignments) {
+    boolean alreadyExists = true;
+    for(String topologyId: topologiesMissingAssignments) {
+      String offerHost = offer.getHostname();
+      boolean _exists = false;
+      for(SupervisorDetails d: existingSupervisors) {
+        if(d.getId().equals(MesosCommon.supervisorId(offerHost, topologyId))) {
+          _exists = true;
+        }
+      }
+      alreadyExists = (alreadyExists && _exists);
+    }
+    return alreadyExists;
   }
 
   public boolean isHostAccepted(String hostname) {
@@ -258,7 +280,13 @@ public class MesosNimbus implements INimbus {
     if (cpu != null && mem != null) {
       synchronized (OFFERS_LOCK) {
         for (Offer offer : _offers.newestValues()) {
-          allSlots.addAll(toSlots(offer, cpu, mem));
+          boolean _supervisorExists = supervisorExists(offer, existingSupervisors, topologiesMissingAssignments);
+          List<WorkerSlot> offerSlots = toSlots(offer, cpu, mem, _supervisorExists);
+          if(offerSlots.isEmpty()) {
+            _offers.clearKey(offer.getId());
+          } else {
+            allSlots.addAll(offerSlots);
+          }
         }
       }
     }
@@ -271,15 +299,8 @@ public class MesosNimbus implements INimbus {
     int port = worker.getPort();
     for (Offer offer : _offers.values()) {
       if (offer.getHostname().equals(worker.getNodeId())) {
-        for (Resource r : offer.getResourcesList()) {
-          if (r.getName().equals("ports")) {
-            for (Range range : r.getRanges().getRangeList()) {
-              if (port >= range.getBegin() && port <= range.getEnd()) {
-                return offer.getId();
-              }
-            }
-          }
-        }
+        Resource r = getResourceRange(offer.getResourcesList(), port, port, "ports");
+        if(r != null) return offer.getId();
       }
     }
     // Still haven't found the slot? Maybe it's an offer we already used.
@@ -304,7 +325,11 @@ public class MesosNimbus implements INimbus {
                                     final String name) {
     for (Resource r : offerResources) {
       if (r.getType() == Type.RANGES && r.getName().equals(name)) {
-        return r;
+        for (Range range : r.getRanges().getRangeList()) {
+          if (valueBegin >= range.getBegin() && valueEnd <= range.getEnd()) {
+            return r;
+          }
+        }
       }
     }
     return null;
@@ -357,7 +382,7 @@ public class MesosNimbus implements INimbus {
               }
 
               Map executorData = new HashMap();
-              executorData.put(MesosCommon.SUPERVISOR_ID, slot.getNodeId() + "-" + details.getId());
+              executorData.put(MesosCommon.SUPERVISOR_ID, MesosCommon.supervisorId(slot.getNodeId(), details.getId()));
               executorData.put(MesosCommon.ASSIGNMENT_ID, slot.getNodeId());
 
               // Determine roles for cpu, mem, ports

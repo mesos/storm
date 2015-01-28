@@ -122,6 +122,14 @@ public class RotatingMap<K, V> {
     return null;
   }
 
+  public Object clearKey(K key) {
+    Object value = remove(key);
+    if(value != null && _callback != null) {
+      _callback.expire(key, value);
+    }
+    return value;
+  }
+
   public int size() {
     int size = 0;
     for (HashMap<K, V> bucket : _buckets) {

@@ -42,6 +42,10 @@ public class MesosCommon {
     return nodeid + "-" + port;
   }
 
+  public static String supervisorId(String nodeid, String topologyId) {
+    return nodeid + "-" + topologyId;
+  }
+
   public static int portFromTaskId(String taskId) {
     int last = taskId.lastIndexOf("-");
     String port = taskId.substring(last + 1);
