@@ -29,7 +29,9 @@ USAGE
 }; function --help { help ;}; function -h { help ;}
 
 function downloadStormRelease {
-  wget --progress=dot:mega ${MIRROR}/apache/storm/apache-storm-${RELEASE}/apache-storm-${RELEASE}.zip
+  if [ ! -f apache-storm-${RELEASE}.zip ]; then
+      wget --progress=dot:mega ${MIRROR}/apache/storm/apache-storm-${RELEASE}/apache-storm-${RELEASE}.zip
+  fi
 }
 
 function clean {
@@ -51,30 +53,45 @@ function prePackage {(
   cd _release
   unzip storm.zip
   _rm storm.zip
-  mv apache-storm* storm
 )}
 
 function package {(
-  _rm _release/storm/*.jar
+  local stormDir=`find _release -maxdepth 1 -type d -name "*storm*"`
+  _rm $stormDir/*.jar
 
   # copies storm-mesos jar over
-  cp target/*.jar _release/storm/lib/
-  cp bin/storm-mesos _release/storm/bin/
-  mkdir -p _release/storm/native
-  cp storm.yaml _release/storm/conf/storm.yaml
+  cp target/*.jar $stormDir/lib/
+  cp bin/storm-mesos $stormDir/bin/
+  mkdir -p $stormDir/native
+  cp storm.yaml $stormDir/conf/storm.yaml
 
   local tarName="storm-mesos-${RELEASE}.tgz"
   cd _release
-  mv storm storm-mesos-${RELEASE}
-  tar czf ${tarName} storm-mesos-${RELEASE}
+  tar czf ${tarName} apache-storm-${RELEASE}
   echo "Copying ${tarName} to $(cd .. && pwd)/${tarName}"
   cp ${tarName} ../
+  cd ..
+)}
+
+function dockerImage {(
+  rm -rf _docker && \
+  mkdir _docker && \
+  cp storm-mesos-${RELEASE}.tgz _docker && \
+  cd _docker && \
+  tar xvf storm-mesos-${RELEASE}.tgz &&
+  rm storm-mesos-${RELEASE}.tgz && \
+  cd apache-storm-${RELEASE} && \
+  cp ../../Dockerfile . && \
+  docker build -t mesos/storm:git-`git rev-parse --short HEAD` . && \
+  cd ../../ && \
+  rm -rf _docker
 )}
 
 function main {
   clean
+  downloadStormRelease
   mvnPackage
-  prePackage ${1:-${RELEASE_ZIP_NAME}}
+  prePackage apache-storm-${RELEASE}.zip
   package
 }
 
