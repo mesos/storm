@@ -655,7 +655,6 @@ public class MesosNimbus implements INimbus {
     @Override
     public void resourceOffers(SchedulerDriver driver, List<Offer> offers) {
       synchronized (OFFERS_LOCK) {
-        _offers.clear();
         for (Offer offer : offers) {
           if (_offers != null && isHostAccepted(offer.getHostname())) {
             _offers.put(offer.getId(), offer);
