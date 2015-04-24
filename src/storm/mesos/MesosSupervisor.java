@@ -32,7 +32,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Semaphore;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MesosSupervisor implements ISupervisor {
@@ -63,13 +63,12 @@ public class MesosSupervisor implements ISupervisor {
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
-    Semaphore initter = new Semaphore(0);
-    _executor = new StormExecutor(initter);
+    _executor = new StormExecutor();
     _driver = new MesosExecutorDriver(_executor);
     _driver.start();
     LOG.info("Waiting for executor to initialize...");
     try {
-      initter.acquire();
+      _executor.waitUntilRegistered();
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -119,11 +118,10 @@ public class MesosSupervisor implements ISupervisor {
   }
 
   class StormExecutor implements Executor {
+    private CountDownLatch _registeredLatch = new CountDownLatch(1);
 
-    Semaphore initter;
-
-    public StormExecutor(Semaphore onInitialization) {
-      initter = onInitialization;
+    public void waitUntilRegistered() throws InterruptedException {
+        _registeredLatch.await();
     }
 
     @Override
@@ -133,7 +131,9 @@ public class MesosSupervisor implements ISupervisor {
       _id = (String) ids.get(MesosCommon.SUPERVISOR_ID);
       _assignmentId = (String) ids.get(MesosCommon.ASSIGNMENT_ID);
       LOG.info("Registered supervisor with Mesos: " + _id + ", " + _assignmentId);
-      initter.release();
+
+      // Completed registration, let anything waiting for us to do so continue
+      _registeredLatch.countDown();
     }
 
 

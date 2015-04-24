@@ -41,9 +41,9 @@ import java.net.MalformedURLException;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 public class MesosNimbus implements INimbus {
@@ -107,8 +107,7 @@ public class MesosNimbus implements INimbus {
       _allowedHosts = listIntoSet((List) _conf.get(CONF_MESOS_ALLOWED_HOSTS));
       _disallowedHosts = listIntoSet((List) _conf.get(CONF_MESOS_DISALLOWED_HOSTS));
 
-      Semaphore initter = new Semaphore(0);
-      _scheduler = new NimbusScheduler(initter);
+      _scheduler = new NimbusScheduler();
 
       Number failoverTimeout = Optional.fromNullable((Number) conf.get(CONF_MASTER_FAILOVER_TIMEOUT_SECS)).or(3600);
       String role = Optional.fromNullable((String) conf.get(CONF_MESOS_ROLE)).or("*");
@@ -142,7 +141,7 @@ public class MesosNimbus implements INimbus {
 
       driver.start();
       LOG.info("Waiting for scheduler to initialize...");
-      initter.acquire();
+      _scheduler.waitUntilRegistered();
       LOG.info("Scheduler initialized...");
     } catch (Exception e) {
       throw new RuntimeException(e);
@@ -580,11 +579,10 @@ public class MesosNimbus implements INimbus {
   }
 
   public class NimbusScheduler implements Scheduler {
+    private CountDownLatch _registeredLatch = new CountDownLatch(1);
 
-    Semaphore _initter;
-
-    public NimbusScheduler(Semaphore initter) {
-      _initter = initter;
+    public void waitUntilRegistered() throws InterruptedException {
+        _registeredLatch.await();
     }
 
     @Override
@@ -630,7 +628,9 @@ public class MesosNimbus implements INimbus {
           }
         }
       }, 0, 2000 * offerExpired.intValue());
-      _initter.release();
+
+      // Completed registration, let anything waiting for us to do so continue
+      _registeredLatch.countDown();
     }
 
     @Override
