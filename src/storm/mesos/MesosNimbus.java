@@ -46,7 +46,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static storm.mesos.PrettyProtobuf.getTrimmedString;
 import static storm.mesos.PrettyProtobuf.offerMapToString;
 import static storm.mesos.PrettyProtobuf.offerToString;
 import static storm.mesos.PrettyProtobuf.taskInfoToString;
@@ -133,7 +132,7 @@ public class MesosNimbus implements INimbus {
 
       Integer port = (Integer) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_PORT);
       _localFileServerPort = Optional.fromNullable(port);
-      LOG.debug("LocalFileServer configured to listen on port: " + _localFileServerPort);
+      LOG.debug("LocalFileServer configured to listen on port: " + port);
 
       _httpServer = new LocalFileServer();
       _configUrl = _httpServer.serveDir("/conf", "conf", _localFileServerPort);
@@ -255,7 +254,7 @@ public class MesosNimbus implements INimbus {
   public Collection<WorkerSlot> allSlotsAvailableForScheduling(
       Collection<SupervisorDetails> existingSupervisors, Topologies topologies, Set<String> topologiesMissingAssignments) {
     synchronized (OFFERS_LOCK) {
-      LOG.info("allSlotsAvailableForScheduling: Currently have " + _offers.size() + " offers buffered" +
+      LOG.debug("allSlotsAvailableForScheduling: Currently have " + _offers.size() + " offers buffered" +
           (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
       if (!topologiesMissingAssignments.isEmpty()) {
         LOG.info("Topologies that need assignments: " + topologiesMissingAssignments.toString());
@@ -294,7 +293,7 @@ public class MesosNimbus implements INimbus {
           List<WorkerSlot> offerSlots = toSlots(offer, cpu, mem, _supervisorExists);
           if(offerSlots.isEmpty()) {
             _offers.clearKey(offer.getId());
-            LOG.info("Declining offer `" + offerToString(offer) + "' because it wasn't " +
+            LOG.debug("Declining offer `" + offerToString(offer) + "' because it wasn't " +
                 "usable to create a slot which fits largest pending topologies' aggregate needs " +
                 "(max cpu: " + String.valueOf(cpu) + " max mem: " + String.valueOf(mem) + ")");
           } else {
@@ -356,14 +355,14 @@ public class MesosNimbus implements INimbus {
   @Override
   public void assignSlots(Topologies topologies, Map<String, Collection<WorkerSlot>> slots) {
     if (slots.size() == 0) {
-      LOG.info("assignSlots: no slots passed in, nothing to do");
+      LOG.debug("assignSlots: no slots passed in, nothing to do");
       return;
     }
     for (Map.Entry<String, Collection<WorkerSlot>> topologyToSlots : slots.entrySet()) {
       String topologyId = topologyToSlots.getKey();
       for (WorkerSlot slot : topologyToSlots.getValue()) {
         TopologyDetails details = topologies.getById(topologyId);
-        LOG.info("assignSlots: topologyId: " + topologyId + " worker being assigned to slot: " + slot +
+        LOG.debug("assignSlots: topologyId: " + topologyId + " worker being assigned to slot: " + slot +
                " with workerCpu: " + MesosCommon.topologyWorkerCpu(_conf, details) +
                " workerMem: " + MesosCommon.topologyWorkerMem(_conf, details));
       }
@@ -527,7 +526,7 @@ public class MesosNimbus implements INimbus {
               }
 
               String executorDataStr = JSONValue.toJSONString(executorData);
-              LOG.info("Launching task with executor data: <" + executorDataStr + ">");
+              LOG.info("Launching task with Mesos Executor data: <" + executorDataStr + ">");
               TaskInfo task = TaskInfo.newBuilder()
                   .setName("worker " + slot.getNodeId() + ":" + slot.getPort())
                   .setTaskId(taskId)
@@ -585,7 +584,7 @@ public class MesosNimbus implements INimbus {
         List<LaunchTask> tasks = toLaunch.get(id);
         List<TaskInfo> launchList = new ArrayList<>();
 
-        LOG.info("Launching tasks for offerId: " + getTrimmedString(id) + ":" + launchTaskListToString(tasks));
+        LOG.info("Launching tasks for offerId: " + id.getValue() + ":" + launchTaskListToString(tasks));
         for (LaunchTask t : tasks) {
           launchList.add(t.task);
           used_offers.put(t.task.getTaskId(), t.offer);
@@ -687,14 +686,14 @@ public class MesosNimbus implements INimbus {
     @Override
     public void resourceOffers(SchedulerDriver driver, List<Offer> offers) {
       synchronized (OFFERS_LOCK) {
-        LOG.info("resourceOffers: Currently have " + _offers.size() + " offers buffered" +
+        LOG.debug("resourceOffers: Currently have " + _offers.size() + " offers buffered" +
             (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
         for (Offer offer : offers) {
           if (_offers != null && isHostAccepted(offer.getHostname())) {
-            LOG.info("resourceOffers: Recording offer from host: " + offer.getHostname() + ", offerId: " + getTrimmedString(offer.getId()));
+            LOG.debug("resourceOffers: Recording offer from host: " + offer.getHostname() + ", offerId: " + offer.getId().getValue());
             _offers.put(offer.getId(), offer);
           } else {
-            LOG.info("resourceOffers: Declining offer from host: " + offer.getHostname() + ", offerId: " + getTrimmedString(offer.getId()));
+            LOG.debug("resourceOffers: Declining offer from host: " + offer.getHostname() + ", offerId: " + offer.getId().getValue());
             driver.declineOffer(offer.getId());
           }
         }
@@ -704,7 +703,7 @@ public class MesosNimbus implements INimbus {
 
     @Override
     public void offerRescinded(SchedulerDriver driver, OfferID id) {
-      LOG.info("Offer rescinded. offerId: " + getTrimmedString(id));
+      LOG.info("Offer rescinded. offerId: " + id.getValue());
       synchronized (OFFERS_LOCK) {
         _offers.remove(id);
       }
@@ -712,7 +711,7 @@ public class MesosNimbus implements INimbus {
 
     @Override
     public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
-      LOG.info("Received status update: " + taskStatusToString(status));
+      LOG.debug("Received status update: " + taskStatusToString(status));
       switch (status.getState()) {
         case TASK_FINISHED:
         case TASK_FAILED:
@@ -737,13 +736,13 @@ public class MesosNimbus implements INimbus {
 
     @Override
     public void slaveLost(SchedulerDriver driver, SlaveID id) {
-      LOG.warn("Lost slave id: " + getTrimmedString(id));
+      LOG.warn("Lost slave id: " + id.getValue());
     }
 
     @Override
     public void executorLost(SchedulerDriver driver, ExecutorID executor, SlaveID slave, int status) {
-      LOG.info("Executor lost: executor: " + getTrimmedString(executor) +
-          " slave: " + getTrimmedString(slave) + " status: " + status);
+      LOG.warn("Mesos Executor lost: executor: " + executor.getValue() +
+          " slave: " + slave.getValue() + " status: " + status);
     }
   }
 

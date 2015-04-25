@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
@@ -36,8 +37,12 @@ import org.apache.mesos.Protos.TaskInfo;
 import org.apache.mesos.Protos.TaskState;
 import org.apache.mesos.Protos.TaskStatus;
 import org.apache.mesos.Protos.Value.Range;
+import org.apache.mesos.Protos.Value.Ranges;
+import org.apache.mesos.Protos.Value.Scalar;
+import org.apache.mesos.Protos.Value.Set;
+import org.apache.mesos.Protos.Value.Text;
+import org.apache.mesos.Protos.Value.Type;
 import org.json.simple.JSONValue;
-
 
 /**
  * This utility class provides methods to improve logging of Mesos protobuf objects.
@@ -49,6 +54,10 @@ import org.json.simple.JSONValue;
  *
  * Another advantage over standard protobuf toString() output is that this output is
  * in proper JSON format, resulting in logs that can be more easily parsed.
+ * This desire to print in JSON is why we populate Maps below for each multi-field
+ * object. Also, we use LinkedHashMap and TreeMap to ensure the order of the fields
+ * in multi-field objects stays consistent. That allows log lines to be visually
+ * compared whilst examining the state of the system.
  *
  * TODO(erikdw):
  *  1. Check whether a value is set/null when deciding whether to include it.
@@ -62,54 +71,16 @@ import org.json.simple.JSONValue;
 public class PrettyProtobuf {
 
   /**
-   * Ideally we'd have a generic method for these getTrimmedString methods, but
-   * these protobuf types don't implement a common interface (which would need
-   * to include getValue()).
-   */
-
-  /**
-   * Pretty-print the mesos protobuf OfferID.
-   */
-  public static String getTrimmedString(OfferID id) {
-    return id.getValue().toString().trim();
-  }
-
-  /**
-   * Pretty-print the mesos protobuf SlaveID.
-   */
-  public static String getTrimmedString(SlaveID id) {
-    return id.getValue().toString().trim();
-  }
-
-  /**
-   * Pretty-print the mesos protobuf ExecutorID.
-   */
-  public static String getTrimmedString(ExecutorID id) {
-    return id.getValue().toString().trim();
-  }
-
-  /**
-   * Pretty-print the mesos protobuf TaskID.
-   */
-  public static String getTrimmedString(TaskID id) {
-    return id.getValue().toString().trim();
-  }
-
-  /**
-   * Pretty-print the mesos protobuf TaskState.
-   */
-  public static String getTrimmedString(TaskState state) {
-    return state.toString().trim();
-  }
-
-  /**
    * Pretty-print mesos protobuf TaskStatus.
    */
   public static String taskStatusToString(TaskStatus taskStatus) {
     Map<String, String> map = new LinkedHashMap<>();
-    map.put("task_id", getTrimmedString(taskStatus.getTaskId()));
-    map.put("slave_id", getTrimmedString(taskStatus.getSlaveId()));
-    map.put("state", getTrimmedString(taskStatus.getState()));
+    map.put("task_id", taskStatus.getTaskId().getValue());
+    map.put("slave_id", taskStatus.getSlaveId().getValue());
+    map.put("state", taskStatus.getState().toString());
+    if (taskStatus.hasMessage()) {
+      map.put("message", taskStatus.getMessage());
+    }
     return JSONValue.toJSONString(map);
   }
 
@@ -120,10 +91,10 @@ public class PrettyProtobuf {
    */
   public static String taskInfoToString(TaskInfo task) {
     Map<String, String> map = new LinkedHashMap<>();
-    map.put("task_id", getTrimmedString(task.getTaskId()));
-    map.put("slave_id", getTrimmedString(task.getSlaveId()));
+    map.put("task_id", task.getTaskId().getValue());
+    map.put("slave_id", task.getSlaveId().getValue());
     map.putAll(resourcesToOrderedMap(task.getResourcesList()));
-    map.put("executor_id", getTrimmedString(task.getExecutor().getExecutorId()));
+    map.put("executor_id", task.getExecutor().getExecutorId().getValue());
     return JSONValue.toJSONString(map);
   }
 
@@ -134,7 +105,7 @@ public class PrettyProtobuf {
    */
   public static String offerToString(Offer offer) {
     Map<String, String> map = new LinkedHashMap<>();
-    map.put("offer_id", getTrimmedString(offer.getId()));
+    map.put("offer_id", offer.getId().getValue());
     map.put("hostname", offer.getHostname());
     map.putAll(resourcesToOrderedMap(offer.getResourcesList()));
     return JSONValue.toJSONString(map);
@@ -215,42 +186,49 @@ public class PrettyProtobuf {
   }
 
   /**
-   * Pretty-print List of mesos protobuf Ranges.
+   * Pretty-print mesos protobuf Ranges.
    */
-  private static String rangeListToString(List<Range> ranges) {
-    List<String> rangesAsStrings = Lists.transform(ranges, rangeToStringTransform);
+  private static String rangesToString(Ranges ranges) {
+    List<String> rangesAsStrings = Lists.transform(ranges.getRangeList(), rangeToStringTransform);
     return "[" + StringUtils.join(rangesAsStrings, ",") + "]";
   }
 
   /**
-   * Construct a Map of Resource names to String values.
-   * Ensure the order is always the same (cpu, mem, then ports), so that
-   * we have consistently ordered log output.
+   * Pretty-print mesos protobuf Set.
+   */
+  private static String setToString(Set set) {
+    return "[" + StringUtils.join(set.getItemList(), ",") + "]";
+  }
+
+  /**
+   * Return Resource names mapped to values.
    */
   private static Map<String, String> resourcesToOrderedMap(List<Resource> resources) {
-    String cpus = null, mem = null, ports = null;
+    Map<String, String> map = new TreeMap<>();
     for (Resource r : resources) {
-      switch (r.getName()) {
-        case "cpus":
-          cpus = String.valueOf(r.getScalar().getValue());
+      String name;
+      String value = "";
+      if (r.hasRole()) {
+        name = r.getName() + "(" + r.getRole() + ")";
+      } else {
+        name = r.getName();
+      }
+      switch (r.getType()) {
+        case SCALAR:
+          value = String.valueOf(r.getScalar().getValue());
           break;
-        case "mem":
-          mem = String.valueOf(r.getScalar().getValue());
+        case RANGES:
+          value = rangesToString(r.getRanges());
           break;
-        case "ports":
-          ports = rangeListToString(r.getRanges().getRangeList());
+        case SET:
+          value = setToString(r.getSet());
+          break;
+        default:
+          // If hit, then a new Resource Type needs to be handled here.
+          value = "Unrecognized Resource Type: `" + r.getType() + "'";
           break;
       }
-    }
-    Map<String, String> map = new LinkedHashMap<>();
-    if (cpus != null) {
-      map.put("cpus", cpus);
-    }
-    if (mem != null) {
-      map.put("mem", mem);
-    }
-    if (ports != null) {
-      map.put("ports", ports);
+      map.put(name, value);
     }
     return map;
   }
