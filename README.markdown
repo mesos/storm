@@ -6,7 +6,7 @@ Storm on Mesos
 # Overview
 Storm integration with the Mesos cluster resource manager.
 
-To use a release, you first need to unpack the distribution, fill in configurations listed below into the `conf/storm.yaml` file and start Nimbus using `storm-mesos nimbus`. 
+To use a release, you first need to unpack the distribution, fill in configurations listed below into the `conf/storm.yaml` file and start Nimbus using `storm-mesos nimbus`.
 
 The Mesosphere site has a tutorial which goes into more [details](http://mesosphere.com/docs/tutorials/run-storm-on-mesos/).
 
@@ -19,10 +19,10 @@ The code was compiled with Oracle JDK 1.7 and will not work on Java 1.6.
 
 # Building
 
-Once you have a Storm package, run the build script with the path to the Storm package as an argument:
+Run build-release.sh to download storm distribution and bundle Storm with this framework into one tar release.
 
 ```shell
-bin/build-release.sh storm.zip
+bin/build-release.sh
 ```
 
 This will build a Mesos executor package.  You'll need to edit `storm.yaml` and supply the Mesos master configuration as well as the executor package URI (produced by the step above).
@@ -59,12 +59,16 @@ bin/build-release.sh downloadStormRelease
 
   _Set `MIRROR` environment variable to configure download mirror._
 
+* `dockerImage`
+
+  Builds a Docker image based on the current packaged storm. Run ./bin/build-release.sh before running this subcommand.
+
 * `help`
 
   Prints out usage information about the build-release.sh script.
 
 # Running Storm on Mesos
-Along with the Mesos master and Mesos cluster, you'll need to run the Storm master as well. Launch Nimbus with this command: 
+Along with the Mesos master and Mesos cluster, you'll need to run the Storm master as well. Launch Nimbus with this command:
 
 ```
 bin/storm-mesos nimbus
@@ -108,9 +112,9 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 
 * `topology.mesos.worker.cpu`: CPUs per worker. Defaults to "1".
 * `topology.mesos.worker.mem.mb`: Memory (in MiB) per worker. Defaults to "1000".
-  * `worker.childopts`: Use this for JVM opts.  You should have about 25% memory overhead for each task.  For 
+  * `worker.childopts`: Use this for JVM opts.  You should have about 25% memory overhead for each task.  For
   example, with `-Xmx1000m`, you should set `topology.mesos.worker.mem.mb: 1250`
 * `topology.mesos.executor.cpu`: CPUs per executor. Defaults to "1".
 * `topology.mesos.executor.mem.mb`: Memory (in MiB) per executor. Defaults to "1000".
-  * `supervisor.childopts`: Use this for executor (aka supervisor) JVM opts.  You should have about 25% memory 
+  * `supervisor.childopts`: Use this for executor (aka supervisor) JVM opts.  You should have about 25% memory
   overhead for each task.  For example, with `-Xmx500m`, you should set `topology.mesos.executor.mem.mb: 625`
