@@ -20,6 +20,8 @@ package storm.mesos;
 import backtype.storm.Config;
 import backtype.storm.scheduler.*;
 import backtype.storm.utils.LocalState;
+import backtype.storm.utils.Utils;
+
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.protobuf.ByteString;
@@ -34,12 +36,16 @@ import org.apache.mesos.Protos.Value.Scalar;
 import org.apache.mesos.Protos.Value.Type;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
+import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
-import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -47,7 +53,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public class MesosNimbus implements INimbus {
-  public static final String CONF_EXECUTOR_URI = "mesos.executor.uri";
+//  public static final String CONF_EXECUTOR_URI = "mesos.executor.uri";
   public static final String CONF_MASTER_URL = "mesos.master.url";
   public static final String CONF_MASTER_FAILOVER_TIMEOUT_SECS = "mesos.master.failover.timeout.secs";
   public static final String CONF_MESOS_ALLOWED_HOSTS = "mesos.allowed.hosts";
@@ -130,8 +136,9 @@ public class MesosNimbus implements INimbus {
       _localFileServerPort = Optional.fromNullable(port);
 
       _httpServer = new LocalFileServer();
-      _configUrl = _httpServer.serveDir("/conf", "conf", _localFileServerPort);
+      _configUrl = _httpServer.serveDir("/conf", "/opt/apache-storm-0.9.4/conf", _localFileServerPort);
       LOG.info("Started serving config dir under " + _configUrl);
+
 
       MesosSchedulerDriver driver =
           new MesosSchedulerDriver(
@@ -143,6 +150,10 @@ public class MesosNimbus implements INimbus {
       LOG.info("Waiting for scheduler to initialize...");
       _scheduler.waitUntilRegistered();
       LOG.info("Scheduler initialized...");
+
+      //TODO embedded jetty server to allow direct deploy via rest (instead of storm client)
+      //https://nikolaygrozev.wordpress.com/2014/10/16/rest-with-embedded-jetty-and-jersey-in-a-single-jar-step-by-step/
+
     } catch (Exception e) {
       throw new RuntimeException(e);
     }
@@ -487,7 +498,7 @@ public class MesosNimbus implements INimbus {
               } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
               }
-
+              LOG.info("using config from :"+configUri);
               if (!subtractedExecutorResources) {
                 workerCpu -= executorCpu;
                 workerMem -= executorMem;
@@ -496,47 +507,87 @@ public class MesosNimbus implements INimbus {
 
               String executorDataStr = JSONValue.toJSONString(executorData);
               LOG.info("Launching task with executor data: <" + executorDataStr + ">");
+
+              String masterUrl = (String)_conf.get(CONF_MASTER_URL);
+              LOG.info("using master at <"+masterUrl+">");
+              String slaveHostname = offer.getHostname();
+              LOG.info("using slave at <"+slaveHostname+">");
+
+              String nimbusHost = getHost();//needs to be the addressable name of this host
+
+              LOG.info("using nimbus host at <" + nimbusHost + ">");
+
               TaskInfo task = TaskInfo.newBuilder()
                   .setName("worker " + slot.getNodeId() + ":" + slot.getPort())
                   .setTaskId(taskId)
                   .setSlaveId(offer.getSlaveId())
                   .setExecutor(ExecutorInfo.newBuilder()
-                          .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
-                          .setData(ByteString.copyFromUtf8(executorDataStr))
-                          .setCommand(CommandInfo.newBuilder()
-                              .addUris(URI.newBuilder().setValue((String) _conf.get(CONF_EXECUTOR_URI)))
-                              .addUris(URI.newBuilder().setValue(configUri))
-                              .setValue("cp storm.yaml storm-mesos*/conf && cd storm-mesos* && python bin/storm " +
-                                  "supervisor storm.mesos.MesosSupervisor"))
-                          .addResources(Resource.newBuilder()
-                              .setName("cpus")
-                              .setType(Type.SCALAR)
-                              .setScalar(Scalar.newBuilder().setValue(executorCpu))
-                              .setRole(cpuRole))
-                          .addResources(Resource.newBuilder()
-                              .setName("mem")
-                              .setType(Type.SCALAR)
-                              .setScalar(Scalar.newBuilder().setValue(executorMem))
-                              .setRole(memRole))
+                                   .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
+                                   .setData(ByteString.copyFromUtf8(executorDataStr))
+                                   .setName("storm supervisor executor")
+                                   .setContainer(ContainerInfo.newBuilder()
+                                                     .setType(ContainerInfo.Type.DOCKER)
+                                                     .setDocker(
+                                                         ContainerInfo.DockerInfo.newBuilder()
+                                                             .setImage("mesos-storm")
+                                                                 //using --pid=host so that we can generate pids visible to slave
+                                                             .addParameters(Parameter.newBuilder()
+                                                                                .setKey("pid")
+                                                                                .setValue("host")
+                                                                                .build())
+                                                     )
+
+                                   )
+
+                                   .setCommand(CommandInfo.newBuilder()
+                                                   //don't need to download storm.yaml, it is bundled with the docker image
+                                                   //.addUris(CommandInfo.URI.newBuilder()
+                                                   //       .setValue(configUri))
+                                                   .setShell(false)
+                                                   .addArguments("supervisor")
+                                                   .addArguments("storm.mesos.MesosSupervisor")
+                                                   .addArguments("-c")
+                                                   .addArguments("mesos.master.url=" + masterUrl)
+                                                   .addArguments("-c")
+                                                   .addArguments("nimbus.host=" + nimbusHost)
+                                                   .addArguments("-c")
+                                                   .addArguments(
+                                                       "storm.local.hostname=" + slaveHostname)
+                                                   .addAllArguments(getStormOptions())
+                                   )
+                                   .addResources(Resource.newBuilder()
+                                                     .setName("cpus")
+                                                     .setType(Type.SCALAR)
+                                                     .setScalar(Scalar.newBuilder()
+                                                                    .setValue(
+                                                                        executorCpu))
+                                                     .setRole(cpuRole))
+                                   .addResources(Resource.newBuilder()
+                                                     .setName("mem")
+                                                     .setType(Type.SCALAR)
+                                                     .setScalar(Scalar.newBuilder()
+                                                                    .setValue(
+                                                                        executorMem))
+                                                     .setRole(memRole))
                   )
                   .addResources(Resource.newBuilder()
-                      .setName("cpus")
-                      .setType(Type.SCALAR)
-                      .setScalar(Scalar.newBuilder().setValue(workerCpu))
-                      .setRole(cpuRole))
+                                    .setName("cpus")
+                                    .setType(Type.SCALAR)
+                                    .setScalar(Scalar.newBuilder().setValue(workerCpu))
+                                    .setRole(cpuRole))
                   .addResources(Resource.newBuilder()
-                      .setName("mem")
-                      .setType(Type.SCALAR)
-                      .setScalar(Scalar.newBuilder().setValue(workerMem))
-                      .setRole(memRole))
+                                    .setName("mem")
+                                    .setType(Type.SCALAR)
+                                    .setScalar(Scalar.newBuilder().setValue(workerMem))
+                                    .setRole(memRole))
                   .addResources(Resource.newBuilder()
-                      .setName("ports")
-                      .setType(Type.RANGES)
-                      .setRanges(Ranges.newBuilder()
-                          .addRange(Range.newBuilder()
-                              .setBegin(slot.getPort())
-                              .setEnd(slot.getPort())))
-                      .setRole(portsRole))
+                                    .setName("ports")
+                                    .setType(Type.RANGES)
+                                    .setRanges(Ranges.newBuilder()
+                                                   .addRange(Range.newBuilder()
+                                                                 .setBegin(slot.getPort())
+                                                                 .setEnd(slot.getPort())))
+                                    .setRole(portsRole))
                   .build();
 
               toLaunch.get(id).add(new LaunchTask(task, newOffer));
@@ -566,7 +617,30 @@ public class MesosNimbus implements INimbus {
       }
     }
   }
-
+  //return a List of String to be added as container command args
+  public Iterable<String> getStormOptions() {
+    List<String> options = new ArrayList<String>();
+    Map conf = Utils.readCommandLineOpts();
+    for (Object key : conf.keySet()){
+      options.add("-c");
+      options.add(key + "=" + conf.get(key).toString());
+    }
+    LOG.info("Including storm.options:"+options);
+    return options;
+  }
+  private String getHost()  {
+    final String envHost = System.getenv("MESOS_NIMBUS_HOST");
+    if (envHost == null) {
+      try {
+        //use IP instead of a hostname since this must be addressable from outside this container
+        return InetAddress.getLocalHost().getHostAddress();
+      } catch (UnknownHostException e) {
+        throw new IllegalStateException(e);
+      }
+    } else {
+      return envHost;
+    }
+  }
   private static class OfferResources {
     int cpuSlots = 0;
     int memSlots = 0;

@@ -35,7 +35,7 @@ import java.net.URI;
  * Returns the full URL where files can be accessed.
  */
 
-public class LocalFileServer {
+  public class LocalFileServer {
 
   public static final Logger LOG = Logger.getLogger(LocalFileServer.class);
   private Server _server = new Server();
