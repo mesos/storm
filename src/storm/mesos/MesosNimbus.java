@@ -44,6 +44,7 @@ import org.apache.mesos.Protos.Value.Scalar;
 import org.apache.mesos.Protos.Value.Type;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
+import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import java.io.IOException;
@@ -561,23 +562,23 @@ public class MesosNimbus implements INimbus {
                           .setScalar(Scalar.newBuilder().setValue(executorMem))
                           .setRole(memRole)))
                   .addResources(Resource.newBuilder()
-                      .setName("cpus")
-                      .setType(Type.SCALAR)
-                      .setScalar(Scalar.newBuilder().setValue(workerCpu))
-                      .setRole(cpuRole))
+                                    .setName("cpus")
+                                    .setType(Type.SCALAR)
+                                    .setScalar(Scalar.newBuilder().setValue(workerCpu))
+                                    .setRole(cpuRole))
                   .addResources(Resource.newBuilder()
-                      .setName("mem")
-                      .setType(Type.SCALAR)
-                      .setScalar(Scalar.newBuilder().setValue(workerMem))
-                      .setRole(memRole))
+                                    .setName("mem")
+                                    .setType(Type.SCALAR)
+                                    .setScalar(Scalar.newBuilder().setValue(workerMem))
+                                    .setRole(memRole))
                   .addResources(Resource.newBuilder()
-                      .setName("ports")
-                      .setType(Type.RANGES)
-                      .setRanges(Ranges.newBuilder()
-                          .addRange(Range.newBuilder()
-                              .setBegin(slot.getPort())
-                              .setEnd(slot.getPort())))
-                      .setRole(portsRole))
+                                    .setName("ports")
+                                    .setType(Type.RANGES)
+                                    .setRanges(Ranges.newBuilder()
+                                                   .addRange(Range.newBuilder()
+                                                                 .setBegin(slot.getPort())
+                                                                 .setEnd(slot.getPort())))
+                                    .setRole(portsRole))
                   .build();
               toLaunch.get(id).add(new LaunchTask(task, newOffer));
             }
