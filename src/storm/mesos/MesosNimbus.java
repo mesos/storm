@@ -44,7 +44,6 @@ import org.apache.mesos.Protos.Value.Scalar;
 import org.apache.mesos.Protos.Value.Type;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
-import org.json.simple.JSONObject;
 import org.json.simple.JSONValue;
 
 import java.io.IOException;
@@ -84,7 +83,6 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_ROLE = "mesos.framework.role";
   public static final String CONF_MESOS_CHECKPOINT = "mesos.framework.checkpoint";
   public static final String CONF_MESOS_OFFER_LRU_CACHE_SIZE = "mesos.offer.lru.cache.size";
-  public static final String CONF_MESOS_LOCAL_FILE_SERVER_PORT = "mesos.local.file.server.port";
   public static final String CONF_MESOS_FRAMEWORK_NAME = "mesos.framework.name";
 
   public static final Logger LOG = Logger.getLogger(MesosNimbus.class);
