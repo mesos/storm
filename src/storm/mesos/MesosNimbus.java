@@ -20,10 +20,12 @@ package storm.mesos;
 import backtype.storm.Config;
 import backtype.storm.scheduler.*;
 import backtype.storm.utils.LocalState;
+
 import com.google.common.base.Function;
 import com.google.common.base.Optional;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.builder.ToStringBuilder;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.mesos.MesosSchedulerDriver;
 import org.apache.mesos.Protos.*;
@@ -36,6 +38,8 @@ import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 import org.json.simple.JSONValue;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -58,6 +62,9 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_ALLOWED_HOSTS = "mesos.allowed.hosts";
   public static final String CONF_MESOS_DISALLOWED_HOSTS = "mesos.disallowed.hosts";
   public static final String CONF_MESOS_ROLE = "mesos.framework.role";
+  public static final String CONF_MESOS_PRINCIPAL = "mesos.framework.principal";
+  public static final String CONF_MESOS_SECRET_FILE = "mesos.framework.secret.file";
+
   public static final String CONF_MESOS_CHECKPOINT = "mesos.framework.checkpoint";
   public static final String CONF_MESOS_OFFER_LRU_CACHE_SIZE = "mesos.offer.lru.cache.size";
   public static final String CONF_MESOS_LOCAL_FILE_SERVER_PORT = "mesos.local.file.server.port";
@@ -105,54 +112,65 @@ public class MesosNimbus implements INimbus {
   @Override
   public void prepare(Map conf, String localDir) {
     try {
-      _conf = conf;
-      _state = new LocalState(localDir);
-      String id = (String) _state.get(FRAMEWORK_ID);
+        initialize(conf,localDir);
 
-      _allowedHosts = listIntoSet((List) _conf.get(CONF_MESOS_ALLOWED_HOSTS));
-      _disallowedHosts = listIntoSet((List) _conf.get(CONF_MESOS_DISALLOWED_HOSTS));
-
-      _scheduler = new NimbusScheduler();
-
-      Number failoverTimeout = Optional.fromNullable((Number) conf.get(CONF_MASTER_FAILOVER_TIMEOUT_SECS)).or(3600);
-      String role = Optional.fromNullable((String) conf.get(CONF_MESOS_ROLE)).or("*");
-      Boolean checkpoint = Optional.fromNullable((Boolean) conf.get(CONF_MESOS_CHECKPOINT)).or(false);
-      String framework_name = Optional.fromNullable((String) conf.get(CONF_MESOS_FRAMEWORK_NAME)).or("Storm!!!");
-
-      FrameworkInfo.Builder finfo = FrameworkInfo.newBuilder()
-          .setName(framework_name)
-          .setFailoverTimeout(failoverTimeout.doubleValue())
-          .setUser("")
-          .setRole(role)
-          .setCheckpoint(checkpoint);
-
-      if (id != null) {
-        finfo.setId(FrameworkID.newBuilder().setValue(id).build());
-      }
-
-      Integer port = (Integer) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_PORT);
-      _localFileServerPort = Optional.fromNullable(port);
-      LOG.debug("LocalFileServer configured to listen on port: " + port);
-
-      _httpServer = new LocalFileServer();
-      _configUrl = _httpServer.serveDir("/conf", "conf", _localFileServerPort);
-      LOG.info("Started HTTP server from which config for the MesosSupervisor's may be fetched. URL: " + _configUrl);
-
-      MesosSchedulerDriver driver =
-          new MesosSchedulerDriver(
-              _scheduler,
-              finfo.build(),
-              (String) conf.get(CONF_MASTER_URL));
-
-      driver.start();
-      LOG.info("Waiting for scheduler driver to register MesosNimbus with mesos-master and complete initialization...");
-      _scheduler.waitUntilRegistered();
-      LOG.info("Scheduler registration and initialization complete...");
+        MesosSchedulerDriver driver = createMesosDriver();
+        
+        driver.start();
+    
+        LOG.info("Waiting for scheduler driver to register MesosNimbus with mesos-master and complete initialization...");
+      
+        _scheduler.waitUntilRegistered();
+      
+        LOG.info("Scheduler registration and initialization complete...");
+ 
     } catch (Exception e) {
+        LOG.error("Failed to prepare scheduler ", e);  
       throw new RuntimeException(e);
     }
   }
+  @SuppressWarnings("unchecked")
+  protected void initialize(Map conf, String localDir) throws Exception {
+      _conf  = conf;
+      _state = new LocalState(localDir);
+      _allowedHosts = listIntoSet((List<String>)conf.get(CONF_MESOS_ALLOWED_HOSTS));
+      _disallowedHosts = listIntoSet((List<String>)conf.get(CONF_MESOS_DISALLOWED_HOSTS));
+      _scheduler = new NimbusScheduler();
+      createLocalServerPort();
+      setupHttpServer();
+  }
+  
+  protected void createLocalServerPort() {
+    Integer port = (Integer) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_PORT);
+    LOG.debug("LocalFileServer configured to listen on port: " + port);
+    _localFileServerPort = Optional.fromNullable(port); 
+  }
 
+  protected void setupHttpServer() throws Exception {
+      _httpServer = new LocalFileServer();
+      _configUrl = _httpServer.serveDir("/conf", "conf", _localFileServerPort);
+      
+      LOG.info("Started HTTP server from which config for the MesosSupervisor's may be fetched. URL: " + _configUrl);
+  }
+
+  protected MesosSchedulerDriver createMesosDriver() throws IOException {
+      MesosSchedulerDriver driver;
+      Credential credential;
+      FrameworkInfo.Builder finfo = createFrameworkBuilder();
+      
+      if ((credential = getCredential(finfo)) != null) {
+          driver = new MesosSchedulerDriver(_scheduler,
+                                            finfo.build(),
+                                            (String)_conf.get(CONF_MASTER_URL),
+                                            credential);
+      } else {
+          driver = new MesosSchedulerDriver(_scheduler,
+                                            finfo.build(),
+                                            (String)_conf.get(CONF_MASTER_URL));
+      }     
+      
+      return driver;
+  }
   private OfferResources getResources(Offer offer, double executorCpu, double executorMem, double cpu, double mem) {
     OfferResources resources = new OfferResources();
 
@@ -745,7 +763,58 @@ public class MesosNimbus implements INimbus {
           " slave: " + slave.getValue() + " status: " + status);
     }
   }
+    private FrameworkInfo.Builder createFrameworkBuilder() throws IOException {
+        
+        String id = (String)_state.get(FRAMEWORK_ID);
+        Number failoverTimeout = Optional.fromNullable((Number)_conf.get(CONF_MASTER_FAILOVER_TIMEOUT_SECS)).or(3600);
+        String role = Optional.fromNullable((String)_conf.get(CONF_MESOS_ROLE)).or("*");     
+        Boolean checkpoint = Optional.fromNullable((Boolean)_conf.get(CONF_MESOS_CHECKPOINT)).or(false);
+        String framework_name = Optional.fromNullable((String)_conf.get(CONF_MESOS_FRAMEWORK_NAME)).or("Storm!!!");
 
+        FrameworkInfo.Builder finfo = FrameworkInfo.newBuilder()
+            .setName(framework_name)
+            .setFailoverTimeout(failoverTimeout.doubleValue())
+            .setUser("")
+            .setRole(role)
+            .setCheckpoint(checkpoint);
+
+        if (id != null) {
+          finfo.setId(FrameworkID.newBuilder().setValue(id).build());
+        } 
+        
+        return finfo;
+    }
+    
+    private Credential getCredential(FrameworkInfo.Builder finfo) {
+        LOG.info("Checking for mesos authentication");
+        
+        Credential credential = null;
+        
+        String principal = Optional.fromNullable((String)_conf.get(CONF_MESOS_PRINCIPAL)).orNull();
+        String secretFilename = Optional.fromNullable((String)_conf.get(CONF_MESOS_SECRET_FILE)).orNull();;
+        
+        if (principal != null) {         
+            finfo.setPrincipal(principal);
+            Credential.Builder credentialBuilder = Credential.newBuilder();
+            credentialBuilder.setPrincipal(principal);
+            if (StringUtils.isNotEmpty(secretFilename)) {
+                try {
+                    // The secret cannot have a NewLine after it
+                    credentialBuilder.setSecret(ByteString.readFrom(new FileInputStream(secretFilename)));
+                } catch (FileNotFoundException ex) {
+                    LOG.error("Mesos authentication secret file was not found", ex);
+                    throw new RuntimeException(ex);
+                } catch (IOException ex) {
+                    LOG.error("Error reading Mesos authentication secret file", ex);
+                    throw new RuntimeException(ex);
+                }
+            }     
+            credential = credentialBuilder.build();
+        }
+        return credential;
+    }
+    
+    
   private class LaunchTask {
     public final TaskInfo task;
     public final Offer offer;
