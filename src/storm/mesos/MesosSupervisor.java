@@ -20,12 +20,13 @@ package storm.mesos;
 import backtype.storm.scheduler.ISupervisor;
 import backtype.storm.utils.LocalState;
 import backtype.storm.utils.Utils;
-import org.apache.log4j.Logger;
 import org.apache.mesos.Executor;
 import org.apache.mesos.ExecutorDriver;
 import org.apache.mesos.MesosExecutorDriver;
 import org.apache.mesos.Protos.*;
 import org.json.simple.JSONValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -36,7 +37,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class MesosSupervisor implements ISupervisor {
-  public static final Logger LOG = Logger.getLogger(MesosSupervisor.class);
+  public static final Logger LOG = LoggerFactory.getLogger(MesosSupervisor.class);
 
   volatile String _id = null;
   volatile String _assignmentId = null;
@@ -205,7 +206,7 @@ public class MesosSupervisor implements ISupervisor {
           Utils.sleep(5000);
         }
       } catch (Throwable t) {
-        LOG.error(t);
+        LOG.error("error during suicide detection",t);
         Runtime.getRuntime().halt(2);
       }
     }
