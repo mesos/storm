@@ -18,7 +18,7 @@
 package storm.mesos;
 
 import com.google.common.base.Optional;
-import org.apache.log4j.Logger;
+
 import org.mortbay.jetty.Connector;
 import org.mortbay.jetty.Handler;
 import org.mortbay.jetty.Server;
@@ -26,6 +26,8 @@ import org.mortbay.jetty.handler.ContextHandler;
 import org.mortbay.jetty.handler.HandlerList;
 import org.mortbay.jetty.handler.ResourceHandler;
 import org.mortbay.jetty.nio.SelectChannelConnector;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetAddress;
 import java.net.URI;
@@ -37,7 +39,7 @@ import java.net.URI;
 
 public class LocalFileServer {
 
-  public static final Logger LOG = Logger.getLogger(LocalFileServer.class);
+  public static final Logger LOG = LoggerFactory.getLogger(LocalFileServer.class);
   private Server _server = new Server();
 
   public static void main(String[] args) throws Exception {

@@ -2,16 +2,36 @@
 
 import sys
 import os
+import shutil
 
 STORM_PATH = "/".join(os.path.abspath(__file__).split("/")[0:-1])
 STORM_CMD = STORM_PATH + "/storm"
+MESOS_STORM_CONF_DIR = os.getenv('MESOS_STORM_CONF_DIR')
+if MESOS_STORM_CONF_DIR == "${MESOS_SANDBOX}":
+    MESOS_STORM_CONF_DIR = os.getenv('MESOS_SANDBOX')
 
-def nimbus():
+STORM_CONF = None
+STORM_LOGGER_CONF = None
+
+if MESOS_STORM_CONF_DIR and os.path.isfile(MESOS_STORM_CONF_DIR + "/storm.yaml"):
+    shutil.copyfile(MESOS_STORM_CONF_DIR + "/storm.yaml", STORM_PATH + "/../conf/storm.yaml")
+if MESOS_STORM_CONF_DIR and os.path.isfile(MESOS_STORM_CONF_DIR + "/cluster.xml"):
+    shutil.copyfile(MESOS_STORM_CONF_DIR + "/cluster.xml", STORM_PATH + "/../logback/cluster.xml")
+
+def nimbus(*args):
   os.chdir(STORM_PATH + "/..")
-  os.system(STORM_CMD + " nimbus storm.mesos.MesosNimbus")
-  
-def supervisor():
-  os.system(STORM_PATH + " supervisor storm.mesos.MesosSupervisor")
+  NIMBUS_CMD = STORM_CMD + " nimbus storm.mesos.MesosNimbus"
+  if len(args) > 0:
+    NIMBUS_CMD = NIMBUS_CMD + " " + "%s" % ' '.join(args)
+  print "Starting nimbus using:" + NIMBUS_CMD
+  os.system(NIMBUS_CMD)
+
+def supervisor(*args):
+  SUPERVISOR_CMD = STORM_CMD + " supervisor storm.mesos.MesosSupervisor"
+  if len(args) > 0:
+    SUPERVISOR_CMD = SUPERVISOR_CMD + " " + "%s" % ' '.join(args)
+  print "Starting supervisor using:" + SUPERVISOR_CMD
+  os.system(SUPERVISOR_CMD)
 
 COMMANDS = {"nimbus": nimbus, "supervisor": supervisor}
 

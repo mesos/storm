@@ -1,0 +1,45 @@
+#
+# Dockerfile for Storm Mesos framework
+#
+FROM mesosphere/mesos:0.22.0-1.0.ubuntu1404
+MAINTAINER Timothy Chen <tnachen@gmail.com>
+
+# build packages
+ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get update && \
+  apt-get install -yq software-properties-common
+
+# Install Java.
+RUN \
+  echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | debconf-set-selections && \
+  add-apt-repository -y ppa:webupd8team/java && \
+  apt-get update && \
+  apt-get install -y oracle-java8-installer && \
+  rm -rf /var/lib/apt/lists/* && \
+  rm -rf /var/cache/oracle-jdk8-installer
+
+# Define commonly used JAVA_HOME variable
+ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
+
+ENV MESOS_NATIVE_JAVA_LIBRARY /usr/lib/libmesos.so
+
+# copy storm-mesos into /opt
+ADD storm-mesos-0.9.4.tgz /opt
+RUN ln -s /opt/apache-storm-0.9.4 /opt/storm && \
+  find /opt/apache-storm-0.9.4 -type d -exec chmod 755 {} \;
+
+#setup storm user+group+directories
+ENV STORM_HOME /opt/storm
+RUN groupadd storm && \
+  useradd --gid storm --home-dir /home/storm --create-home --shell /bin/bash storm && \
+  chown -R storm:storm $STORM_HOME && \
+  mkdir /var/log/storm && \
+  chown -R storm:storm /var/log/storm
+RUN ln -s $STORM_HOME/bin/storm /usr/bin/storm
+
+ADD storm.yaml $STORM_HOME/conf/storm.yaml
+#TEMP:
+ADD bin/storm-mesos $STORM_HOME/bin/storm-mesos
+#ADD cluster.xml $STORM_HOME/logback/cluster.xml
+
+ENTRYPOINT ["/opt/storm/bin/storm-mesos"]
