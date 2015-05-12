@@ -27,6 +27,11 @@ import org.apache.mesos.MesosExecutorDriver;
 import org.apache.mesos.Protos.*;
 import org.json.simple.JSONValue;
 
+import com.google.common.base.Optional;
+
+import storm.mesos.logviewer.ILogController;
+import storm.mesos.logviewer.LogViewerController;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashSet;
@@ -69,6 +74,13 @@ public class MesosSupervisor implements ISupervisor {
     LOG.info("Waiting for executor to initialize...");
     try {
       _executor.waitUntilRegistered();
+      
+      if (startLogViewer(conf)) {
+        LOG.info("Starting logviewer...");
+        ILogController logController = new LogViewerController();
+        logController.start();
+      }
+      
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -182,6 +194,10 @@ public class MesosSupervisor implements ISupervisor {
 
   }
 
+  protected boolean startLogViewer(Map conf) {
+     return Optional.fromNullable((Boolean) conf.get(MesosCommon.AUTO_START_LOGVIEWER_CONF)).or(true);
+  }
+  
   public class SuicideDetector extends Thread {
     long _lastTime = System.currentTimeMillis();
     int _timeoutSecs;
