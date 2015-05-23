@@ -19,9 +19,20 @@ storm.messaging.transport: "backtype.storm.messaging.netty.Context"
 
 storm.local.dir: "storm-local"
 
+# role must be one of the mesos-master's roles defined in the --roles flag
+#
 mesos.framework.role: "*"
 mesos.framework.checkpoint: false
 mesos.framework.name: "Storm"
+
+# For setting up the necessary mesos authentication see mesos authentication page
+# and set the mesos-master flags --credentials, --authenticate, --acls, and --roles.
+#
+#mesos.framework.principal: "storm"
+
+# The "secret" phrase cannot be followed by a NL
+#
+#mesos.framework.secret.file: "storm-local/secret"
 
 #mesos.allowed.hosts:
 #  - host1
