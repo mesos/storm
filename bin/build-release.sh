@@ -67,7 +67,9 @@ function package {(
 
   local tarName="storm-mesos-${RELEASE}.tgz"
   cd _release
-  tar czf ${tarName} apache-storm-${RELEASE}
+  # When supervisor starts up it looks for storm-mesos not apache-storm.
+  mv apache-storm-${RELEASE} storm-mesos-${RELEASE}
+  tar cvzf ${tarName} storm-mesos-${RELEASE}
   echo "Copying ${tarName} to $(cd .. && pwd)/${tarName}"
   cp ${tarName} ../
   cd ..
@@ -80,7 +82,7 @@ function dockerImage {(
   cd _docker && \
   tar xvf storm-mesos-${RELEASE}.tgz &&
   rm storm-mesos-${RELEASE}.tgz && \
-  cd apache-storm-${RELEASE} && \
+  cd storm-mesos-${RELEASE} && \
   cp ../../Dockerfile . && \
   docker build -t mesos/storm:git-`git rev-parse --short HEAD` . && \
   cd ../../ && \
