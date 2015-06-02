@@ -26,6 +26,10 @@ logviewer.appender.name: "A1"
 # Please note that it won't work with other distributions
 mesos.executor.uri: "http://downloads.mesosphere.io/storm/storm-mesos-0.9.0.1.tgz"
 
+# If this is defined then mesos will launch the supervisor as a docker image
+#mesos.executor.docker.image: "mesos/storm_supervisor:0.9.3.ubuntu1404"
+
+
 # Use Netty to avoid ZMQ dependencies
 storm.messaging.transport: "backtype.storm.messaging.netty.Context"
 
@@ -42,7 +46,7 @@ mesos.framework.name: "Storm"
 #
 #mesos.framework.principal: "storm"
 
-# The "secret" phrase cannot be followed by a NL
+# The "secret" phrase cannot be followed by a newline
 #
 #mesos.framework.secret.file: "storm-local/secret"
 

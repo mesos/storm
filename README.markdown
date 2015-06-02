@@ -63,6 +63,12 @@ bin/build-release.sh downloadStormRelease
 
   Builds a Docker image based on the current packaged storm. Run ./bin/build-release.sh before running this subcommand.
 
+* `supervisorDockerImage`
+
+  Builds a Docker image, based on the current packages storm, thats configured to be a supervisor, launched by mesos
+
+  Run ./bin/build-release.sh before running this subcommand.
+
 * `help`
 
   Prints out usage information about the build-release.sh script.
@@ -108,7 +114,8 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 * `mesos.local.file.server.port`: Port for the local file server to bind to. Defaults to a random port.
 * `mesos.framework.name`: Framework name. Defaults to "Storm!!!".
 * `mesos.framework.principal`: Framework principal to use to register with Mesos
-* `mesos.framework.secret.file`:  Location of file that contains the principal's secret. Secret cannot end with a NL.
+* `mesos.framework.secret.file`:  Location of file that contains the principal's secret. Secret cannot end with a NewLine.
+* `mesos.executor.docker.image`:  Define this image to run the supervisor as a docker image.
 * `supervisor.autostart.logviewer`: Default is true, if not false please add 128M to topology.mesos.executor.mem.mb
 
 ## Resource configuration

@@ -37,7 +37,7 @@ import org.apache.mesos.Protos.Value.Type;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 import org.json.simple.JSONValue;
-
+ 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -545,31 +545,16 @@ public class MesosNimbus implements INimbus {
                 subtractedExecutorResources = true;
               }
 
-              String executorDataStr = JSONValue.toJSONString(executorData);
-              LOG.info("Launching task with Mesos Executor data: <" + executorDataStr + ">");
+              // Executor was created either with or without a docker start up depending on if there
+              // was a docker image defined and a container builder available.
+              ExecutorInfo executorInfo = createExecutorInfo(details, executorData, executorCpu, 
+                      executorMem, cpuRole, memRole, configUri);
+          
               TaskInfo task = TaskInfo.newBuilder()
                   .setName("worker " + slot.getNodeId() + ":" + slot.getPort())
                   .setTaskId(taskId)
                   .setSlaveId(offer.getSlaveId())
-                  .setExecutor(ExecutorInfo.newBuilder()
-                          .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
-                          .setData(ByteString.copyFromUtf8(executorDataStr))
-                          .setCommand(CommandInfo.newBuilder()
-                              .addUris(URI.newBuilder().setValue((String) _conf.get(CONF_EXECUTOR_URI)))
-                              .addUris(URI.newBuilder().setValue(configUri))
-                              .setValue("cp storm.yaml storm-mesos*/conf && cd storm-mesos* && python bin/storm " +
-                                  "supervisor storm.mesos.MesosSupervisor"))
-                          .addResources(Resource.newBuilder()
-                              .setName("cpus")
-                              .setType(Type.SCALAR)
-                              .setScalar(Scalar.newBuilder().setValue(executorCpu))
-                              .setRole(cpuRole))
-                          .addResources(Resource.newBuilder()
-                              .setName("mem")
-                              .setType(Type.SCALAR)
-                              .setScalar(Scalar.newBuilder().setValue(executorMem))
-                              .setRole(memRole))
-                  )
+                  .setExecutor(executorInfo)
                   .addResources(Resource.newBuilder()
                       .setName("cpus")
                       .setType(Type.SCALAR)
@@ -616,6 +601,61 @@ public class MesosNimbus implements INimbus {
         _offers.remove(id);
       }
     }
+  }
+  
+  private ExecutorInfo createExecutorInfo(TopologyDetails details, Map executorData, double executorCpu, double executorMem, 
+          String cpuRole, String memRole, String configUri) {
+              
+        String executorDataStr = JSONValue.toJSONString(executorData);
+        
+        LOG.info("Launching task with Mesos Executor data: <" + executorDataStr + ">");
+     
+        ExecutorInfo.Builder infoBuilder = ExecutorInfo.newBuilder()
+                .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
+                .setData(ByteString.copyFromUtf8(executorDataStr))
+                .addResources(Resource.newBuilder()
+                    .setName("cpus")
+                    .setType(Type.SCALAR)
+                    .setScalar(Scalar.newBuilder().setValue(executorCpu))
+                    .setRole(cpuRole))
+                .addResources(Resource.newBuilder()
+                    .setName("mem")
+                    .setType(Type.SCALAR)
+                    .setScalar(Scalar.newBuilder().setValue(executorMem))
+                    .setRole(memRole));
+    
+        // Create a docker builder if a docker image was defined in the yaml
+        Optional<ContainerInfo.Builder> containerInfoBuilder = createDockerInfoBuilder(getDockerImage());
+         
+        // If there is a builder then there was a docker image available.
+        if (containerInfoBuilder.isPresent()) {
+            infoBuilder.setContainer(containerInfoBuilder.get());
+        } else {
+            // Otherwise launch it the old fashion way.
+            infoBuilder.setCommand(CommandInfo.newBuilder()
+                    .addUris(URI.newBuilder().setValue((String) _conf.get(CONF_EXECUTOR_URI)))
+                    .addUris(URI.newBuilder().setValue(configUri))
+                    .setValue("cp storm.yaml storm-mesos*/conf && cd storm-mesos* && python bin/storm " +
+                        "supervisor storm.mesos.MesosSupervisor"));
+        }
+        return infoBuilder.build();
+  }
+  
+  private Optional<ContainerInfo.Builder> createDockerInfoBuilder(Optional<String> dockerImage) {
+        ContainerInfo.Builder containerInfoBuilder = null;
+        if (dockerImage.isPresent()) {
+            ContainerInfo.DockerInfo.Builder dockerInfoBuilder = ContainerInfo.DockerInfo.newBuilder()
+                    .setImage(dockerImage.get());
+            
+            containerInfoBuilder = ContainerInfo.newBuilder()
+                .setType(ContainerInfo.Type.DOCKER)
+                .setDocker(dockerInfoBuilder.build());
+        }
+        return Optional.fromNullable((ContainerInfo.Builder) containerInfoBuilder);
+  }
+
+  private Optional<String> getDockerImage() {
+       return Optional.fromNullable((String) _conf.get(MesosCommon.DOCKER_IMAGE_CONF));
   }
 
   private static class OfferResources {
