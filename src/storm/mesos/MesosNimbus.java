@@ -73,7 +73,7 @@ public class MesosNimbus implements INimbus {
   public static final Logger LOG = Logger.getLogger(MesosNimbus.class);
 
   private static final String FRAMEWORK_ID = "FRAMEWORK_ID";
-  private final Object OFFERS_LOCK = new Object();
+  private final Object _offersLock = new Object();
   LocalState _state;
   NimbusScheduler _scheduler;
   volatile SchedulerDriver _driver;
@@ -85,14 +85,16 @@ public class MesosNimbus implements INimbus {
   private RotatingMap<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
   private java.net.URI _configUrl;
-  private Map<TaskID, Offer> used_offers;
+  private Map<TaskID, Offer> _usedOffers;
   private ScheduledExecutorService timerScheduler =
       Executors.newScheduledThreadPool(1);
 
   private static Set listIntoSet(List l) {
     if (l == null) {
       return null;
-    } else return new HashSet<String>(l);
+    } else {
+        return new HashSet<String>(l);
+    }
   }
 
   public static void main(String[] args) {
@@ -112,7 +114,7 @@ public class MesosNimbus implements INimbus {
   @Override
   public void prepare(Map conf, String localDir) {
     try {
-        initialize(conf,localDir);
+        initialize(conf, localDir);
 
         MesosSchedulerDriver driver = createMesosDriver();
         
@@ -133,8 +135,8 @@ public class MesosNimbus implements INimbus {
   protected void initialize(Map conf, String localDir) throws Exception {
       _conf  = conf;
       _state = new LocalState(localDir);
-      _allowedHosts = listIntoSet((List<String>)conf.get(CONF_MESOS_ALLOWED_HOSTS));
-      _disallowedHosts = listIntoSet((List<String>)conf.get(CONF_MESOS_DISALLOWED_HOSTS));
+      _allowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_ALLOWED_HOSTS));
+      _disallowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_DISALLOWED_HOSTS));
       _scheduler = new NimbusScheduler();
       createLocalServerPort();
       setupHttpServer();
@@ -161,12 +163,12 @@ public class MesosNimbus implements INimbus {
       if ((credential = getCredential(finfo)) != null) {
           driver = new MesosSchedulerDriver(_scheduler,
                                             finfo.build(),
-                                            (String)_conf.get(CONF_MASTER_URL),
+                                            (String) _conf.get(CONF_MASTER_URL),
                                             credential);
       } else {
           driver = new MesosSchedulerDriver(_scheduler,
                                             finfo.build(),
-                                            (String)_conf.get(CONF_MASTER_URL));
+                                            (String) _conf.get(CONF_MASTER_URL));
       }     
       
       return driver;
@@ -247,15 +249,15 @@ public class MesosNimbus implements INimbus {
   private boolean supervisorExists(
       Offer offer, Collection<SupervisorDetails> existingSupervisors, Set<String> topologiesMissingAssignments) {
     boolean alreadyExists = true;
-    for(String topologyId: topologiesMissingAssignments) {
+    for (String topologyId: topologiesMissingAssignments) {
       String offerHost = offer.getHostname();
-      boolean _exists = false;
-      for(SupervisorDetails d: existingSupervisors) {
-        if(d.getId().equals(MesosCommon.supervisorId(offerHost, topologyId))) {
-          _exists = true;
+      boolean exists = false;
+      for (SupervisorDetails d: existingSupervisors) {
+        if (d.getId().equals(MesosCommon.supervisorId(offerHost, topologyId))) {
+          exists = true;
         }
       }
-      alreadyExists = (alreadyExists && _exists);
+      alreadyExists = (alreadyExists && exists);
     }
     return alreadyExists;
   }
@@ -271,7 +273,7 @@ public class MesosNimbus implements INimbus {
   @Override
   public Collection<WorkerSlot> allSlotsAvailableForScheduling(
       Collection<SupervisorDetails> existingSupervisors, Topologies topologies, Set<String> topologiesMissingAssignments) {
-    synchronized (OFFERS_LOCK) {
+    synchronized (_offersLock) {
       LOG.debug("allSlotsAvailableForScheduling: Currently have " + _offers.size() + " offers buffered" +
           (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
       if (!topologiesMissingAssignments.isEmpty()) {
@@ -305,11 +307,11 @@ public class MesosNimbus implements INimbus {
     List<WorkerSlot> allSlots = new ArrayList<WorkerSlot>();
 
     if (cpu != null && mem != null) {
-      synchronized (OFFERS_LOCK) {
+      synchronized (_offersLock) {
         for (Offer offer : _offers.newestValues()) {
-          boolean _supervisorExists = supervisorExists(offer, existingSupervisors, topologiesMissingAssignments);
-          List<WorkerSlot> offerSlots = toSlots(offer, cpu, mem, _supervisorExists);
-          if(offerSlots.isEmpty()) {
+          boolean supervisorExists = supervisorExists(offer, existingSupervisors, topologiesMissingAssignments);
+          List<WorkerSlot> offerSlots = toSlots(offer, cpu, mem, supervisorExists);
+          if (offerSlots.isEmpty()) {
             _offers.clearKey(offer.getId());
             LOG.debug("Declining offer `" + offerToString(offer) + "' because it wasn't " +
                 "usable to create a slot which fits largest pending topologies' aggregate needs " +
@@ -335,7 +337,7 @@ public class MesosNimbus implements INimbus {
     for (Offer offer : _offers.values()) {
       if (offer.getHostname().equals(worker.getNodeId())) {
         Resource r = getResourceRange(offer.getResourcesList(), port, port, "ports");
-        if(r != null) return offer.getId();
+        if (r != null) return offer.getId();
       }
     }
     // Still haven't found the slot? Maybe it's an offer we already used.
@@ -385,7 +387,7 @@ public class MesosNimbus implements INimbus {
                " workerMem: " + MesosCommon.topologyWorkerMem(_conf, details));
       }
     }
-    synchronized (OFFERS_LOCK) {
+    synchronized (_offersLock) {
       Map<OfferID, List<LaunchTask>> toLaunch = new HashMap<>();
       for (String topologyId : slots.keySet()) {
         Map<OfferID, List<WorkerSlot>> slotList = new HashMap<>();
@@ -408,8 +410,8 @@ public class MesosNimbus implements INimbus {
                 .setValue(MesosCommon.taskId(slot.getNodeId(), slot.getPort()))
                 .build();
 
-            if (id == null || offer == null && used_offers.containsKey(taskId)) {
-              offer = used_offers.get(taskId);
+            if (id == null || offer == null && _usedOffers.containsKey(taskId)) {
+              offer = _usedOffers.get(taskId);
               if (offer != null) {
                 id = offer.getId();
                 usingExistingOffer = true;
@@ -605,7 +607,7 @@ public class MesosNimbus implements INimbus {
         LOG.info("Launching tasks for offerId: " + id.getValue() + ":" + launchTaskListToString(tasks));
         for (LaunchTask t : tasks) {
           launchList.add(t.task);
-          used_offers.put(t.task.getTaskId(), t.offer);
+          _usedOffers.put(t.task.getTaskId(), t.offer);
         }
 
         List<OfferID> launchOffer = new ArrayList<>();
@@ -654,11 +656,11 @@ public class MesosNimbus implements INimbus {
 
       Number lruCacheSize = (Number) _conf.get(CONF_MESOS_OFFER_LRU_CACHE_SIZE);
       if (lruCacheSize == null) lruCacheSize = 1000;
-      final int LRU_CACHE_SIZE = lruCacheSize.intValue();
-      used_offers = Collections.synchronizedMap(new LinkedHashMap<TaskID, Offer>(LRU_CACHE_SIZE + 1, .75F, true) {
+      final int intLruCacheSize = lruCacheSize.intValue();
+      _usedOffers = Collections.synchronizedMap(new LinkedHashMap<TaskID, Offer>(intLruCacheSize + 1, .75F, true) {
         // This method is called just after a new entry has been added
         public boolean removeEldestEntry(Map.Entry eldest) {
-          return size() > LRU_CACHE_SIZE;
+          return size() > intLruCacheSize;
         }
       });
 
@@ -668,7 +670,7 @@ public class MesosNimbus implements INimbus {
         @Override
         public void run() {
           try {
-            synchronized (OFFERS_LOCK) {
+            synchronized (_offersLock) {
               _offers.rotate();
             }
           } catch (Throwable t) {
@@ -703,7 +705,7 @@ public class MesosNimbus implements INimbus {
 
     @Override
     public void resourceOffers(SchedulerDriver driver, List<Offer> offers) {
-      synchronized (OFFERS_LOCK) {
+      synchronized (_offersLock) {
         LOG.debug("resourceOffers: Currently have " + _offers.size() + " offers buffered" +
             (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
         for (Offer offer : offers) {
@@ -722,7 +724,7 @@ public class MesosNimbus implements INimbus {
     @Override
     public void offerRescinded(SchedulerDriver driver, OfferID id) {
       LOG.info("Offer rescinded. offerId: " + id.getValue());
-      synchronized (OFFERS_LOCK) {
+      synchronized (_offersLock) {
         _offers.remove(id);
       }
     }
@@ -739,7 +741,7 @@ public class MesosNimbus implements INimbus {
           timerScheduler.schedule(new Runnable() {
             @Override
             public void run() {
-              used_offers.remove(taskId);
+              _usedOffers.remove(taskId);
             }
           }, MesosCommon.getSuicideTimeout(_conf), TimeUnit.SECONDS);
           break;
@@ -765,14 +767,14 @@ public class MesosNimbus implements INimbus {
   }
     private FrameworkInfo.Builder createFrameworkBuilder() throws IOException {
         
-        String id = (String)_state.get(FRAMEWORK_ID);
-        Number failoverTimeout = Optional.fromNullable((Number)_conf.get(CONF_MASTER_FAILOVER_TIMEOUT_SECS)).or(3600);
-        String role = Optional.fromNullable((String)_conf.get(CONF_MESOS_ROLE)).or("*");     
-        Boolean checkpoint = Optional.fromNullable((Boolean)_conf.get(CONF_MESOS_CHECKPOINT)).or(false);
-        String framework_name = Optional.fromNullable((String)_conf.get(CONF_MESOS_FRAMEWORK_NAME)).or("Storm!!!");
+        String id = (String) _state.get(FRAMEWORK_ID);
+        Number failoverTimeout = Optional.fromNullable((Number) _conf.get(CONF_MASTER_FAILOVER_TIMEOUT_SECS)).or(3600);
+        String role = Optional.fromNullable((String) _conf.get(CONF_MESOS_ROLE)).or("*");     
+        Boolean checkpoint = Optional.fromNullable((Boolean) _conf.get(CONF_MESOS_CHECKPOINT)).or(false);
+        String frameworkName = Optional.fromNullable((String) _conf.get(CONF_MESOS_FRAMEWORK_NAME)).or("Storm!!!");
 
         FrameworkInfo.Builder finfo = FrameworkInfo.newBuilder()
-            .setName(framework_name)
+            .setName(frameworkName)
             .setFailoverTimeout(failoverTimeout.doubleValue())
             .setUser("")
             .setRole(role)
@@ -790,8 +792,8 @@ public class MesosNimbus implements INimbus {
         
         Credential credential = null;
         
-        String principal = Optional.fromNullable((String)_conf.get(CONF_MESOS_PRINCIPAL)).orNull();
-        String secretFilename = Optional.fromNullable((String)_conf.get(CONF_MESOS_SECRET_FILE)).orNull();;
+        String principal = Optional.fromNullable((String) _conf.get(CONF_MESOS_PRINCIPAL)).orNull();
+        String secretFilename = Optional.fromNullable((String) _conf.get(CONF_MESOS_SECRET_FILE)).orNull();;
         
         if (principal != null) {         
             finfo.setPrincipal(principal);

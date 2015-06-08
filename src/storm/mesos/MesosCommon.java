@@ -54,8 +54,11 @@ public class MesosCommon {
 
   public static int getSuicideTimeout(Map conf) {
     Number timeout = (Number) conf.get(SUICIDE_CONF);
-    if (timeout == null) return DEFAULT_SUICIDE_TIMEOUT_SECS;
-    else return timeout.intValue();
+    if (timeout == null) {
+        return DEFAULT_SUICIDE_TIMEOUT_SECS;
+    } else {
+        return timeout.intValue();
+    }
   }
 
   public static Map getFullTopologyConfig(Map conf, TopologyDetails info) {
@@ -71,8 +74,11 @@ public class MesosCommon {
       LOG.warn("Topology has invalid mesos cpu configuration: " + cpuObj + " for topology " + info.getId());
       cpuObj = null;
     }
-    if (cpuObj == null) return DEFAULT_CPU;
-    else return ((Number) cpuObj).doubleValue();
+    if (cpuObj == null) {
+        return DEFAULT_CPU;
+    } else {
+        return ((Number) cpuObj).doubleValue();
+    }
   }
 
   public static double topologyWorkerMem(Map conf, TopologyDetails info) {
@@ -82,8 +88,11 @@ public class MesosCommon {
       LOG.warn("Topology has invalid mesos mem configuration: " + memObj + " for topology " + info.getId());
       memObj = null;
     }
-    if (memObj == null) return DEFAULT_MEM_MB;
-    else return ((Number) memObj).doubleValue();
+    if (memObj == null) { 
+        return DEFAULT_MEM_MB;
+    } else {
+        return ((Number) memObj).doubleValue();
+    }
   }
 
   public static double executorCpu(Map conf) {
@@ -92,8 +101,11 @@ public class MesosCommon {
       LOG.warn("Cluster has invalid mesos cpu configuration: " + cpuObj);
       cpuObj = null;
     }
-    if (cpuObj == null) return DEFAULT_CPU;
-    else return ((Number) cpuObj).doubleValue();
+    if (cpuObj == null) {
+        return DEFAULT_CPU;
+    } else {
+        return ((Number) cpuObj).doubleValue();
+    }
   }
 
   public static double executorMem(Map conf) {
@@ -102,8 +114,11 @@ public class MesosCommon {
       LOG.warn("Cluster has invalid mesos mem configuration: " + memObj);
       memObj = null;
     }
-    if (memObj == null) return DEFAULT_MEM_MB;
-    else return ((Number) memObj).doubleValue();
+    if (memObj == null) {
+        return DEFAULT_MEM_MB;
+    } else {
+        return ((Number) memObj).doubleValue();
+    }
   }
   public static int numWorkers(Map conf, TopologyDetails info) {
     return info.getNumWorkers();

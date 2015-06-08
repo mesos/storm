@@ -134,7 +134,7 @@ public class PrettyProtobuf {
    * have inconsistent output since the _offers map is touched from both
    * mesos-driven events and storm-driven calls.
    *
-   * FIXME(erikdw): figure out a design better that removes the need
+   * TODO(erikdw): figure out a design better that removes the need
    * for external callers to lock before calling this method.
    */
   public static String offerMapToString(RotatingMap<OfferID, Offer> offers) {
@@ -147,25 +147,31 @@ public class PrettyProtobuf {
    * Wrapper around offerToString which allows using gauva's transform utility.
    */
   private static Function<Offer, String> offerToStringTransform =
-      new Function<Offer,String>() {
-        public String apply(Offer o) { return offerToString(o); }
-      };
+      new Function<Offer, String>() {
+        public String apply(Offer o) { 
+            return offerToString(o); 
+        }
+    };
 
   /**
    * Wrapper around taskInfoToString which allows using gauva's transform utility.
    */
   private static Function<TaskInfo, String> taskInfoToStringTransform =
-      new Function<TaskInfo,String>() {
-        public String apply(TaskInfo t) { return taskInfoToString(t); }
-      };
+      new Function<TaskInfo, String>() {
+        public String apply(TaskInfo t) { 
+            return taskInfoToString(t); 
+        }
+    };
 
   /**
    * Wrapper around rangeToString which allows using gauva's transform utility.
    */
   private static Function<Range, String> rangeToStringTransform =
-      new Function<Range,String>() {
-        public String apply(Range r) { return rangeToString(r); }
-      };
+      new Function<Range, String>() {
+        public String apply(Range r) { 
+            return rangeToString(r); 
+        }
+    };
 
   /**
    * Create String representation of mesos protobuf Range type.
