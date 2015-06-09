@@ -68,12 +68,12 @@ public class LocalFileServer {
     connector.setPort(0);
     _server.addConnector(connector);
 
-    ResourceHandler resource_handler = new ResourceHandler();
-    resource_handler.setResourceBase(filePath);
+    ResourceHandler resourceHandler = new ResourceHandler();
+    resourceHandler.setResourceBase(filePath);
 
     ContextHandler staticContextHandler = new ContextHandler();
     staticContextHandler.setContextPath(uriPath);
-    staticContextHandler.setHandler(resource_handler);
+    staticContextHandler.setHandler(resourceHandler);
 
     HandlerList handlers = new HandlerList();
     handlers.setHandlers(new Handler[]{staticContextHandler});

@@ -124,7 +124,7 @@ public class RotatingMap<K, V> {
 
   public Object clearKey(K key) {
     Object value = remove(key);
-    if(value != null && _callback != null) {
+    if (value != null && _callback != null) {
       _callback.expire(key, value);
     }
     return value;

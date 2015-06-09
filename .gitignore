@@ -5,3 +5,4 @@ target
 _release
 *.iml
 dependency-reduced-pom.xml
+/build/

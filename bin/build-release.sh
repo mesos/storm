@@ -42,8 +42,8 @@ function clean {
 }
 
 function mvnPackage {
-  mvn package
-  mvn dependency:copy-dependencies
+  mvn -Dcheckstyle.skip=true package
+  mvn -Dcheckstyle.skip=true dependency:copy-dependencies
 }
 
 function prePackage {(
