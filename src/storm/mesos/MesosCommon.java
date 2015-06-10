@@ -30,6 +30,7 @@ public class MesosCommon {
   public static final String EXECUTOR_CPU_CONF = "topology.mesos.executor.cpu";
   public static final String EXECUTOR_MEM_CONF = "topology.mesos.executor.mem.mb";
   public static final String SUICIDE_CONF = "mesos.supervisor.suicide.inactive.timeout.secs";
+  public static final String AUTO_START_LOGVIEWER_CONF = "supervisor.autostart.logviewer";
 
   public static final double DEFAULT_CPU = 1;
   public static final double DEFAULT_MEM_MB = 1000;

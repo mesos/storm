@@ -109,7 +109,7 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 * `mesos.framework.name`: Framework name. Defaults to "Storm!!!".
 * `mesos.framework.principal`: Framework principal to use to register with Mesos
 * `mesos.framework.secret.file`:  Location of file that contains the principal's secret. Secret cannot end with a NL.
-
+* `supervisor.autostart.logviewer`: Default is true, if not false please add 128M to topology.mesos.executor.mem.mb
 
 ## Resource configuration
 

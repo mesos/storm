@@ -7,6 +7,18 @@ storm.zookeeper.servers:
 nimbus.host: "localhost"
 # -----------------------------------------------------------
 
+
+### If this is not false then you need to add about 128m of mem usage to executor to account for the logviewer
+#supervisor.autostart.logviewer: false
+topology.mesos.executor.mem.mb: 1128  ## default is 1000
+
+# The default behavior is to launch the logvierwer unless autostart is false
+logviewer.port: 8000
+logviewer.childopts: "-Xmx128m"
+logviewer.cleanup.age.mins: 10080
+logviewer.appender.name: "A1"
+
+
 # You should not need to change anything below this line
 #--------------------------------------------------------
 
