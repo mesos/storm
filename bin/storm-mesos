@@ -11,7 +11,8 @@ def nimbus():
   os.system(STORM_CMD + " nimbus storm.mesos.MesosNimbus")
   
 def supervisor():
-  os.system(STORM_PATH + " supervisor storm.mesos.MesosSupervisor")
+  os.chdir(STORM_PATH + "/..")
+  os.system(STORM_CMD + " supervisor storm.mesos.MesosSupervisor")
 
 COMMANDS = {"nimbus": nimbus, "supervisor": supervisor}
 

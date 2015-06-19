@@ -5,6 +5,7 @@ function _rm {
   rm -rf "$@" 2>/dev/null || true
 }
 RELEASE=`grep -1 -A 0 -B 0 '<version>' pom.xml | head -n 1 | awk '{print $1}' | sed -e 's/.*<version>//' | sed -e 's/<\/version>.*//'`
+SUPERVISOR_DOCKERTAG=mesos/storm_supervisor:${RELEASE}.ubuntu1404
 
 MIRROR=${MIRROR:-"http://www.gtlib.gatech.edu/pub"}
 
@@ -20,6 +21,9 @@ Usage: bin/build-release.sh <storm.zip>
   package                 Packages the Storm Mesos Framework.
   downloadStormRelease    A utility function to download the Storm release zip
                             for the targeted storm release.
+  dockerImage             Template docker image target, creates an image that can run a Nimbus and in theory a supervisor
+  supervisorDockerImage   Creates a supervisor docker image which mesos can launch, also opens a port for the logviewer
+
   ENV
     MIRROR        Specify Apache Storm Mirror to download from
                     Default: ${MIRROR}
@@ -70,12 +74,22 @@ function package {(
   # When supervisor starts up it looks for storm-mesos not apache-storm.
   mv apache-storm-${RELEASE} storm-mesos-${RELEASE}
   tar cvzf ${tarName} storm-mesos-${RELEASE}
+  mkdir storm-mesos-${RELEASE}/logs
   echo "Copying ${tarName} to $(cd .. && pwd)/${tarName}"
   cp ${tarName} ../
   cd ..
 )}
 
 function dockerImage {(
+  buildDocker Dockerfile mesos/storm:git-`git rev-parse --short HEAD`
+)}
+
+function supervisorDockerImage {(
+  buildDocker Dockerfile.supervisor ${SUPERVISOR_DOCKERTAG}
+  docker save -o storm-supervisor-image-${RELEASE}.tar ${SUPERVISOR_DOCKERTAG}
+)}
+
+function buildDocker {(
   rm -rf _docker && \
   mkdir _docker && \
   cp storm-mesos-${RELEASE}.tgz _docker && \
@@ -83,10 +97,11 @@ function dockerImage {(
   tar xvf storm-mesos-${RELEASE}.tgz &&
   rm storm-mesos-${RELEASE}.tgz && \
   cd storm-mesos-${RELEASE} && \
-  cp ../../Dockerfile . && \
-  docker build -t mesos/storm:git-`git rev-parse --short HEAD` . && \
+  cp ../../docker/$1 . && \
+  docker -D build -f $1 -t $2 . && \
   cd ../../ && \
   rm -rf _docker
+
 )}
 
 function main {
