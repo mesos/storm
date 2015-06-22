@@ -891,6 +891,7 @@ public class MesosNimbus implements INimbus {
     String nimbusHost = getHost(); // needs to be the addressable name of this host
 
     LOG.info("using nimbus host at <" + nimbusHost + ">");
+    LOG.info("using LIBPROCESS_IP <" + slaveHostname + ">");
     return ExecutorInfo.newBuilder()
         .setExecutorId(ExecutorID.newBuilder().setValue(id))
         .setData(ByteString.copyFromUtf8(data))
@@ -920,7 +921,10 @@ public class MesosNimbus implements INimbus {
             .setEnvironment(Protos.Environment.newBuilder()
                 .addVariables(Protos.Environment.Variable.newBuilder()
                     .setName(ENV_MESOS_STORM_CONF_DIR)
-                    .setValue("${MESOS_SANDBOX}"))))
+                    .setValue("${MESOS_SANDBOX}"))
+                .addVariables(Protos.Environment.Variable.newBuilder()
+                    .setName("LIBPROCESS_IP")
+                    .setValue(slaveHostname))))
         .addResources(Resource.newBuilder()
                          .setName("cpus")
                          .setType(Type.SCALAR)
