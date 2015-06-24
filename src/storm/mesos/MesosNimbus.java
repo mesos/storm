@@ -589,11 +589,10 @@ public class MesosNimbus implements INimbus {
 
               String executorDataStr = JSONValue.toJSONString(executorData);
               LOG.info("Launching task with Mesos Executor data: <" + executorDataStr + ">");
-
               ExecutorInfo.Builder executor = null;
               if (supervisorDockerImage.isPresent()){
                 executor = getDockerExecutor(details.getId(), executorDataStr, offer.getHostname(),
-                    executorCpu, cpuRole, executorMem, memRole);
+                    slot.getPort(), executorCpu, cpuRole, executorMem, memRole);
               } else {
                 executor =  getMesosExecutor(details.getId(), executorDataStr, executorCpu, cpuRole,
                     executorMem, memRole);
@@ -881,12 +880,14 @@ public class MesosNimbus implements INimbus {
                           .setScalar(Scalar.newBuilder().setValue(executorMem))
                           .setRole(executorMemRole));
   }
-  private ExecutorInfo.Builder getDockerExecutor(String id, String data, String slaveHostname, double executorCpu,
+  private ExecutorInfo.Builder getDockerExecutor(String id, String data, String slaveHostname,
+                                                 Integer port, double executorCpu,
                                                  String executorCpuRole, double executorMem,
                                                  String executorMemRole){
     String masterUrl = (String)_conf.get(CONF_MASTER_URL);
     LOG.info("using master at <" + masterUrl + ">");
     LOG.info("using slave at <"+slaveHostname+">");
+    LOG.info("using slave port <"+port+">");
 
     String nimbusHost = getHost(); // needs to be the addressable name of this host
 
@@ -904,6 +905,13 @@ public class MesosNimbus implements INimbus {
             .setMode(Protos.Volume.Mode.RO))
         .setDocker(ContainerInfo.DockerInfo.newBuilder()
             .setImage(supervisorDockerImage.get())
+            //use BRIDGE mode to allow explicit port mappings
+            .setNetwork(ContainerInfo.DockerInfo.Network.BRIDGE)
+            //map the worker port so that nimbus can connect to it
+            .addPortMappings(ContainerInfo.DockerInfo.PortMapping.newBuilder()
+                .setContainerPort(port)
+                .setHostPort(port)
+                .setProtocol("tcp"))
             //using --pid=host so that we can generate pids visible to slave
             .addParameters(Parameter.newBuilder().setKey("pid").setValue("host").build())))
         .setCommand(CommandInfo.newBuilder()
@@ -921,10 +929,11 @@ public class MesosNimbus implements INimbus {
             .setEnvironment(Protos.Environment.newBuilder()
                 .addVariables(Protos.Environment.Variable.newBuilder()
                     .setName(ENV_MESOS_STORM_CONF_DIR)
-                    .setValue("${MESOS_SANDBOX}"))
-                .addVariables(Protos.Environment.Variable.newBuilder()
-                    .setName("LIBPROCESS_IP")
-                    .setValue(slaveHostname))))
+                    .setValue("${MESOS_SANDBOX}"))))
+                  //LIBPROCESS_IP is required IFF Network mode is HOST
+//                .addVariables(Protos.Environment.Variable.newBuilder()
+//                    .setName("LIBPROCESS_IP")
+//                    .setValue(slaveHostname))))
         .addResources(Resource.newBuilder()
                          .setName("cpus")
                          .setType(Type.SCALAR)
