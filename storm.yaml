@@ -31,6 +31,10 @@ storm.messaging.transport: "backtype.storm.messaging.netty.Context"
 
 storm.local.dir: "storm-local"
 
+# Current logviewer implementation requires a common log dir for UI to find multiple supervisor logs.
+topology.worker.log.dir: /tmp/mesos/storm/logs
+
+
 # role must be one of the mesos-master's roles defined in the --roles flag
 #
 mesos.framework.role: "*"

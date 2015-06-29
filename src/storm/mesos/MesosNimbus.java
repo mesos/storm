@@ -547,6 +547,8 @@ public class MesosNimbus implements INimbus {
 
               String executorDataStr = JSONValue.toJSONString(executorData);
               LOG.info("Launching task with Mesos Executor data: <" + executorDataStr + ">");
+                          
+              // If a new executorId is presented then another executor will be launched.
               TaskInfo task = TaskInfo.newBuilder()
                   .setName("worker " + slot.getNodeId() + ":" + slot.getPort())
                   .setTaskId(taskId)
@@ -557,8 +559,7 @@ public class MesosNimbus implements INimbus {
                           .setCommand(CommandInfo.newBuilder()
                               .addUris(URI.newBuilder().setValue((String) _conf.get(CONF_EXECUTOR_URI)))
                               .addUris(URI.newBuilder().setValue(configUri))
-                              .setValue("cp storm.yaml storm-mesos*/conf && cd storm-mesos* && python bin/storm " +
-                                  "supervisor storm.mesos.MesosSupervisor"))
+                              .setValue(generateCmdString(_conf, details.getId())))
                           .addResources(Resource.newBuilder()
                               .setName("cpus")
                               .setType(Type.SCALAR)
@@ -617,7 +618,23 @@ public class MesosNimbus implements INimbus {
       }
     }
   }
-
+  
+  private String generateCmdString(Map conf, String executorId) {
+      String cmd;
+      // Is there a common directory set up for all the executors?
+      if (conf.containsKey(MesosCommon.WORKER_LOG_DIR)) {
+          cmd = "cp storm.yaml storm-mesos*/conf && cd storm-mesos* && bin/runCommonLogSupervisor " +
+                  conf.get(MesosCommon.WORKER_LOG_DIR) + " " + "supervisor-" + executorId + ".log";
+      } else {
+          LOG.warn("No common directory defined so only one supervisor's topology logs will be accessible");
+          cmd = "cp storm.yaml storm-mesos*/conf && cd storm-mesos* && python bin/storm " +
+                  "supervisor storm.mesos.MesosSupervisor";
+      }
+      LOG.info("Starting supervisor with cmd: " + cmd);
+      
+      return cmd;
+  }
+  
   private static class OfferResources {
     int cpuSlots = 0;
     int memSlots = 0;

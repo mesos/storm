@@ -12,6 +12,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.yaml.snakeyaml.Yaml;
 
+import storm.mesos.MesosCommon;
 import com.google.common.base.Optional;
 
 public class LogViewerController implements ILogController {
@@ -46,7 +47,7 @@ public class LogViewerController implements ILogController {
     /**
      * Start up the logviewer, but before that is done a check is made to
      * see if an existing logviewer (or process) is on the same port and report
-     * and error if so.
+     * an error if so.
      */
     @Override
     public void start() {
@@ -125,8 +126,15 @@ public class LogViewerController implements ILogController {
      * @return
      */
     protected ProcessBuilder createProcessBuilder(String homeDirectory) {
-        ProcessBuilder pb = new ProcessBuilder(Paths.get(homeDirectory, "/bin/storm").toString(), "logviewer");
-         
+        ProcessBuilder pb = new ProcessBuilder("nohup", "/usr/bin/python", "-u", Paths.get(homeDirectory, "/bin/storm").toString(), "logviewer");
+
+        // This means to look in a common area for the worker logs.
+        // TODO: Either start multiple logviewers or only one Supervisor.
+        if (config.containsKey(MesosCommon.WORKER_LOG_DIR)) {
+            String logDir = (String) config.get(MesosCommon.WORKER_LOG_DIR);
+            LOG.info("Logviewer will look for worker logs in " + logDir);
+            pb.environment().put("STORM_LOG_DIR", logDir);
+        }
         // If anything goes wrong at startup we want to see it.
         File log = Paths.get(homeDirectory, "/logs/logviewer-startup.log").toFile();
         pb.redirectErrorStream(true);

@@ -64,6 +64,7 @@ public class MesosSupervisor implements ISupervisor {
   @Override
   public void prepare(Map conf, String localDir) {
     try {
+      LOG.info("prepare: using localdir? " + localDir);
       _state = new LocalState(localDir);
     } catch (IOException e) {
       throw new RuntimeException(e);
