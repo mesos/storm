@@ -4,7 +4,8 @@ set -o errexit -o nounset -o pipefail
 function _rm {
   rm -rf "$@" 2>/dev/null || true
 }
-RELEASE=`grep -1 -A 0 -B 0 '<version>' pom.xml | head -n 1 | awk '{print $1}' | sed -e 's/.*<version>//' | sed -e 's/<\/version>.*//'`
+
+RELEASE=${RELEASE:-`grep -1 -A 0 -B 0 '<version>' pom.xml | head -n 1 | awk '{print $1}' | sed -e 's/.*<version>//' | sed -e 's/<\/version>.*//'`}
 
 MIRROR=${MIRROR:-"http://www.gtlib.gatech.edu/pub"}
 
