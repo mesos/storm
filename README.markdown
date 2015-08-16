@@ -108,8 +108,9 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 * `mesos.local.file.server.port`: Port for the local file server to bind to. Defaults to a random port.
 * `mesos.framework.name`: Framework name. Defaults to "Storm!!!".
 * `mesos.framework.principal`: Framework principal to use to register with Mesos
-* `mesos.framework.secret.file`:  Location of file that contains the principal's secret. Secret cannot end with a NL.
+* `mesos.framework.secret.file`:  Location of file that contains the principal's secret. Secret cannot end with a newline.
 * `supervisor.autostart.logviewer`: Default is true, if not false please add 128M to topology.mesos.executor.mem.mb
+* `topology.worker.log.dir`: Currently set to /tmp/mesos/storm/logs. This allows the UI to find logs for multiple supervisors on the same host.
 
 ## Resource configuration
 

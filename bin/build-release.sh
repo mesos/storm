@@ -62,9 +62,13 @@ function package {(
 
   # copies storm-mesos jar over
   cp target/*.jar $stormDir/lib/
-  cp bin/storm-mesos $stormDir/bin/
+  cp -fv bin/storm-mesos $stormDir/bin/
+  cp -fv bin/storm $stormDir/bin/
+  cp -fv bin/runCommonLogSupervisor $stormDir/bin/
   mkdir -p $stormDir/native
   cp storm.yaml $stormDir/conf/storm.yaml
+  mkdir -p $stormDir/logback
+  cp -fv conf/cluster.xml $stormDir/logback/cluster.xml
 
   local tarName="storm-mesos-${RELEASE}.tgz"
   cd _release

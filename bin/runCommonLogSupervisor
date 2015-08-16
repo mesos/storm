@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# This script is meant to be run from the mesos supervisor
+# if a common directory is provided
+
+export STORM_LOG_DIR=$1
+export STORM_SUPERVISOR_LOG=$2
+python -u ${PWD}/bin/storm supervisor storm.mesos.MesosSupervisor
+
