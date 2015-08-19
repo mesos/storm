@@ -15,7 +15,6 @@ You can use following guide to setup a cluster in a virtual machine.
 
 ```shell
 bin/build-release.sh
-cp vagrant/Vagrantfile .
 ```
 
 To start the cluster run following:
