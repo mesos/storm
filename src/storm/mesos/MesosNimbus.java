@@ -68,6 +68,7 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_CHECKPOINT = "mesos.framework.checkpoint";
   public static final String CONF_MESOS_OFFER_LRU_CACHE_SIZE = "mesos.offer.lru.cache.size";
   public static final String CONF_MESOS_LOCAL_FILE_SERVER_PORT = "mesos.local.file.server.port";
+  public static final String CONF_MESOS_LOCAL_FILE_SERVER_LOCATION = "mesos.local.file.server.location";
   public static final String CONF_MESOS_FRAMEWORK_NAME = "mesos.framework.name";
 
   public static final Logger LOG = Logger.getLogger(MesosNimbus.class);
@@ -150,7 +151,8 @@ public class MesosNimbus implements INimbus {
 
   protected void setupHttpServer() throws Exception {
       _httpServer = new LocalFileServer();
-      _configUrl = _httpServer.serveDir("/conf", "conf", _localFileServerPort);
+      String localConfFolder = Optional.fromNullable((String) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_LOCATION)).or("conf");
+      _configUrl = _httpServer.serveDir("/conf", localConfFolder, _localFileServerPort);
       
       LOG.info("Started HTTP server from which config for the MesosSupervisor's may be fetched. URL: " + _configUrl);
   }
@@ -547,6 +549,7 @@ public class MesosNimbus implements INimbus {
 
               String executorDataStr = JSONValue.toJSONString(executorData);
               LOG.info("Launching task with Mesos Executor data: <" + executorDataStr + ">");
+              final String executorURI = (String) _conf.get(CONF_EXECUTOR_URI);
               TaskInfo task = TaskInfo.newBuilder()
                   .setName("worker " + slot.getNodeId() + ":" + slot.getPort())
                   .setTaskId(taskId)
@@ -555,9 +558,12 @@ public class MesosNimbus implements INimbus {
                           .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
                           .setData(ByteString.copyFromUtf8(executorDataStr))
                           .setCommand(CommandInfo.newBuilder()
-                              .addUris(URI.newBuilder().setValue((String) _conf.get(CONF_EXECUTOR_URI)))
                               .addUris(URI.newBuilder().setValue(configUri))
-                              .setValue("cp storm.yaml storm-mesos*/conf && cd storm-mesos* && python bin/storm " +
+                              // Instead of downloading the executor package through mesos, we are downloading it here since sometimes the file name can contain
+                              // additional characters at the end. For example, if we are downloading from hdfs the URI will have "?op=OPEN" at the end. This
+                              // can fail the complete command. Hence, instead of relying on mesos to do the download for us, we are explicitly using wget to do
+                              // that and use that to rename the file.
+                              .setValue("wget -O storm-mesos.tgz " + executorURI + " && tar xvf storm-mesos.tgz && cp storm.yaml storm-mesos*/conf && cd storm-mesos* && python bin/storm " +
                                   "supervisor storm.mesos.MesosSupervisor"))
                           .addResources(Resource.newBuilder()
                               .setName("cpus")
