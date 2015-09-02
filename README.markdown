@@ -106,6 +106,7 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 * `mesos.framework.checkpoint`: Enabled framework checkpoint or not. Defaults to false.
 * `mesos.offer.lru.cache.size`: LRU cache size. Defaults to "1000".
 * `mesos.local.file.server.port`: Port for the local file server to bind to. Defaults to a random port.
+* `mesos.local.file.server.location`: Location of conf folder with the storm.yaml in it. 
 * `mesos.framework.name`: Framework name. Defaults to "Storm!!!".
 * `mesos.framework.principal`: Framework principal to use to register with Mesos
 * `mesos.framework.secret.file`:  Location of file that contains the principal's secret. Secret cannot end with a NL.
