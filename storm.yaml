@@ -12,7 +12,7 @@ nimbus.host: "localhost"
 #supervisor.autostart.logviewer: false
 topology.mesos.executor.mem.mb: 1128  ## default is 1000
 
-# The default behavior is to launch the logvierwer unless autostart is false
+# The default behavior is to launch the logviewer unless autostart is false
 logviewer.port: 8000
 logviewer.childopts: "-Xmx128m"
 logviewer.cleanup.age.mins: 10080
