@@ -112,7 +112,7 @@ public class MesosSupervisor implements ISupervisor {
 
   @Override
   public String getAssignmentId() {
-    return _assignmentId;
+    return MesosCommon.ipAddressFromAssignmentId(_assignmentId);
   }
 
   @Override

@@ -406,8 +406,13 @@ public class MesosNimbus implements INimbus {
           boolean subtractedExecutorResources = false;
 
           for (WorkerSlot slot : workerSlots) {
+            TopologyDetails details = topologies.getById(topologyId);
+            String workerprefix = "";  
+            if (_conf.get(MesosCommon.WORKER_NAME_PREFIX) != null) {
+                workerprefix = MesosCommon.getWorkerPrefix(_conf, details);
+            }
             TaskID taskId = TaskID.newBuilder()
-                .setValue(MesosCommon.taskId(slot.getNodeId(), slot.getPort()))
+                .setValue(MesosCommon.taskId(workerprefix + slot.getNodeId(), slot.getPort()))
                 .build();
 
             if (id == null || offer == null && _usedOffers.containsKey(taskId)) {
@@ -421,7 +426,6 @@ public class MesosNimbus implements INimbus {
               if (!toLaunch.containsKey(id)) {
                 toLaunch.put(id, new ArrayList<LaunchTask>());
               }
-              TopologyDetails details = topologies.getById(topologyId);
               double workerCpu = MesosCommon.topologyWorkerCpu(_conf, details);
               double workerMem = MesosCommon.topologyWorkerMem(_conf, details);
               double executorCpu = MesosCommon.executorCpu(_conf);
@@ -433,7 +437,7 @@ public class MesosNimbus implements INimbus {
 
               Map executorData = new HashMap();
               executorData.put(MesosCommon.SUPERVISOR_ID, MesosCommon.supervisorId(slot.getNodeId(), details.getId()));
-              executorData.put(MesosCommon.ASSIGNMENT_ID, slot.getNodeId());
+              executorData.put(MesosCommon.ASSIGNMENT_ID, workerprefix + slot.getNodeId());
 
               // Determine roles for cpu, mem, ports
               String cpuRole = null;

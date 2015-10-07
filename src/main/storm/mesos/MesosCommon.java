@@ -31,6 +31,7 @@ public class MesosCommon {
   public static final String EXECUTOR_MEM_CONF = "topology.mesos.executor.mem.mb";
   public static final String SUICIDE_CONF = "mesos.supervisor.suicide.inactive.timeout.secs";
   public static final String AUTO_START_LOGVIEWER_CONF = "supervisor.autostart.logviewer";
+  public static final String WORKER_NAME_PREFIX = "topology.mesos.worker.prefix";
 
   public static final double DEFAULT_CPU = 1;
   public static final double DEFAULT_MEM_MB = 1000;
@@ -39,6 +40,22 @@ public class MesosCommon {
   public static final String SUPERVISOR_ID = "supervisorid";
   public static final String ASSIGNMENT_ID = "assignmentid";
 
+  
+  public static String ipAddressFromAssignmentId(String assignmentId) {
+    int last = assignmentId.lastIndexOf("-");
+    String ip = assignmentId.substring(last + 1);
+    LOG.debug("IPAddress: " + ip);
+    return ip;
+  }
+  
+  public static String getWorkerPrefix(Map conf, TopologyDetails info) {
+    conf = getFullTopologyConfig(conf, info);
+    String prefix = (String) conf.get(WORKER_NAME_PREFIX);
+    if (prefix == null)
+        prefix = "";
+    return prefix + info.getName() + ".worker-";
+  }
+  
   public static String taskId(String nodeid, int port) {
     return nodeid + "-" + port;
   }
