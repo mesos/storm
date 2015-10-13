@@ -63,7 +63,7 @@ function package {(
   # copies storm-mesos jar over
   cp target/*.jar $stormDir/lib/
   cp bin/storm-mesos $stormDir/bin/
-  chmod 755 _release/storm/bin/*
+  chmod 755 $stormDir/bin/*
   mkdir -p $stormDir/native
   cp storm.yaml $stormDir/conf/storm.yaml
 
