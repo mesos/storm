@@ -42,18 +42,18 @@ public class MesosCommon {
 
   
   public static String ipAddressFromAssignmentId(String assignmentId) {
-        int last = assignmentId.lastIndexOf("-");
-        String ip = assignmentId.substring(last + 1);
-        LOG.info("IPAddress: " + ip);
-        return ip;
+    int last = assignmentId.lastIndexOf("-");
+    String ip = assignmentId.substring(last + 1);
+    LOG.debug("IPAddress: " + ip);
+    return ip;
   }
   
   public static String getWorkerPrefix(Map conf, TopologyDetails info) {
-        conf = getFullTopologyConfig(conf, info);
-        String prefix = (String) conf.get(WORKER_NAME_PREFIX);
-        if (prefix == null)
-            prefix = "";
-        return prefix + info.getName() + ".worker-";
+    conf = getFullTopologyConfig(conf, info);
+    String prefix = (String) conf.get(WORKER_NAME_PREFIX);
+    if (prefix == null)
+        prefix = "";
+    return prefix + info.getName() + ".worker-";
   }
   
   public static String taskId(String nodeid, int port) {
