@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.apache.mesos</groupId>
     <artifactId>storm-mesos</artifactId>
-    <version>0.9.4</version>
+    <version>0.9.5</version>
     <name>storm-mesos</name>
     <description>Storm integration with the Mesos cluster manager</description>
     <scm>
@@ -93,7 +93,7 @@
       <dependency>
         <groupId>org.apache.mesos</groupId>
         <artifactId>mesos</artifactId>
-        <version>0.22.0</version>
+        <version>0.25.0</version>
       </dependency>
       <dependency>
         <groupId>com.google.protobuf</groupId>

@@ -1,7 +1,7 @@
 #
 # Dockerfile for Storm Mesos framework
 #
-FROM mesosphere/mesos:0.22.1-1.0.ubuntu1404
+FROM mesosphere/mesos:0.25.0-0.2.70.ubuntu1404
 MAINTAINER Timothy Chen <tnachen@gmail.com>
 
 # build packages
@@ -24,9 +24,9 @@ ENV JAVA_HOME /usr/lib/jvm/java-8-oracle
 ENV MESOS_NATIVE_JAVA_LIBRARY /usr/lib/libmesos.so
 
 # copy storm-mesos into /opt
-ADD storm-mesos-0.9.4.tgz /opt
-RUN ln -s /opt/apache-storm-0.9.4 /opt/storm && \
-  find /opt/apache-storm-0.9.4 -type d -exec chmod 755 {} \;
+ADD storm-mesos-0.9.5.tgz /opt
+RUN ln -s /opt/apache-storm-0.9.5 /opt/storm && \
+  find /opt/apache-storm-0.9.5 -type d -exec chmod 755 {} \;
 
 #setup storm user+group+directories
 ENV STORM_HOME /opt/storm
