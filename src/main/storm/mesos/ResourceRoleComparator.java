@@ -15,10 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package storm.mesos.logviewer;
+package storm.mesos;
 
-public interface ILogController {
-    void start();
-    void stop();
-    boolean exists();
+import org.apache.mesos.Protos.*;
+
+import java.util.Comparator;
+
+public class ResourceRoleComparator implements Comparator<Resource> {
+  @Override
+  public int compare(Resource left, Resource right) {
+    if (left.getRole().equals(right.getRole())) {
+      return 0;
+    } else if (left.getRole().equals("*")) {
+      return 1;
+    }
+    return -1;
+  }
 }

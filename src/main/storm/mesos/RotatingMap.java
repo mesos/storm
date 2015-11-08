@@ -149,7 +149,7 @@ public class RotatingMap<K, V> {
     }
   }
 
-  public static interface ExpiredCallback<K, V> {
-    public void expire(K key, V val);
+  public interface ExpiredCallback<K, V> {
+    void expire(K key, V val);
   }
 }

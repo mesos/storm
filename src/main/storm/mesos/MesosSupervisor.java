@@ -25,9 +25,6 @@ import org.apache.mesos.ExecutorDriver;
 import org.apache.mesos.MesosExecutorDriver;
 import org.apache.mesos.Protos.*;
 import org.json.simple.JSONValue;
-
-import com.google.common.base.Optional;
-
 import storm.mesos.logviewer.ILogController;
 import storm.mesos.logviewer.LogViewerController;
 
@@ -56,8 +53,8 @@ public class MesosSupervisor implements ISupervisor {
 
   @Override
   public void assigned(Collection<Integer> ports) {
-    if (ports == null) ports = new HashSet<Integer>();
-    _myassigned.set(new HashSet<Integer>(ports));
+    if (ports == null) ports = new HashSet<>();
+    _myassigned.set(new HashSet<>(ports));
   }
 
   @Override
@@ -74,13 +71,13 @@ public class MesosSupervisor implements ISupervisor {
     _conf = conf;
     try {
       _executor.waitUntilRegistered();
-      
+
       if (startLogViewer(conf)) {
         LOG.info("Starting logviewer...");
-        ILogController logController = new LogViewerController();
+        ILogController logController = new LogViewerController(conf);
         logController.start();
       }
-      
+
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -129,11 +126,15 @@ public class MesosSupervisor implements ISupervisor {
     _driver.sendStatusUpdate(status);
   }
 
+  protected boolean startLogViewer(Map conf) {
+    return MesosCommon.startLogViewer(conf);
+  }
+
   class StormExecutor implements Executor {
     private CountDownLatch _registeredLatch = new CountDownLatch(1);
 
     public void waitUntilRegistered() throws InterruptedException {
-        _registeredLatch.await();
+      _registeredLatch.await();
     }
 
     @Override
@@ -194,10 +195,6 @@ public class MesosSupervisor implements ISupervisor {
 
   }
 
-  protected boolean startLogViewer(Map conf) {
-     return Optional.fromNullable((Boolean) conf.get(MesosCommon.AUTO_START_LOGVIEWER_CONF)).or(true);
-  }
-  
   public class SuicideDetector extends Thread {
     long _lastTime = System.currentTimeMillis();
     int _timeoutSecs;

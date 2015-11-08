@@ -1,59 +1,55 @@
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package storm.mesos.logviewer;
-
-import java.net.InetAddress;
-import java.net.Socket;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 
-import com.google.common.base.Optional;
+import java.net.InetAddress;
+import java.net.Socket;
 
 public class SocketUrlDetection implements IUrlDetection {
-    public static final int DEFAULT_PORT = 8000;
-    protected Optional<Integer> port;
-    private static final Logger LOG = Logger.getLogger(SocketUrlDetection.class);
-    
-    public SocketUrlDetection() {
-        setPort(Optional.of(DEFAULT_PORT));
+  private static final Logger LOG = Logger.getLogger(SocketUrlDetection.class);
+  protected Integer port;
+
+  public SocketUrlDetection(Integer port) {
+    this.port = port;
+  }
+
+  @Override
+  public boolean isReachable() {
+    Socket socket = null;
+    boolean reachable = false;
+    try {
+      LOG.info("Checking host " + InetAddress.getLocalHost() + " and port " + getPort());
+
+      socket = new Socket(InetAddress.getLocalHost(), getPort());
+      reachable = true;
+    } catch (Exception e) {
+      // don't care.
+    } finally {
+      IOUtils.closeQuietly(socket);
     }
-    
-    public SocketUrlDetection(int port) {
-        setPort(Optional.of(port));
-    }
-    
-    public SocketUrlDetection(Optional<Integer> port) {
-        setPort(port);
-    }
-    
-    @Override
-    public boolean isReachable() {
-        Socket socket = null;
-        boolean reachable = false;
-        try {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Checking host " + InetAddress.getLocalHost() + " and port " + getPort());
-            }
-            
-            if (port.isPresent()) {
-                socket = new Socket(InetAddress.getLocalHost(), getPort().get());
-                reachable = true;
-            }
-        } catch (Exception e) {
-            // don't care.
-        } finally {
-            IOUtils.closeQuietly(socket);
-        }
-        return reachable;
-    }
-    
-    @SuppressWarnings({ "rawtypes", "unchecked" })
-    @Override
-    public void setPort(Optional port) {
-        this.port = (Optional<Integer>) port;
-    }
-    
-    @Override
-    public Optional<Integer> getPort() {
-        return port;
-    }
+    return reachable;
+  }
+
+  @Override
+  public Integer getPort() {
+    return port;
+  }
 }
