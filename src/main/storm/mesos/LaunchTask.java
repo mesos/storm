@@ -15,10 +15,24 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package storm.mesos.logviewer;
+package storm.mesos;
 
-public interface ILogController {
-    void start();
-    void stop();
-    boolean exists();
+import org.apache.mesos.Protos;
+
+import static storm.mesos.PrettyProtobuf.offerToString;
+import static storm.mesos.PrettyProtobuf.taskInfoToString;
+
+class LaunchTask {
+  public final Protos.TaskInfo task;
+  public final Protos.Offer offer;
+
+  public LaunchTask(final Protos.TaskInfo task, final Protos.Offer offer) {
+    this.task = task;
+    this.offer = offer;
+  }
+
+  @Override
+  public String toString() {
+    return "Offer: " + offerToString(offer) + " TaskInfo: " + taskInfoToString(task);
+  }
 }

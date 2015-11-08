@@ -15,10 +15,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package storm.mesos.logviewer;
+package storm.mesos;
 
-public interface ILogController {
-    void start();
-    void stop();
-    boolean exists();
+import org.apache.commons.lang3.builder.ToStringBuilder;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class OfferResources {
+  int cpuSlots = 0;
+  int memSlots = 0;
+  List<Integer> ports = new ArrayList<>();
+
+  @Override
+  public String toString() {
+    return ToStringBuilder.reflectionToString(this);
+  }
 }
