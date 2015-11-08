@@ -18,6 +18,7 @@
 package storm.mesos;
 
 import backtype.storm.scheduler.TopologyDetails;
+import com.google.common.base.Optional;
 import org.apache.log4j.Logger;
 
 import java.util.*;
@@ -32,8 +33,10 @@ public class MesosCommon {
   public static final String SUICIDE_CONF = "mesos.supervisor.suicide.inactive.timeout.secs";
   public static final String AUTO_START_LOGVIEWER_CONF = "supervisor.autostart.logviewer";
 
-  public static final double DEFAULT_CPU = 1;
-  public static final double DEFAULT_MEM_MB = 1000;
+  public static final double DEFAULT_WORKER_CPU = 1;
+  public static final double DEFAULT_WORKER_MEM_MB = 1000;
+  public static final double DEFAULT_EXECUTOR_CPU = 0.1;
+  public static final double DEFAULT_EXECUTOR_MEM_MB = 200;
   public static final int DEFAULT_SUICIDE_TIMEOUT_SECS = 120;
 
   public static final String SUPERVISOR_ID = "supervisorid";
@@ -45,6 +48,10 @@ public class MesosCommon {
 
   public static String supervisorId(String nodeid, String topologyId) {
     return nodeid + "-" + topologyId;
+  }
+
+  public static boolean startLogViewer(Map conf) {
+    return Optional.fromNullable((Boolean) conf.get(AUTO_START_LOGVIEWER_CONF)).or(true);
   }
 
   public static int portFromTaskId(String taskId) {
@@ -76,7 +83,7 @@ public class MesosCommon {
       cpuObj = null;
     }
     if (cpuObj == null) {
-        return DEFAULT_CPU;
+        return DEFAULT_WORKER_CPU;
     } else {
         return ((Number) cpuObj).doubleValue();
     }
@@ -90,7 +97,7 @@ public class MesosCommon {
       memObj = null;
     }
     if (memObj == null) { 
-        return DEFAULT_MEM_MB;
+        return DEFAULT_WORKER_MEM_MB;
     } else {
         return ((Number) memObj).doubleValue();
     }
@@ -103,7 +110,7 @@ public class MesosCommon {
       cpuObj = null;
     }
     if (cpuObj == null) {
-        return DEFAULT_CPU;
+        return DEFAULT_EXECUTOR_CPU;
     } else {
         return ((Number) cpuObj).doubleValue();
     }
@@ -116,7 +123,7 @@ public class MesosCommon {
       memObj = null;
     }
     if (memObj == null) {
-        return DEFAULT_MEM_MB;
+        return DEFAULT_EXECUTOR_MEM_MB;
     } else {
         return ((Number) memObj).doubleValue();
     }

@@ -9,7 +9,7 @@ STORM_CMD = STORM_PATH + "/storm"
 def nimbus():
   os.chdir(STORM_PATH + "/..")
   os.system(STORM_CMD + " nimbus storm.mesos.MesosNimbus")
-  
+
 COMMANDS = {"nimbus": nimbus}
 
 
@@ -17,6 +17,6 @@ def main():
     COMMAND = sys.argv[1]
     ARGS = sys.argv[2:]
     (COMMANDS.get(COMMAND))(*ARGS)
-    
+
 if __name__ == "__main__":
     main()
