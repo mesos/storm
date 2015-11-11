@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * <p/>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p/>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -401,9 +401,9 @@ public class MesosNimbus implements INimbus {
           r.getName().equals(name)) {
         if (r.getScalar().getValue() > valueNeeded) {
           resources.add(
-            r.toBuilder()
-              .setScalar(Scalar.newBuilder().setValue(valueNeeded))
-              .build()
+              r.toBuilder()
+                  .setScalar(Scalar.newBuilder().setValue(valueNeeded))
+                  .build()
           );
           return resources;
         } else if (r.getScalar().getValue() == valueNeeded) {
@@ -423,8 +423,8 @@ public class MesosNimbus implements INimbus {
   }
 
   protected List<Resource> subtractResourcesScalar(final List<Resource> offerResources,
-                                              final double value,
-                                              final String name) {
+                                                   final double value,
+                                                   final String name) {
     List<Resource> resources = new ArrayList<>();
     double valueNeeded = value;
     for (Resource r : offerResources) {
@@ -696,8 +696,8 @@ public class MesosNimbus implements INimbus {
                   .addUris(URI.newBuilder().setValue(configUri))
                   .setValue(
                       "export MESOS_NATIVE_JAVA_LIBRARY=" + javaLibPath +
-                      " && /bin/cp $MESOS_SANDBOX/storm.yaml conf && /usr/bin/python bin/storm " +
-                      "supervisor storm.mesos.MesosSupervisor -c storm.log.dir=$MESOS_SANDBOX/logs -c nimbus.host="
+                          " && /bin/cp $MESOS_SANDBOX/storm.yaml conf && /usr/bin/python bin/storm " +
+                          "supervisor storm.mesos.MesosSupervisor -c storm.log.dir=$MESOS_SANDBOX/logs -c nimbus.host="
                           + _configUrl.getHost() + extraConfig))
               .setContainer(
                   ContainerInfo.newBuilder()
@@ -710,7 +710,7 @@ public class MesosNimbus implements INimbus {
                               .build()
                       )
                       .build()
-              );
+            );
         } else {
           executorInfoBuilder
               .setCommand(CommandInfo.newBuilder()
