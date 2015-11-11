@@ -520,7 +520,7 @@ public class MesosNimbusTest {
 
     assertEquals(
         buildScalarResource("cpus", 1.0),
-        launchList.get(offerId).get(0).task.getResources(0)
+        launchList.get(offerId).get(0).getTask().getResources(0)
     );
 
     assertEquals(0, offers.get(offerId).getResourcesCount());
