@@ -570,8 +570,8 @@ public class MesosNimbus implements INimbus {
 
       LOG.info("Launching tasks for offerId: " + id.getValue() + ":" + launchTaskListToString(tasks));
       for (LaunchTask t : tasks) {
-        launchList.add(t.task);
-        _usedOffers.put(t.task.getTaskId(), t.offer);
+        launchList.add(t.getTask());
+        _usedOffers.put(t.getTask().getTaskId(), t.getOffer());
       }
 
       List<OfferID> launchOffer = new ArrayList<>();

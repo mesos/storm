@@ -23,8 +23,16 @@ import static storm.mesos.PrettyProtobuf.offerToString;
 import static storm.mesos.PrettyProtobuf.taskInfoToString;
 
 class LaunchTask {
-  public final Protos.TaskInfo task;
-  public final Protos.Offer offer;
+  public Protos.TaskInfo getTask() {
+    return task;
+  }
+
+  public Protos.Offer getOffer() {
+    return offer;
+  }
+
+  private final Protos.TaskInfo task;
+  private final Protos.Offer offer;
 
   public LaunchTask(final Protos.TaskInfo task, final Protos.Offer offer) {
     this.task = task;
