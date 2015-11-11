@@ -109,7 +109,7 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 * `mesos.framework.checkpoint`: Enabled framework checkpoint or not. Defaults to false.
 * `mesos.offer.lru.cache.size`: LRU cache size. Defaults to "1000".
 * `mesos.offer.filter.seconds`: Number of seconds to filter unused Mesos offers. Defaults to "120".
-* `mesos.offer.expiry.multiplier`: Offer expiry multiplier for `nimbus.monitor.freq.secs`. Defaults to "2500".
+* `mesos.offer.expiry.multiplier`: Offer expiry multiplier for `nimbus.monitor.freq.secs`. Defaults to "2.5".
 * `mesos.local.file.server.port`: Port for the local file server to bind to. Defaults to a random port.
 * `mesos.framework.name`: Framework name. Defaults to "Storm!!!".
 * `mesos.framework.principal`: Framework principal to use to register with Mesos

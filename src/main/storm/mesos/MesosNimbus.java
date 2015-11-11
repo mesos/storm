@@ -161,12 +161,12 @@ public class MesosNimbus implements INimbus {
   public void doRegistration(final SchedulerDriver driver, Protos.FrameworkID id) {
     _driver = driver;
     try {
-      _state.put(MesosNimbus.FRAMEWORK_ID, id.getValue());
+      _state.put(FRAMEWORK_ID, id.getValue());
     } catch (IOException e) {
-      MesosNimbus.LOG.error("Halting process...", e);
+      LOG.error("Halting process...", e);
       Runtime.getRuntime().halt(1);
     }
-    Number filterSeconds = (Number) _conf.get(MesosNimbus.CONF_MESOS_OFFER_FILTER_SECONDS);
+    Number filterSeconds = (Number) _conf.get(CONF_MESOS_OFFER_FILTER_SECONDS);
     if (filterSeconds == null) filterSeconds = 120;
     final Protos.Filters filters = Protos.Filters.newBuilder()
         .setRefuseSeconds(filterSeconds.intValue())
@@ -183,7 +183,7 @@ public class MesosNimbus implements INimbus {
         }
     );
 
-    Number lruCacheSize = (Number) _conf.get(MesosNimbus.CONF_MESOS_OFFER_LRU_CACHE_SIZE);
+    Number lruCacheSize = (Number) _conf.get(CONF_MESOS_OFFER_LRU_CACHE_SIZE);
     if (lruCacheSize == null) lruCacheSize = 1000;
     final int intLruCacheSize = lruCacheSize.intValue();
     _usedOffers = Collections.synchronizedMap(new LinkedHashMap<Protos.TaskID, Protos.Offer>(intLruCacheSize + 1, .75F, true) {
@@ -195,8 +195,8 @@ public class MesosNimbus implements INimbus {
 
     Number offerExpired = (Number) _conf.get(Config.NIMBUS_MONITOR_FREQ_SECS);
     if (offerExpired == null) offerExpired = 60;
-    Number expiryMultiplier = (Number) _conf.get(MesosNimbus.CONF_MESOS_OFFER_EXPIRY_MULTIPLIER);
-    if (expiryMultiplier == null) expiryMultiplier = 2500;
+    Number expiryMultiplier = (Number) _conf.get(CONF_MESOS_OFFER_EXPIRY_MULTIPLIER);
+    if (expiryMultiplier == null) expiryMultiplier = 2.5;
     _timer.scheduleAtFixedRate(new TimerTask() {
       @Override
       public void run() {
@@ -205,11 +205,11 @@ public class MesosNimbus implements INimbus {
             _offers.rotate();
           }
         } catch (Throwable t) {
-          MesosNimbus.LOG.error("Received fatal error Halting process...", t);
+          LOG.error("Received fatal error Halting process...", t);
           Runtime.getRuntime().halt(2);
         }
       }
-    }, 0, expiryMultiplier.intValue() * offerExpired.intValue());
+    }, 0, Math.round(1000 * expiryMultiplier.doubleValue() * offerExpired.intValue()));
   }
 
   public void shutdown() throws Exception {
@@ -229,12 +229,12 @@ public class MesosNimbus implements INimbus {
               offer.getHostname() + ", offerId: " + offer.getId().getValue());
           _offers.put(offer.getId(), offer);
         } else {
-          MesosNimbus.LOG.debug("resourceOffers: Declining offer from host: " +
+          LOG.debug("resourceOffers: Declining offer from host: " +
               offer.getHostname() + ", offerId: " + offer.getId().getValue());
           driver.declineOffer(offer.getId());
         }
       }
-      MesosNimbus.LOG.debug("resourceOffers: After processing offers, now have " +
+      LOG.debug("resourceOffers: After processing offers, now have " +
           _offers.size() + " offers buffered:" + offerMapToString(_offers));
     }
   }
