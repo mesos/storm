@@ -42,6 +42,7 @@ public class MesosNimbusTest {
         .addAllResources(
             Arrays.asList(
                 buildScalarResource("cpus", cpus),
+                buildScalarResourceWithReservation("cpus", 1.0, "dynamicallyReserved"),
                 buildScalarResource("mem", mem)
             )
         )
@@ -57,6 +58,7 @@ public class MesosNimbusTest {
         .addAllResources(
             Arrays.asList(
                 buildScalarResource("cpus", cpus),
+                buildScalarResourceWithReservation("cpus", 1.0, "dynamicallyReserved"),
                 buildScalarResource("mem", mem),
                 buildRangeResource("ports", portBegin, portEnd)
             )
@@ -73,6 +75,7 @@ public class MesosNimbusTest {
         .addAllResources(
             Arrays.asList(
                 buildScalarResource("cpus", cpus),
+                buildScalarResourceWithReservation("cpus", 1.0, "dynamicallyReserved"),
                 buildScalarResource("mem", mem),
                 buildScalarResourceWithRole("cpus", reservedCpu, "reserved"),
                 buildScalarResourceWithRole("mem", reservedMem, "reserved")
@@ -277,6 +280,22 @@ public class MesosNimbusTest {
             .build())
         .setName(name)
         .setRole(role)
+        .build();
+  }
+
+  private Resource buildScalarResourceWithReservation(String name, double value, String role) {
+    return Resource.newBuilder()
+        .setType(Value.Type.SCALAR)
+        .setScalar(Value.Scalar.newBuilder()
+            .setValue(value)
+            .build())
+        .setName(name)
+        .setRole(role)
+        .setReservation(
+            Resource.ReservationInfo.newBuilder()
+                .setPrincipal("derp")
+                .build()
+        )
         .build();
   }
 
