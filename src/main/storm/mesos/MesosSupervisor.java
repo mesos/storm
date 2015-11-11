@@ -25,7 +25,6 @@ import org.apache.mesos.ExecutorDriver;
 import org.apache.mesos.MesosExecutorDriver;
 import org.apache.mesos.Protos.*;
 import org.json.simple.JSONValue;
-import storm.mesos.logviewer.ILogController;
 import storm.mesos.logviewer.LogViewerController;
 
 import java.io.IOException;
@@ -74,7 +73,7 @@ public class MesosSupervisor implements ISupervisor {
 
       if (startLogViewer(conf)) {
         LOG.info("Starting logviewer...");
-        ILogController logController = new LogViewerController(conf);
+        LogViewerController logController = new LogViewerController(conf);
         logController.start();
       }
 

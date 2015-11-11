@@ -26,10 +26,10 @@ import java.lang.ProcessBuilder.Redirect;
 import java.nio.file.Paths;
 import java.util.Map;
 
-public class LogViewerController implements ILogController {
+public class LogViewerController {
   private static final Logger LOG = Logger.getLogger(LogViewerController.class);
   protected Process process;
-  protected IUrlDetection urlDetector;
+  protected SocketUrlDetection urlDetector;
   protected Integer port;
 
   public LogViewerController(Map conf) {
@@ -46,7 +46,6 @@ public class LogViewerController implements ILogController {
    * see if an existing logviewer (or process) is on the same port and report
    * and error if so.
    */
-  @Override
   public void start() {
     try {
       if (!exists()) {
@@ -59,21 +58,19 @@ public class LogViewerController implements ILogController {
     }
   }
 
-  @Override
   public void stop() {
     getProcess().destroy();
   }
 
-  @Override
   public boolean exists() {
     return getUrlDetector().isReachable();
   }
 
-  public IUrlDetection getUrlDetector() {
+  public SocketUrlDetection getUrlDetector() {
     return urlDetector;
   }
 
-  public void setUrlDetector(IUrlDetection urlDetector) {
+  public void setUrlDetector(SocketUrlDetection urlDetector) {
     this.urlDetector = urlDetector;
   }
 
