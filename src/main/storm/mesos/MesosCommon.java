@@ -44,32 +44,35 @@ public class MesosCommon {
   public static final String SUPERVISOR_ID = "supervisorid";
   public static final String ASSIGNMENT_ID = "assignmentid";
   public static final String DEFAULT_DELIMITER = "_";
-  
+
   public static String hostFromAssignmentId(String assignmentId, String delimiter) {
-    int last = assignmentId.lastIndexOf(delimiter);
+    final int last = assignmentId.lastIndexOf(delimiter);
     String host = assignmentId.substring(last + delimiter.length());
-    LOG.debug("AssignMentId: " + assignmentId + " Host: " + host);
+    LOG.debug("assignmentId=" + assignmentId + " host=" + host);
     return host;
   }
-  
+
   public static String getWorkerPrefix(Map conf, TopologyDetails info) {
-    conf = getFullTopologyConfig(conf, info);
-    String prefix = (String) conf.get(WORKER_NAME_PREFIX);
-    String delimiter = (String) conf.get(WORKER_NAME_PREFIX_DELIMITER);
-    if (prefix == null)
+    Map topologyConf = getFullTopologyConfig(conf, info);
+    String prefix = (String) topologyConf.get(WORKER_NAME_PREFIX);
+    String delimiter = (String) topologyConf.get(WORKER_NAME_PREFIX_DELIMITER);
+    if (prefix == null) {
       prefix = "";
-    if (delimiter == null)
+    }
+    if (delimiter == null) {
       delimiter = DEFAULT_DELIMITER;
+    }
     return prefix + info.getName() + delimiter;
   }
-  
+
   public static String getWorkerPrefixDelimiter(Map conf) {
     String delimiter = (String) conf.get(WORKER_NAME_PREFIX_DELIMITER);
-    if (delimiter == null)
+    if (delimiter == null) {
       delimiter = DEFAULT_DELIMITER;
+    }
     return delimiter;
   }
-  
+
   public static String taskId(String nodeid, int port) {
     return nodeid + "-" + port;
   }
@@ -156,17 +159,5 @@ public class MesosCommon {
     } else {
       return ((Number) memObj).doubleValue();
     }
-  }
-
-  public static int numWorkers(Map conf, TopologyDetails info) {
-    return info.getNumWorkers();
-  }
-
-  public static List<String> getTopologyIds(Collection<TopologyDetails> details) {
-    List<String> ret = new ArrayList();
-    for (TopologyDetails d : details) {
-      ret.add(d.getId());
-    }
-    return ret;
   }
 }

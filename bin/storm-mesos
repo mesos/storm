@@ -6,9 +6,11 @@ import os
 STORM_PATH = "/".join(os.path.abspath(__file__).split("/")[0:-1])
 STORM_CMD = STORM_PATH + "/storm"
 
-def nimbus():
-  os.chdir(STORM_PATH + "/..")
-  os.system(STORM_CMD + " nimbus storm.mesos.MesosNimbus")
+
+def nimbus(*args):
+    os.chdir(STORM_PATH + "/..")
+    args = [STORM_CMD, "nimbus", "storm.mesos.MesosNimbus"] + list(args)
+    subprocess.call(args)
 
 COMMANDS = {"nimbus": nimbus}
 
