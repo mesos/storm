@@ -35,6 +35,9 @@ For example the following command will download the Storm release zip into the c
 ```bash
 bin/build-release.sh downloadStormRelease
 ```
+* `main`
+
+  Build a Storm package with the Mesos scheduler. The output of this command can be used as the package for `mesos.executor.uri`.
 
 * `clean`
 
@@ -88,7 +91,7 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 
 ## Mandatory configuration
 
-1. `mesos.executor.uri`: Once you fill in the configs and repack the distribution, you need to place the distribution somewhere where Mesos executors can find it. Typically this is on HDFS, and this config is the location of where you put the distibution.
+1. `mesos.executor.uri` or `mesos.container.docker.image`: Once you fill in the configs and repack the distribution, you need to place the distribution somewhere where Mesos executors can find it. Typically this is on HDFS, and this config is the location of where you put the distibution. Alternatively, you may use a Docker image in place of the executor URI. Take a look at the Dockerfile in the top-level of this repository for an example of how to use it.
 
 2. `mesos.master.url`: URL for the Mesos master.
 
@@ -99,17 +102,20 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 ## Optional configuration
 
 * `mesos.supervisor.suicide.inactive.timeout.secs`: Seconds to wait before supervisor to suicides if supervisor has no task to run. Defaults to "120".
-* `mesos.master.failover.timeout.secs`: Framework failover timeout in second. Defaults to "3600".
+* `mesos.master.failover.timeout.secs`: Framework failover timeout in second. Defaults to "24*7*3600".
 * `mesos.allowed.hosts`: Allowed hosts to run topology, which takes hostname list as a white list.
 * `mesos.disallowed.hosts`: Disallowed hosts to run topology, which takes hostname list as a back list.
 * `mesos.framework.role`: Framework role to use. Defaults to "*".
 * `mesos.framework.checkpoint`: Enabled framework checkpoint or not. Defaults to false.
 * `mesos.offer.lru.cache.size`: LRU cache size. Defaults to "1000".
+* `mesos.offer.filter.seconds`: Number of seconds to filter unused Mesos offers. Defaults to "120".
+* `mesos.offer.expiry.multiplier`: Offer expiry multiplier for `nimbus.monitor.freq.secs`. Defaults to "2500".
 * `mesos.local.file.server.port`: Port for the local file server to bind to. Defaults to a random port.
 * `mesos.framework.name`: Framework name. Defaults to "Storm!!!".
 * `mesos.framework.principal`: Framework principal to use to register with Mesos
 * `mesos.framework.secret.file`:  Location of file that contains the principal's secret. Secret cannot end with a NL.
-* `supervisor.autostart.logviewer`: Default is true, if not false please add 128M to topology.mesos.executor.mem.mb
+* `mesos.prefer.reserved.resources`: Prefer reserved resources over unreserved (i.e., `"*"` role). Defaults to "true".
+* `supervisor.autostart.logviewer`: Default is true, if not false please add 128M to `topology.mesos.executor.mem.mb`.
 
 ## Resource configuration
 
@@ -117,7 +123,7 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 * `topology.mesos.worker.mem.mb`: Memory (in MiB) per worker. Defaults to "1000".
   * `worker.childopts`: Use this for JVM opts.  You should have about 25% memory overhead for each task.  For
   example, with `-Xmx1000m`, you should set `topology.mesos.worker.mem.mb: 1250`
-* `topology.mesos.executor.cpu`: CPUs per executor. Defaults to "1".
-* `topology.mesos.executor.mem.mb`: Memory (in MiB) per executor. Defaults to "1000".
+* `topology.mesos.executor.cpu`: CPUs per executor. Defaults to "0.1".
+* `topology.mesos.executor.mem.mb`: Memory (in MiB) per executor. Defaults to "500".
   * `supervisor.childopts`: Use this for executor (aka supervisor) JVM opts.  You should have about 25% memory
   overhead for each task.  For example, with `-Xmx500m`, you should set `topology.mesos.executor.mem.mb: 625`

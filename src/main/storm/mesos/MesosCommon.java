@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * <p/>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p/>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,6 +18,7 @@
 package storm.mesos;
 
 import backtype.storm.scheduler.TopologyDetails;
+import com.google.common.base.Optional;
 import org.apache.log4j.Logger;
 
 import java.util.*;
@@ -32,8 +33,10 @@ public class MesosCommon {
   public static final String SUICIDE_CONF = "mesos.supervisor.suicide.inactive.timeout.secs";
   public static final String AUTO_START_LOGVIEWER_CONF = "supervisor.autostart.logviewer";
 
-  public static final double DEFAULT_CPU = 1;
-  public static final double DEFAULT_MEM_MB = 1000;
+  public static final double DEFAULT_WORKER_CPU = 1;
+  public static final double DEFAULT_WORKER_MEM_MB = 1000;
+  public static final double DEFAULT_EXECUTOR_CPU = 0.1;
+  public static final double DEFAULT_EXECUTOR_MEM_MB = 500;
   public static final int DEFAULT_SUICIDE_TIMEOUT_SECS = 120;
 
   public static final String SUPERVISOR_ID = "supervisorid";
@@ -47,6 +50,10 @@ public class MesosCommon {
     return nodeid + "-" + topologyId;
   }
 
+  public static boolean startLogViewer(Map conf) {
+    return Optional.fromNullable((Boolean) conf.get(AUTO_START_LOGVIEWER_CONF)).or(true);
+  }
+
   public static int portFromTaskId(String taskId) {
     int last = taskId.lastIndexOf("-");
     String port = taskId.substring(last + 1);
@@ -56,9 +63,9 @@ public class MesosCommon {
   public static int getSuicideTimeout(Map conf) {
     Number timeout = (Number) conf.get(SUICIDE_CONF);
     if (timeout == null) {
-        return DEFAULT_SUICIDE_TIMEOUT_SECS;
+      return DEFAULT_SUICIDE_TIMEOUT_SECS;
     } else {
-        return timeout.intValue();
+      return timeout.intValue();
     }
   }
 
@@ -76,9 +83,9 @@ public class MesosCommon {
       cpuObj = null;
     }
     if (cpuObj == null) {
-        return DEFAULT_CPU;
+      return DEFAULT_WORKER_CPU;
     } else {
-        return ((Number) cpuObj).doubleValue();
+      return ((Number) cpuObj).doubleValue();
     }
   }
 
@@ -89,10 +96,10 @@ public class MesosCommon {
       LOG.warn("Topology has invalid mesos mem configuration: " + memObj + " for topology " + info.getId());
       memObj = null;
     }
-    if (memObj == null) { 
-        return DEFAULT_MEM_MB;
+    if (memObj == null) {
+      return DEFAULT_WORKER_MEM_MB;
     } else {
-        return ((Number) memObj).doubleValue();
+      return ((Number) memObj).doubleValue();
     }
   }
 
@@ -103,9 +110,9 @@ public class MesosCommon {
       cpuObj = null;
     }
     if (cpuObj == null) {
-        return DEFAULT_CPU;
+      return DEFAULT_EXECUTOR_CPU;
     } else {
-        return ((Number) cpuObj).doubleValue();
+      return ((Number) cpuObj).doubleValue();
     }
   }
 
@@ -116,11 +123,12 @@ public class MesosCommon {
       memObj = null;
     }
     if (memObj == null) {
-        return DEFAULT_MEM_MB;
+      return DEFAULT_EXECUTOR_MEM_MB;
     } else {
-        return ((Number) memObj).doubleValue();
+      return ((Number) memObj).doubleValue();
     }
   }
+
   public static int numWorkers(Map conf, TopologyDetails info) {
     return info.getNumWorkers();
   }

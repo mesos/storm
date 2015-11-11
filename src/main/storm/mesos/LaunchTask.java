@@ -6,19 +6,41 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p/>
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package storm.mesos.logviewer;
+package storm.mesos;
 
-public interface IUrlDetection {
-  boolean isReachable();
+import org.apache.mesos.Protos;
 
-  Integer getPort();
+import static storm.mesos.PrettyProtobuf.offerToString;
+import static storm.mesos.PrettyProtobuf.taskInfoToString;
+
+class LaunchTask {
+  public Protos.TaskInfo getTask() {
+    return task;
+  }
+
+  public Protos.Offer getOffer() {
+    return offer;
+  }
+
+  private final Protos.TaskInfo task;
+  private final Protos.Offer offer;
+
+  public LaunchTask(final Protos.TaskInfo task, final Protos.Offer offer) {
+    this.task = task;
+    this.offer = offer;
+  }
+
+  @Override
+  public String toString() {
+    return "Offer: " + offerToString(offer) + " TaskInfo: " + taskInfoToString(task);
+  }
 }

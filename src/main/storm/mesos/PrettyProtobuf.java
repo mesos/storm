@@ -17,32 +17,16 @@
  */
 package storm.mesos;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
-import org.apache.mesos.Protos.ExecutorID;
-import org.apache.mesos.Protos.Offer;
-import org.apache.mesos.Protos.OfferID;
-import org.apache.mesos.Protos.Resource;
-import org.apache.mesos.Protos.SlaveID;
-import org.apache.mesos.Protos.TaskID;
-import org.apache.mesos.Protos.TaskInfo;
-import org.apache.mesos.Protos.TaskState;
-import org.apache.mesos.Protos.TaskStatus;
+import org.apache.mesos.Protos.*;
 import org.apache.mesos.Protos.Value.Range;
 import org.apache.mesos.Protos.Value.Ranges;
-import org.apache.mesos.Protos.Value.Scalar;
 import org.apache.mesos.Protos.Value.Set;
-import org.apache.mesos.Protos.Value.Text;
-import org.apache.mesos.Protos.Value.Type;
 import org.json.simple.JSONValue;
+
+import java.util.*;
 
 /**
  * This utility class provides methods to improve logging of Mesos protobuf objects.
@@ -148,30 +132,30 @@ public class PrettyProtobuf {
    */
   private static Function<Offer, String> offerToStringTransform =
       new Function<Offer, String>() {
-        public String apply(Offer o) { 
-            return offerToString(o); 
+        public String apply(Offer o) {
+          return offerToString(o);
         }
-    };
+      };
 
   /**
    * Wrapper around taskInfoToString which allows using gauva's transform utility.
    */
   private static Function<TaskInfo, String> taskInfoToStringTransform =
       new Function<TaskInfo, String>() {
-        public String apply(TaskInfo t) { 
-            return taskInfoToString(t); 
+        public String apply(TaskInfo t) {
+          return taskInfoToString(t);
         }
-    };
+      };
 
   /**
    * Wrapper around rangeToString which allows using gauva's transform utility.
    */
   private static Function<Range, String> rangeToStringTransform =
       new Function<Range, String>() {
-        public String apply(Range r) { 
-            return rangeToString(r); 
+        public String apply(Range r) {
+          return rangeToString(r);
         }
-    };
+      };
 
   /**
    * Create String representation of mesos protobuf Range type.

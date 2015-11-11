@@ -4,27 +4,36 @@
 mesos.master.url: "zk://localhost:2181/mesos"
 storm.zookeeper.servers:
     - "localhost"
-nimbus.host: "localhost"
 # -----------------------------------------------------------
 
 
-### If this is not false then you need to add about 128m of mem usage to executor to account for the logviewer
-#supervisor.autostart.logviewer: false
-topology.mesos.executor.mem.mb: 1128  ## default is 1000
+# Worker resources
+topology.mesos.worker.cpu: 1.0
+### Worker heap with 20% overhead
+topology.mesos.executor.mem.mb: 1250
+worker.childopts: "-Xmx1000m"
 
-# The default behavior is to launch the logvierwer unless autostart is false
-logviewer.port: 8000
+# Supervisor resources
+topology.mesos.executor.cpu: 0.1
+topology.mesos.executor.mem.mb: 500 # Supervisor memory, with 20% overhead
+supervisor.childopts: "-Xmx256m"
+
+# The default behavior is to launch the logviewer unless autostart is false.
+# If you enable the logviewer, you'll need to add memory overhead to the
+# executor for the logviewer.
 logviewer.childopts: "-Xmx128m"
 logviewer.cleanup.age.mins: 10080
 logviewer.appender.name: "A1"
-
-
-# You should not need to change anything below this line
-#--------------------------------------------------------
+supervisor.autostart.logviewer: true
 
 # Use the public Mesosphere Storm build
-# Please note that it won't work with other distributions
+# Please note that it won't work with other distributions.
+# You may want to make this empty if you use `mesos.container.docker.image` instead.
 mesos.executor.uri: "http://downloads.mesosphere.io/storm/storm-mesos-0.9.0.1.tgz"
+
+# Alternatively, use a Docker image instead of URI. If an image is specified,
+# Docker will be used instead of Mesos containers.
+# mesos.container.docker.image: brndnmtthws/storm
 
 # Use Netty to avoid ZMQ dependencies
 storm.messaging.transport: "backtype.storm.messaging.netty.Context"
@@ -34,7 +43,7 @@ storm.local.dir: "storm-local"
 # role must be one of the mesos-master's roles defined in the --roles flag
 #
 mesos.framework.role: "*"
-mesos.framework.checkpoint: false
+mesos.framework.checkpoint: true
 mesos.framework.name: "Storm"
 
 # For setting up the necessary mesos authentication see mesos authentication page
