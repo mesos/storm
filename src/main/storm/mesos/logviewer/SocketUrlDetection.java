@@ -23,7 +23,7 @@ import org.apache.log4j.Logger;
 import java.net.InetAddress;
 import java.net.Socket;
 
-public class SocketUrlDetection implements IUrlDetection {
+public class SocketUrlDetection {
   private static final Logger LOG = Logger.getLogger(SocketUrlDetection.class);
   protected Integer port;
 
@@ -31,7 +31,6 @@ public class SocketUrlDetection implements IUrlDetection {
     this.port = port;
   }
 
-  @Override
   public boolean isReachable() {
     Socket socket = null;
     boolean reachable = false;
@@ -48,7 +47,6 @@ public class SocketUrlDetection implements IUrlDetection {
     return reachable;
   }
 
-  @Override
   public Integer getPort() {
     return port;
   }
