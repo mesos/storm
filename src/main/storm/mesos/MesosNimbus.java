@@ -196,7 +196,7 @@ public class MesosNimbus implements INimbus {
     Number offerExpired = (Number) _conf.get(Config.NIMBUS_MONITOR_FREQ_SECS);
     if (offerExpired == null) offerExpired = 60;
     Number expiryMultiplier = (Number) _conf.get(MesosNimbus.CONF_MESOS_OFFER_EXPIRY_MULTIPLIER);
-    if (expiryMultiplier == null) expiryMultiplier = 2000;
+    if (expiryMultiplier == null) expiryMultiplier = 2500;
     _timer.scheduleAtFixedRate(new TimerTask() {
       @Override
       public void run() {

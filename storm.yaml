@@ -9,13 +9,13 @@ storm.zookeeper.servers:
 
 # Worker resources
 topology.mesos.worker.cpu: 1.0
-### Worker heap with 20% overhead
-topology.mesos.executor.mem.mb: 1250
+# Worker heap with 20% overhead
+topology.mesos.worker.mem.mb: 1200
 worker.childopts: "-Xmx1000m"
 
 # Supervisor resources
 topology.mesos.executor.cpu: 0.1
-topology.mesos.executor.mem.mb: 310 # Supervisor memory, with 20% overhead
+topology.mesos.executor.mem.mb: 500 # Supervisor memory, with 20% overhead
 supervisor.childopts: "-Xmx256m"
 
 # The default behavior is to launch the logviewer unless autostart is false.
@@ -24,7 +24,7 @@ supervisor.childopts: "-Xmx256m"
 logviewer.childopts: "-Xmx128m"
 logviewer.cleanup.age.mins: 10080
 logviewer.appender.name: "A1"
-supervisor.autostart.logviewer: false
+supervisor.autostart.logviewer: true
 
 # Use the public Mesosphere Storm build
 # Please note that it won't work with other distributions.

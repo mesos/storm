@@ -109,7 +109,7 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 * `mesos.framework.checkpoint`: Enabled framework checkpoint or not. Defaults to false.
 * `mesos.offer.lru.cache.size`: LRU cache size. Defaults to "1000".
 * `mesos.offer.filter.seconds`: Number of seconds to filter unused Mesos offers. Defaults to "120".
-* `mesos.offer.expiry.multiplier`: Offer expiry multiplier for `nimbus.monitor.freq.secs`. Defaults to "2000".
+* `mesos.offer.expiry.multiplier`: Offer expiry multiplier for `nimbus.monitor.freq.secs`. Defaults to "2500".
 * `mesos.local.file.server.port`: Port for the local file server to bind to. Defaults to a random port.
 * `mesos.framework.name`: Framework name. Defaults to "Storm!!!".
 * `mesos.framework.principal`: Framework principal to use to register with Mesos
@@ -121,9 +121,58 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 
 * `topology.mesos.worker.cpu`: CPUs per worker. Defaults to "1".
 * `topology.mesos.worker.mem.mb`: Memory (in MiB) per worker. Defaults to "1000".
-  * `worker.childopts`: Use this for JVM opts.  You should have about 25% memory overhead for each task.  For
-  example, with `-Xmx1000m`, you should set `topology.mesos.worker.mem.mb: 1250`
+  * `worker.childopts`: Use this for JVM opts.  You should have about 20% memory overhead for each task.  For
+    example, with `-Xmx1000m`, you should set `topology.mesos.worker.mem.mb: 1200`. By default this is platform
+    dependent.
 * `topology.mesos.executor.cpu`: CPUs per executor. Defaults to "0.1".
-* `topology.mesos.executor.mem.mb`: Memory (in MiB) per executor. Defaults to "600".
-  * `supervisor.childopts`: Use this for executor (aka supervisor) JVM opts.  You should have about 25% memory
-  overhead for each task.  For example, with `-Xmx500m`, you should set `topology.mesos.executor.mem.mb: 625`
+* `topology.mesos.executor.mem.mb`: Memory (in MiB) per executor. Defaults to "500".
+  * `supervisor.childopts`: Use this for executor (aka supervisor) JVM opts.  You should have about 20% memory
+    overhead for each task.  For example, with `-Xmx500m`, you should set `topology.mesos.executor.mem.mb: 625`. By
+    default this is platform dependent.
+
+## Running Storm on Marathon
+
+To get started quickly, you can run Storm on Mesos with Marathon and Docker, provided you have Mesos-DNS configured
+in your cluster. If you're not using Mesos-DNS, set the MESOS_MASTER_ZK environment variable to point to your
+ZooKeeper cluster. Included is a script (`bin/run-with-marathon.sh`) which sets the necessary config parameters,
+and starts the UI and Nimbus. Since Storm writes stateful data to disk, you may want to consider mounting an
+external volume for the `storm.local.dir` config param, and pinning Nimbus to a particular host. You can run this
+from Marathon, using the example app JSON below:
+
+```json
+{
+  "id": "storm-nimbus",
+  "cmd": "./bin/run-with-marathon.sh",
+  "cpus": 1.0,
+  "mem": 1024,
+  "ports": [0, 1],
+  "instances": 1,
+  "container": {
+    "type": "DOCKER",
+    "docker": {
+      "image": "brndnmtthws/storm",
+      "network": "HOST",
+      "forcePullImage":true
+    }
+  },
+  "healthChecks": [
+    {
+      "protocol": "HTTP",
+      "portIndex": 0,
+      "path": "/",
+      "gracePeriodSeconds": 120,
+      "intervalSeconds": 20,
+      "maxConsecutiveFailures": 3
+    }
+  ]
+}
+```
+## Running an example topology
+
+Once Nimbus is running, you can launch one of the `storm-starter` topologies. In order to submit the topology
+to Nimbus, you'll need to know the Thrift API port. In the Marathon example above, the port will be the second
+one assigned by Marathon. For example, if the second port is `32001`, run:
+
+```
+$ ./bin/storm jar -c nimbus.thrift.port=32001 examples/storm-starter/storm-starter-topologies-0.9.6.jar storm.starter.WordCountTopology word-count
+```
