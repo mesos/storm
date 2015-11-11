@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p/>
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,13 +25,13 @@ import com.google.protobuf.ByteString;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.mesos.MesosSchedulerDriver;
+import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.*;
 import org.apache.mesos.Protos.CommandInfo.URI;
 import org.apache.mesos.Protos.Value.Range;
 import org.apache.mesos.Protos.Value.Ranges;
 import org.apache.mesos.Protos.Value.Scalar;
 import org.apache.mesos.Protos.Value.Type;
-import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 import org.json.simple.JSONValue;
 
@@ -42,7 +42,6 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -69,10 +68,11 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_PREFER_RESERVED_RESOURCES = "mesos.prefer.reserved.resources";
   public static final String CONF_MESOS_CONTAINER_DOCKER_IMAGE = "mesos.container.docker.image";
 
-  public static final Logger LOG = Logger.getLogger(MesosNimbus.class);
+  private static final Logger LOG = Logger.getLogger(MesosNimbus.class);
 
-  private static final String FRAMEWORK_ID = "FRAMEWORK_ID";
+  public static final String FRAMEWORK_ID = "FRAMEWORK_ID";
   private final Object _offersLock = new Object();
+  protected java.net.URI _configUrl;
   LocalState _state;
   NimbusScheduler _scheduler;
   volatile SchedulerDriver _driver;
@@ -83,7 +83,6 @@ public class MesosNimbus implements INimbus {
   Optional<Integer> _localFileServerPort;
   private RotatingMap<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
-  protected java.net.URI _configUrl;
   private Map<TaskID, Offer> _usedOffers;
   private ScheduledExecutorService timerScheduler =
       Executors.newScheduledThreadPool(1);
@@ -153,9 +152,103 @@ public class MesosNimbus implements INimbus {
       _preferReservedResources = preferReservedResources;
     }
     _container = (String) conf.get(CONF_MESOS_CONTAINER_DOCKER_IMAGE);
-    _scheduler = new NimbusScheduler();
+    _scheduler = new NimbusScheduler(this);
     createLocalServerPort();
     setupHttpServer();
+  }
+
+
+  public void doRegistration(final SchedulerDriver driver, Protos.FrameworkID id) {
+    _driver = driver;
+    try {
+      _state.put(MesosNimbus.FRAMEWORK_ID, id.getValue());
+    } catch (IOException e) {
+      MesosNimbus.LOG.error("Halting process...", e);
+      Runtime.getRuntime().halt(1);
+    }
+    Number filterSeconds = (Number) _conf.get(MesosNimbus.CONF_MESOS_OFFER_FILTER_SECONDS);
+    if (filterSeconds == null) filterSeconds = 120;
+    final Protos.Filters filters = Protos.Filters.newBuilder()
+        .setRefuseSeconds(filterSeconds.intValue())
+        .build();
+    _offers = new RotatingMap<>(
+        new RotatingMap.ExpiredCallback<Protos.OfferID, Protos.Offer>() {
+          @Override
+          public void expire(Protos.OfferID key, Protos.Offer val) {
+            driver.declineOffer(
+                val.getId(),
+                filters
+            );
+          }
+        }
+    );
+
+    Number lruCacheSize = (Number) _conf.get(MesosNimbus.CONF_MESOS_OFFER_LRU_CACHE_SIZE);
+    if (lruCacheSize == null) lruCacheSize = 1000;
+    final int intLruCacheSize = lruCacheSize.intValue();
+    _usedOffers = Collections.synchronizedMap(new LinkedHashMap<Protos.TaskID, Protos.Offer>(intLruCacheSize + 1, .75F, true) {
+      // This method is called just after a new entry has been added
+      public boolean removeEldestEntry(Map.Entry eldest) {
+        return size() > intLruCacheSize;
+      }
+    });
+
+    Number offerExpired = (Number) _conf.get(Config.NIMBUS_MONITOR_FREQ_SECS);
+    if (offerExpired == null) offerExpired = 60;
+    Number expiryMultiplier = (Number) _conf.get(MesosNimbus.CONF_MESOS_OFFER_EXPIRY_MULTIPLIER);
+    if (expiryMultiplier == null) expiryMultiplier = 2000;
+    _timer.scheduleAtFixedRate(new TimerTask() {
+      @Override
+      public void run() {
+        try {
+          synchronized (_offersLock) {
+            _offers.rotate();
+          }
+        } catch (Throwable t) {
+          MesosNimbus.LOG.error("Received fatal error Halting process...", t);
+          Runtime.getRuntime().halt(2);
+        }
+      }
+    }, 0, expiryMultiplier.intValue() * offerExpired.intValue());
+  }
+
+  public void shutdown() throws Exception {
+    _httpServer.shutdown();
+  }
+
+  public void resourceOffers(SchedulerDriver driver, List<Protos.Offer> offers) {
+    synchronized (_offersLock) {
+      MesosNimbus.LOG.debug("resourceOffers: Currently have " + _offers.size() + " offers buffered" +
+          (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
+      for (Protos.Offer offer : offers) {
+        if (_offers != null && isHostAccepted(offer.getHostname())) {
+          MesosNimbus.LOG.debug("resourceOffers: Recording offer from host: " +
+              offer.getHostname() + ", offerId: " + offer.getId().getValue());
+          _offers.put(offer.getId(), offer);
+        } else {
+          MesosNimbus.LOG.debug("resourceOffers: Declining offer from host: " +
+              offer.getHostname() + ", offerId: " + offer.getId().getValue());
+          driver.declineOffer(offer.getId());
+        }
+      }
+      MesosNimbus.LOG.debug("resourceOffers: After processing offers, now have " +
+          _offers.size() + " offers buffered:" + offerMapToString(_offers));
+    }
+  }
+
+  public void offerRescinded(OfferID id) {
+    synchronized (_offersLock) {
+      _offers.remove(id);
+    }
+  }
+
+  public void taskLost(final TaskID taskId) {
+    timerScheduler.schedule(new Runnable() {
+      @Override
+      public void run() {
+        _usedOffers.remove(taskId);
+      }
+    }, MesosCommon.getSuicideTimeout(_conf), TimeUnit.SECONDS);
   }
 
   protected void createLocalServerPort() {
@@ -797,150 +890,4 @@ public class MesosNimbus implements INimbus {
     return credential;
   }
 
-  public class NimbusScheduler implements Scheduler {
-    private CountDownLatch _registeredLatch = new CountDownLatch(1);
-
-    public void waitUntilRegistered() throws InterruptedException {
-      _registeredLatch.await();
-    }
-
-    @Override
-    public void registered(final SchedulerDriver driver, FrameworkID id, MasterInfo masterInfo) {
-      _driver = driver;
-      try {
-        _state.put(FRAMEWORK_ID, id.getValue());
-      } catch (IOException e) {
-        LOG.error("Halting process...", e);
-        Runtime.getRuntime().halt(1);
-      }
-      Number filterSeconds = (Number) _conf.get(CONF_MESOS_OFFER_FILTER_SECONDS);
-      if (filterSeconds == null) filterSeconds = 120;
-      final Filters filters = Filters.newBuilder()
-          .setRefuseSeconds(filterSeconds.intValue())
-          .build();
-      _offers = new RotatingMap<>(
-          new RotatingMap.ExpiredCallback<OfferID, Offer>() {
-            @Override
-            public void expire(OfferID key, Offer val) {
-              driver.declineOffer(
-                  val.getId(),
-                  filters
-              );
-            }
-          }
-      );
-
-      Number lruCacheSize = (Number) _conf.get(CONF_MESOS_OFFER_LRU_CACHE_SIZE);
-      if (lruCacheSize == null) lruCacheSize = 1000;
-      final int intLruCacheSize = lruCacheSize.intValue();
-      _usedOffers = Collections.synchronizedMap(new LinkedHashMap<TaskID, Offer>(intLruCacheSize + 1, .75F, true) {
-        // This method is called just after a new entry has been added
-        public boolean removeEldestEntry(Map.Entry eldest) {
-          return size() > intLruCacheSize;
-        }
-      });
-
-      Number offerExpired = (Number) _conf.get(Config.NIMBUS_MONITOR_FREQ_SECS);
-      if (offerExpired == null) offerExpired = 60;
-      Number expiryMultiplier = (Number) _conf.get(CONF_MESOS_OFFER_EXPIRY_MULTIPLIER);
-      if (expiryMultiplier == null) expiryMultiplier = 2000;
-      _timer.scheduleAtFixedRate(new TimerTask() {
-        @Override
-        public void run() {
-          try {
-            synchronized (_offersLock) {
-              _offers.rotate();
-            }
-          } catch (Throwable t) {
-            LOG.error("Received fatal error Halting process...", t);
-            Runtime.getRuntime().halt(2);
-          }
-        }
-      }, 0, expiryMultiplier.intValue() * offerExpired.intValue());
-
-      // Completed registration, let anything waiting for us to do so continue
-      _registeredLatch.countDown();
-    }
-
-    @Override
-    public void reregistered(SchedulerDriver sd, MasterInfo info) {
-    }
-
-    @Override
-    public void disconnected(SchedulerDriver driver) {
-    }
-
-    @Override
-    public void error(SchedulerDriver driver, String msg) {
-      LOG.error("Received fatal error \nmsg:" + msg + "\nHalting process...");
-      try {
-        _httpServer.shutdown();
-      } catch (Exception e) {
-        // Swallow. Nothing we can do about it now.
-      }
-      Runtime.getRuntime().halt(2);
-    }
-
-    @Override
-    public void resourceOffers(SchedulerDriver driver, List<Offer> offers) {
-      synchronized (_offersLock) {
-        LOG.debug("resourceOffers: Currently have " + _offers.size() + " offers buffered" +
-            (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
-        for (Offer offer : offers) {
-          if (_offers != null && isHostAccepted(offer.getHostname())) {
-            LOG.debug("resourceOffers: Recording offer from host: " + offer.getHostname() + ", offerId: " + offer.getId().getValue());
-            _offers.put(offer.getId(), offer);
-          } else {
-            LOG.debug("resourceOffers: Declining offer from host: " + offer.getHostname() + ", offerId: " + offer.getId().getValue());
-            driver.declineOffer(offer.getId());
-          }
-        }
-        LOG.debug("resourceOffers: After processing offers, now have " + _offers.size() + " offers buffered:" + offerMapToString(_offers));
-      }
-    }
-
-    @Override
-    public void offerRescinded(SchedulerDriver driver, OfferID id) {
-      LOG.info("Offer rescinded. offerId: " + id.getValue());
-      synchronized (_offersLock) {
-        _offers.remove(id);
-      }
-    }
-
-    @Override
-    public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
-      LOG.debug("Received status update: " + taskStatusToString(status));
-      switch (status.getState()) {
-        case TASK_FINISHED:
-        case TASK_FAILED:
-        case TASK_KILLED:
-        case TASK_LOST:
-          final TaskID taskId = status.getTaskId();
-          timerScheduler.schedule(new Runnable() {
-            @Override
-            public void run() {
-              _usedOffers.remove(taskId);
-            }
-          }, MesosCommon.getSuicideTimeout(_conf), TimeUnit.SECONDS);
-          break;
-        default:
-          break;
-      }
-    }
-
-    @Override
-    public void frameworkMessage(SchedulerDriver driver, ExecutorID executorId, SlaveID slaveId, byte[] data) {
-    }
-
-    @Override
-    public void slaveLost(SchedulerDriver driver, SlaveID id) {
-      LOG.warn("Lost slave id: " + id.getValue());
-    }
-
-    @Override
-    public void executorLost(SchedulerDriver driver, ExecutorID executor, SlaveID slave, int status) {
-      LOG.warn("Mesos Executor lost: executor: " + executor.getValue() +
-          " slave: " + slave.getValue() + " status: " + status);
-    }
-  }
 }
