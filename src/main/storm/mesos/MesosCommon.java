@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * <p/>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p/>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -91,9 +91,9 @@ public class MesosCommon {
   public static int getSuicideTimeout(Map conf) {
     Number timeout = (Number) conf.get(SUICIDE_CONF);
     if (timeout == null) {
-        return DEFAULT_SUICIDE_TIMEOUT_SECS;
+      return DEFAULT_SUICIDE_TIMEOUT_SECS;
     } else {
-        return timeout.intValue();
+      return timeout.intValue();
     }
   }
 
@@ -112,9 +112,9 @@ public class MesosCommon {
     }
     LOG.info("CPUObj:" + cpuObj);
     if (cpuObj == null) {
-        return DEFAULT_WORKER_CPU;
+      return DEFAULT_WORKER_CPU;
     } else {
-        return ((Number) cpuObj).doubleValue();
+      return ((Number) cpuObj).doubleValue();
     }
   }
 
@@ -125,11 +125,10 @@ public class MesosCommon {
       LOG.warn("Topology has invalid mesos mem configuration: " + memObj + " for topology " + info.getId());
       memObj = null;
     }
-    LOG.info("MemObj:" + memObj  + " Conf: " + conf.toString());
-    if (memObj == null) { 
-        return DEFAULT_WORKER_MEM_MB;
+    if (memObj == null) {
+      return DEFAULT_WORKER_MEM_MB;
     } else {
-        return ((Number) memObj).doubleValue();
+      return ((Number) memObj).doubleValue();
     }
   }
 
@@ -140,9 +139,9 @@ public class MesosCommon {
       cpuObj = null;
     }
     if (cpuObj == null) {
-        return DEFAULT_EXECUTOR_CPU;
+      return DEFAULT_EXECUTOR_CPU;
     } else {
-        return ((Number) cpuObj).doubleValue();
+      return ((Number) cpuObj).doubleValue();
     }
   }
 
@@ -153,11 +152,12 @@ public class MesosCommon {
       memObj = null;
     }
     if (memObj == null) {
-        return DEFAULT_EXECUTOR_MEM_MB;
+      return DEFAULT_EXECUTOR_MEM_MB;
     } else {
-        return ((Number) memObj).doubleValue();
+      return ((Number) memObj).doubleValue();
     }
   }
+
   public static int numWorkers(Map conf, TopologyDetails info) {
     return info.getNumWorkers();
   }
