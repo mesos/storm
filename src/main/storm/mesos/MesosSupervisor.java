@@ -109,7 +109,7 @@ public class MesosSupervisor implements ISupervisor {
 
   @Override
   public String getAssignmentId() {
-      return MesosCommon.hostFromAssignmentId(_assignmentId, MesosCommon.getWorkerPrefixDelimiter(_conf));
+    return MesosCommon.hostFromAssignmentId(_assignmentId, MesosCommon.getWorkerPrefixDelimiter(_conf));
   }
 
   @Override
