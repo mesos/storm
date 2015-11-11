@@ -38,7 +38,7 @@ public class MesosCommon {
   public static final double DEFAULT_WORKER_CPU = 1;
   public static final double DEFAULT_WORKER_MEM_MB = 1000;
   public static final double DEFAULT_EXECUTOR_CPU = 0.1;
-  public static final double DEFAULT_EXECUTOR_MEM_MB = 200;
+  public static final double DEFAULT_EXECUTOR_MEM_MB = 500;
   public static final int DEFAULT_SUICIDE_TIMEOUT_SECS = 120;
 
   public static final String SUPERVISOR_ID = "supervisorid";
