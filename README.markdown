@@ -109,7 +109,7 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 * `mesos.framework.checkpoint`: Enabled framework checkpoint or not. Defaults to false.
 * `mesos.offer.lru.cache.size`: LRU cache size. Defaults to "1000".
 * `mesos.offer.filter.seconds`: Number of seconds to filter unused Mesos offers. Defaults to "120".
-* `mesos.offer.expiry.multiplier`: Offer expiry multiplier for `nimbus.monitor.freq.secs`. Defaults to "2000".
+* `mesos.offer.expiry.multiplier`: Offer expiry multiplier for `nimbus.monitor.freq.secs`. Defaults to "2500".
 * `mesos.local.file.server.port`: Port for the local file server to bind to. Defaults to a random port.
 * `mesos.framework.name`: Framework name. Defaults to "Storm!!!".
 * `mesos.framework.principal`: Framework principal to use to register with Mesos
@@ -124,6 +124,6 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
   * `worker.childopts`: Use this for JVM opts.  You should have about 25% memory overhead for each task.  For
   example, with `-Xmx1000m`, you should set `topology.mesos.worker.mem.mb: 1250`
 * `topology.mesos.executor.cpu`: CPUs per executor. Defaults to "0.1".
-* `topology.mesos.executor.mem.mb`: Memory (in MiB) per executor. Defaults to "600".
+* `topology.mesos.executor.mem.mb`: Memory (in MiB) per executor. Defaults to "500".
   * `supervisor.childopts`: Use this for executor (aka supervisor) JVM opts.  You should have about 25% memory
   overhead for each task.  For example, with `-Xmx500m`, you should set `topology.mesos.executor.mem.mb: 625`
