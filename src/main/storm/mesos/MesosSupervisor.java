@@ -16,7 +16,6 @@
  * limitations under the License.
  */
 package storm.mesos;
-
 import backtype.storm.scheduler.ISupervisor;
 import backtype.storm.utils.LocalState;
 import backtype.storm.utils.Utils;
@@ -48,7 +47,7 @@ public class MesosSupervisor implements ISupervisor {
   volatile ExecutorDriver _driver;
   StormExecutor _executor;
   LocalState _state;
-
+  Map _conf;
   AtomicReference<Set<Integer>> _myassigned = new AtomicReference<Set<Integer>>(new HashSet<Integer>());
 
   public static void main(String[] args) {
@@ -72,6 +71,7 @@ public class MesosSupervisor implements ISupervisor {
     _driver = new MesosExecutorDriver(_executor);
     _driver.start();
     LOG.info("Waiting for executor to initialize...");
+    _conf = conf;
     try {
       _executor.waitUntilRegistered();
       
@@ -112,7 +112,7 @@ public class MesosSupervisor implements ISupervisor {
 
   @Override
   public String getAssignmentId() {
-    return _assignmentId;
+      return MesosCommon.hostFromAssignmentId(_assignmentId, MesosCommon.getWorkerPrefixDelimiter(_conf));
   }
 
   @Override

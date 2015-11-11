@@ -38,6 +38,7 @@ import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 import org.json.simple.JSONValue;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -68,6 +69,7 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_CHECKPOINT = "mesos.framework.checkpoint";
   public static final String CONF_MESOS_OFFER_LRU_CACHE_SIZE = "mesos.offer.lru.cache.size";
   public static final String CONF_MESOS_LOCAL_FILE_SERVER_PORT = "mesos.local.file.server.port";
+  public static final String CONF_MESOS_LOCAL_FILE_SERVER_DIR = "mesos.local.file.server.dir";
   public static final String CONF_MESOS_FRAMEWORK_NAME = "mesos.framework.name";
 
   public static final Logger LOG = Logger.getLogger(MesosNimbus.class);
@@ -150,7 +152,12 @@ public class MesosNimbus implements INimbus {
 
   protected void setupHttpServer() throws Exception {
       _httpServer = new LocalFileServer();
-      _configUrl = _httpServer.serveDir("/conf", "conf", _localFileServerPort);
+      String dirname = (String) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_DIR);
+      if (dirname == null) {
+          dirname = "conf";
+      }
+      File dirpath = new File(dirname);
+      _configUrl = _httpServer.serveDir("/conf", dirpath.getCanonicalPath(), _localFileServerPort);
       
       LOG.info("Started HTTP server from which config for the MesosSupervisor's may be fetched. URL: " + _configUrl);
   }
@@ -406,8 +413,13 @@ public class MesosNimbus implements INimbus {
           boolean subtractedExecutorResources = false;
 
           for (WorkerSlot slot : workerSlots) {
+            TopologyDetails details = topologies.getById(topologyId);
+            String workerprefix = "";  
+            if (_conf.get(MesosCommon.WORKER_NAME_PREFIX) != null) {
+                workerprefix = MesosCommon.getWorkerPrefix(_conf, details);
+            }
             TaskID taskId = TaskID.newBuilder()
-                .setValue(MesosCommon.taskId(slot.getNodeId(), slot.getPort()))
+                .setValue(MesosCommon.taskId(workerprefix + slot.getNodeId(), slot.getPort()))
                 .build();
 
             if (id == null || offer == null && _usedOffers.containsKey(taskId)) {
@@ -421,7 +433,6 @@ public class MesosNimbus implements INimbus {
               if (!toLaunch.containsKey(id)) {
                 toLaunch.put(id, new ArrayList<LaunchTask>());
               }
-              TopologyDetails details = topologies.getById(topologyId);
               double workerCpu = MesosCommon.topologyWorkerCpu(_conf, details);
               double workerMem = MesosCommon.topologyWorkerMem(_conf, details);
               double executorCpu = MesosCommon.executorCpu(_conf);
@@ -433,7 +444,7 @@ public class MesosNimbus implements INimbus {
 
               Map executorData = new HashMap();
               executorData.put(MesosCommon.SUPERVISOR_ID, MesosCommon.supervisorId(slot.getNodeId(), details.getId()));
-              executorData.put(MesosCommon.ASSIGNMENT_ID, slot.getNodeId());
+              executorData.put(MesosCommon.ASSIGNMENT_ID, workerprefix + slot.getNodeId());
 
               // Determine roles for cpu, mem, ports
               String cpuRole = null;

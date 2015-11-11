@@ -31,6 +31,8 @@ public class MesosCommon {
   public static final String EXECUTOR_MEM_CONF = "topology.mesos.executor.mem.mb";
   public static final String SUICIDE_CONF = "mesos.supervisor.suicide.inactive.timeout.secs";
   public static final String AUTO_START_LOGVIEWER_CONF = "supervisor.autostart.logviewer";
+  public static final String WORKER_NAME_PREFIX = "topology.mesos.worker.prefix";
+  public static final String WORKER_NAME_PREFIX_DELIMITER = "topology.mesos.worker.prefix.delimiter";
 
   public static final double DEFAULT_CPU = 1;
   public static final double DEFAULT_MEM_MB = 1000;
@@ -38,7 +40,33 @@ public class MesosCommon {
 
   public static final String SUPERVISOR_ID = "supervisorid";
   public static final String ASSIGNMENT_ID = "assignmentid";
-
+  public static final String DEFAULT_DELIMITER = "_";
+  
+  public static String hostFromAssignmentId(String assignmentId, String delimiter) {
+    int last = assignmentId.lastIndexOf(delimiter);
+    String host = assignmentId.substring(last + delimiter.length());
+    LOG.debug("AssignMentId: " + assignmentId + " Host: " + host);
+    return host;
+  }
+  
+  public static String getWorkerPrefix(Map conf, TopologyDetails info) {
+    conf = getFullTopologyConfig(conf, info);
+    String prefix = (String) conf.get(WORKER_NAME_PREFIX);
+    String delimiter = (String) conf.get(WORKER_NAME_PREFIX_DELIMITER);
+    if (prefix == null)
+      prefix = "";
+    if (delimiter == null)
+      delimiter = DEFAULT_DELIMITER;
+    return prefix + info.getName() + delimiter;
+  }
+  
+  public static String getWorkerPrefixDelimiter(Map conf) {
+    String delimiter = (String) conf.get(WORKER_NAME_PREFIX_DELIMITER);
+    if (delimiter == null)
+      delimiter = DEFAULT_DELIMITER;
+    return delimiter;
+  }
+  
   public static String taskId(String nodeid, int port) {
     return nodeid + "-" + port;
   }
@@ -75,6 +103,7 @@ public class MesosCommon {
       LOG.warn("Topology has invalid mesos cpu configuration: " + cpuObj + " for topology " + info.getId());
       cpuObj = null;
     }
+    LOG.info("CPUObj:" + cpuObj);
     if (cpuObj == null) {
         return DEFAULT_CPU;
     } else {
@@ -89,6 +118,7 @@ public class MesosCommon {
       LOG.warn("Topology has invalid mesos mem configuration: " + memObj + " for topology " + info.getId());
       memObj = null;
     }
+    LOG.info("MemObj:" + memObj  + " Conf: " + conf.toString());
     if (memObj == null) { 
         return DEFAULT_MEM_MB;
     } else {
