@@ -29,7 +29,7 @@ supervisor.autostart.logviewer: true
 # Use the public Mesosphere Storm build
 # Please note that it won't work with other distributions.
 # You may want to make this empty if you use `mesos.container.docker.image` instead.
-mesos.executor.uri: "http://downloads.mesosphere.io/storm/storm-mesos-0.9.0.1.tgz"
+# mesos.executor.uri: "http://downloads.mesosphere.io/storm/storm-mesos-0.9.0.1.tgz"
 
 # Alternatively, use a Docker image instead of URI. If an image is specified,
 # Docker will be used instead of Mesos containers.

@@ -24,6 +24,7 @@ import org.apache.log4j.Logger;
 import java.io.File;
 import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
@@ -100,7 +101,10 @@ public class LogViewerController {
     );
 
     // If anything goes wrong at startup we want to see it.
-    Paths.get(System.getenv("MESOS_SANDBOX"), "/logs").toFile().mkdirs();
+    Path logPath = Paths.get(System.getenv("MESOS_SANDBOX"), "/logs");
+    if (!logPath.toFile().exists() && !logPath.toFile().mkdirs()) {
+      throw new RuntimeException("Couldn't create log directory");
+    }
     File log = Paths.get(System.getenv("MESOS_SANDBOX"), "/logs/logviewer-startup.log").toFile();
     pb.redirectErrorStream(true);
     pb.redirectOutput(Redirect.appendTo(log));

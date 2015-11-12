@@ -8,14 +8,7 @@ Storm integration with the Mesos cluster resource manager.
 
 To use a release, you first need to unpack the distribution, fill in configurations listed below into the `conf/storm.yaml` file and start Nimbus using `storm-mesos nimbus`.
 
-The Mesosphere site has a tutorial which goes into more [details](http://mesosphere.com/docs/tutorials/run-storm-on-mesos/).
-
 **Note:** It is **not** necessary to repack the distribution - the configuration is automatically pushed out to the slaves from Nimbus.
-
-# Requirements
-- Oracle JDK 1.7
-OpenJDK 1.7 might work too, but that has not been tested.
-The code was compiled with Oracle JDK 1.7 and will not work on Java 1.6.
 
 # Building
 
@@ -91,43 +84,49 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 
 ## Mandatory configuration
 
-1. `mesos.executor.uri` or `mesos.container.docker.image`: Once you fill in the configs and repack the distribution, you need to place the distribution somewhere where Mesos executors can find it. Typically this is on HDFS, and this config is the location of where you put the distibution. Alternatively, you may use a Docker image in place of the executor URI. Take a look at the Dockerfile in the top-level of this repository for an example of how to use it.
+1. One of the following (if both are specified, Docker is preferred):
+    * `mesos.executor.uri`: Once you fill in the configs and repack the distribution, you need to place the
+      distribution somewhere where Mesos executors can find it. Typically this is on HDFS, and this config is
+      the location of where you put the distribution.
+    * `mesos.container.docker.image`: You may use a Docker image in place of the executor URI. Take a look at the
+      Dockerfile in the top-level of this repository for an example of how to use it.
 
 2. `mesos.master.url`: URL for the Mesos master.
 
 3. `storm.zookeeper.servers`: The location of the Zookeeper servers to be used by the Storm master.
 
-4. `nimbus.host`: The hostname of where you run Nimbus.
-
 ## Optional configuration
 
-* `mesos.supervisor.suicide.inactive.timeout.secs`: Seconds to wait before supervisor to suicides if supervisor has no task to run. Defaults to "120".
+* `mesos.supervisor.suicide.inactive.timeout.secs`: Seconds to wait before supervisor to suicides if
+  supervisor has no task to run. Defaults to "120".
 * `mesos.master.failover.timeout.secs`: Framework failover timeout in second. Defaults to "24*7*3600".
 * `mesos.allowed.hosts`: Allowed hosts to run topology, which takes hostname list as a white list.
 * `mesos.disallowed.hosts`: Disallowed hosts to run topology, which takes hostname list as a back list.
 * `mesos.framework.role`: Framework role to use. Defaults to "*".
 * `mesos.framework.checkpoint`: Enabled framework checkpoint or not. Defaults to false.
 * `mesos.offer.lru.cache.size`: LRU cache size. Defaults to "1000".
-* `mesos.offer.filter.seconds`: Number of seconds to filter unused Mesos offers. Defaults to "120".
+* `mesos.offer.filter.seconds`: Number of seconds to filter unused Mesos offers. These offers may be revived by
+  the framework when needed. Defaults to "120".
 * `mesos.offer.expiry.multiplier`: Offer expiry multiplier for `nimbus.monitor.freq.secs`. Defaults to "2.5".
 * `mesos.local.file.server.port`: Port for the local file server to bind to. Defaults to a random port.
 * `mesos.framework.name`: Framework name. Defaults to "Storm!!!".
 * `mesos.framework.principal`: Framework principal to use to register with Mesos
 * `mesos.framework.secret.file`:  Location of file that contains the principal's secret. Secret cannot end with a NL.
 * `mesos.prefer.reserved.resources`: Prefer reserved resources over unreserved (i.e., `"*"` role). Defaults to "true".
-* `supervisor.autostart.logviewer`: Default is true, if not false please add 128M to `topology.mesos.executor.mem.mb`.
+* `supervisor.autostart.logviewer`: Default is true. If you disable the logviewer, you may want to
+  subtract 128*1.2 from `topology.mesos.executor.mem.mb` (depending on your settings).
 
 ## Resource configuration
 
 * `topology.mesos.worker.cpu`: CPUs per worker. Defaults to "1".
 * `topology.mesos.worker.mem.mb`: Memory (in MiB) per worker. Defaults to "1000".
-  * `worker.childopts`: Use this for JVM opts.  You should have about 20% memory overhead for each task.  For
+  * `worker.childopts`: Use this for JVM opts.  You should have about 20-25% memory overhead for each task.  For
     example, with `-Xmx1000m`, you should set `topology.mesos.worker.mem.mb: 1200`. By default this is platform
     dependent.
 * `topology.mesos.executor.cpu`: CPUs per executor. Defaults to "0.1".
 * `topology.mesos.executor.mem.mb`: Memory (in MiB) per executor. Defaults to "500".
-  * `supervisor.childopts`: Use this for executor (aka supervisor) JVM opts.  You should have about 20% memory
-    overhead for each task.  For example, with `-Xmx500m`, you should set `topology.mesos.executor.mem.mb: 625`. By
+  * `supervisor.childopts`: Use this for executor (aka supervisor) JVM opts.  You should have about 20-25% memory
+    overhead for each task.  For example, with `-Xmx500m`, you should set `topology.mesos.executor.mem.mb: 620`. By
     default this is platform dependent.
 
 ## Running Storm on Marathon
@@ -170,9 +169,18 @@ from Marathon, using the example app JSON below:
 ## Running an example topology
 
 Once Nimbus is running, you can launch one of the `storm-starter` topologies. In order to submit the topology
-to Nimbus, you'll need to know the Thrift API port. In the Marathon example above, the port will be the second
-one assigned by Marathon. For example, if the second port is `32001`, run:
+to Nimbus, you'll need to know the Thrift host and API port. In the Marathon example above, the port will be the second
+one assigned by Marathon. For example, if the host is `10.0.0.1` and second port is `32001`, run:
 
 ```
-$ ./bin/storm jar -c nimbus.thrift.port=32001 examples/storm-starter/storm-starter-topologies-0.9.6.jar storm.starter.WordCountTopology word-count
+$ ./bin/storm jar -c nimbus.host=10.0.0.1 -c nimbus.thrift.port=32001 examples/storm-starter/storm-starter-topologies-0.9.6.jar storm.starter.WordCountTopology word-count
+```
+
+## Running without Marathon
+
+If you'd like to run the example above _without_ Marathon, you can do so by specifying 2 required ports, the 
+MESOS_SANDBOX path, and running the container. For example:
+
+```
+$ docker run -i --net=host -e PORT0=10000 -e PORT1=10001 -e MESOS_SANDBOX=/var/log/storm -t brndnmtthws/storm ./bin/run-with-marathon.sh
 ```

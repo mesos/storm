@@ -34,13 +34,13 @@ import org.apache.mesos.Protos.Value.Scalar;
 import org.apache.mesos.Protos.Value.Type;
 import org.apache.mesos.SchedulerDriver;
 import org.json.simple.JSONValue;
+import org.yaml.snakeyaml.Yaml;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.IOException;
+import java.io.*;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -63,7 +63,6 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_OFFER_FILTER_SECONDS = "mesos.offer.filter.seconds";
   public static final String CONF_MESOS_OFFER_EXPIRY_MULTIPLIER = "mesos.offer.expiry.multiplier";
   public static final String CONF_MESOS_LOCAL_FILE_SERVER_PORT = "mesos.local.file.server.port";
-  public static final String CONF_MESOS_LOCAL_FILE_SERVER_DIR = "mesos.local.file.server.dir";
   public static final String CONF_MESOS_FRAMEWORK_NAME = "mesos.framework.name";
   public static final String CONF_MESOS_PREFER_RESERVED_RESOURCES = "mesos.prefer.reserved.resources";
   public static final String CONF_MESOS_CONTAINER_DOCKER_IMAGE = "mesos.container.docker.image";
@@ -141,7 +140,9 @@ public class MesosNimbus implements INimbus {
 
   @SuppressWarnings("unchecked")
   protected void initialize(Map conf, String localDir) throws Exception {
-    _conf = conf;
+    _conf = new HashMap();
+    _conf.putAll(conf);
+
     _state = new LocalState(localDir);
     _allowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_ALLOWED_HOSTS));
     _disallowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_DISALLOWED_HOSTS));
@@ -153,6 +154,17 @@ public class MesosNimbus implements INimbus {
     _scheduler = new NimbusScheduler(this);
     createLocalServerPort();
     setupHttpServer();
+
+    _conf.put(Config.NIMBUS_HOST, _configUrl.getHost());
+    // Generate YAML to be served up to clients
+    Path generatedConfPath = Paths.get("generated-conf");
+    if (!generatedConfPath.toFile().exists() && !generatedConfPath.toFile().mkdirs()) {
+      throw new RuntimeException("Couldn't greate generated-conf dir");
+    }
+    File generatedConf = Paths.get(generatedConfPath.toString(), "storm.yaml").toFile();
+    Yaml yaml = new Yaml();
+    FileWriter writer = new FileWriter(generatedConf);
+    yaml.dump(_conf, writer);
   }
 
 
@@ -256,9 +268,8 @@ public class MesosNimbus implements INimbus {
 
   protected void setupHttpServer() throws Exception {
     _httpServer = new LocalFileServer();
-    String dirname = Optional.fromNullable((String) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_DIR)).or("conf");
-    File dirPath = new File(dirname);
-    _configUrl = _httpServer.serveDir("/conf", dirPath.getCanonicalPath(), _localFileServerPort);
+    File dirPath = new File("generated-conf");
+    _configUrl = _httpServer.serveDir("/generated-conf", dirPath.getCanonicalPath(), _localFileServerPort);
 
     LOG.info("Started HTTP server from which config for the MesosSupervisor's may be fetched. URL: " + _configUrl);
   }
@@ -788,8 +799,7 @@ public class MesosNimbus implements INimbus {
                   .setValue(
                       "export MESOS_NATIVE_JAVA_LIBRARY=" + javaLibPath +
                           " && /bin/cp $MESOS_SANDBOX/storm.yaml conf && /usr/bin/python bin/storm " +
-                          "supervisor storm.mesos.MesosSupervisor -c storm.log.dir=$MESOS_SANDBOX/logs -c nimbus.host="
-                          + _configUrl.getHost() + extraConfig))
+                          "supervisor storm.mesos.MesosSupervisor -c storm.log.dir=$MESOS_SANDBOX/logs" + extraConfig))
               .setContainer(
                   ContainerInfo.newBuilder()
                       .setType(ContainerInfo.Type.DOCKER)
@@ -808,7 +818,7 @@ public class MesosNimbus implements INimbus {
                   .addUris(URI.newBuilder().setValue((String) _conf.get(CONF_EXECUTOR_URI)))
                   .addUris(URI.newBuilder().setValue(configUri))
                   .setValue("cp storm.yaml storm-mesos*/conf && cd storm-mesos* && python bin/storm " +
-                      "supervisor storm.mesos.MesosSupervisor -c nimbus.host=" + _configUrl.getHost() + extraConfig));
+                      "supervisor storm.mesos.MesosSupervisor" + extraConfig));
         }
 
         LOG.info("Launching task with Mesos Executor data: <"
