@@ -20,8 +20,10 @@ package storm.mesos.logviewer;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 
+import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
+import java.net.UnknownHostException;
 
 public class SocketUrlDetection {
   private static final Logger LOG = Logger.getLogger(SocketUrlDetection.class);
@@ -39,8 +41,9 @@ public class SocketUrlDetection {
 
       socket = new Socket(InetAddress.getLocalHost(), getPort());
       reachable = true;
-    } catch (Exception e) {
+    } catch (IOException e) {
       // don't care.
+      LOG.warn(e);
     } finally {
       IOUtils.closeQuietly(socket);
     }

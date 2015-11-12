@@ -493,7 +493,7 @@ public class MesosNimbus implements INimbus {
                   .build()
           );
           return resources;
-        } else if (r.getScalar().getValue() == valueNeeded) {
+        } else if (Math.abs(r.getScalar().getValue() - valueNeeded) < 0.0001) { // check if zero
           resources.add(
               r.toBuilder()
                   .setScalar(Scalar.newBuilder().setValue(valueNeeded))
