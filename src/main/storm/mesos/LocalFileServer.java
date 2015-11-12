@@ -86,12 +86,8 @@ public class LocalFileServer {
   }
 
   private String getHost() throws Exception {
-    final String envHost = System.getenv("MESOS_NIMBUS_HOST");
-    if (envHost == null) {
-      return InetAddress.getLocalHost().getCanonicalHostName();
-    } else {
-      return envHost;
-    }
+    return Optional.fromNullable((String) System.getenv("MESOS_NIMBUS_HOST"))
+        .or(InetAddress.getLocalHost().getCanonicalHostName());
   }
 
   public void shutdown() throws Exception {

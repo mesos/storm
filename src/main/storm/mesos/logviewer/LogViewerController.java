@@ -18,6 +18,7 @@
 package storm.mesos.logviewer;
 
 import backtype.storm.Config;
+import com.google.common.base.Optional;
 import org.apache.log4j.Logger;
 
 import java.io.File;
@@ -33,12 +34,8 @@ public class LogViewerController {
   protected Integer port;
 
   public LogViewerController(Map conf) {
-    Number port = (Number) conf.get(Config.LOGVIEWER_PORT);
-    if (port == null) {
-      port = 8000;
-    }
-    this.port = port.intValue();
-    setUrlDetector(new SocketUrlDetection(this.port));
+    port = Optional.fromNullable((Number) conf.get(Config.LOGVIEWER_PORT)).or(8000).intValue();
+    setUrlDetector(new SocketUrlDetection(port));
   }
 
   /**

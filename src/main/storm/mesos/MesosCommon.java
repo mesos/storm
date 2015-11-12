@@ -54,23 +54,12 @@ public class MesosCommon {
 
   public static String getWorkerPrefix(Map conf, TopologyDetails info) {
     Map topologyConf = getFullTopologyConfig(conf, info);
-    String prefix = (String) topologyConf.get(WORKER_NAME_PREFIX);
-    String delimiter = (String) topologyConf.get(WORKER_NAME_PREFIX_DELIMITER);
-    if (prefix == null) {
-      prefix = "";
-    }
-    if (delimiter == null) {
-      delimiter = DEFAULT_DELIMITER;
-    }
-    return prefix + info.getName() + delimiter;
+    String prefix = Optional.fromNullable((String) topologyConf.get(WORKER_NAME_PREFIX)).or("");
+    return prefix + info.getName() + getWorkerPrefixDelimiter(conf);
   }
 
   public static String getWorkerPrefixDelimiter(Map conf) {
-    String delimiter = (String) conf.get(WORKER_NAME_PREFIX_DELIMITER);
-    if (delimiter == null) {
-      delimiter = DEFAULT_DELIMITER;
-    }
-    return delimiter;
+    return Optional.fromNullable((String) conf.get(WORKER_NAME_PREFIX_DELIMITER)).or(DEFAULT_DELIMITER);
   }
 
   public static String taskId(String nodeid, int port) {
@@ -92,12 +81,8 @@ public class MesosCommon {
   }
 
   public static int getSuicideTimeout(Map conf) {
-    Number timeout = (Number) conf.get(SUICIDE_CONF);
-    if (timeout == null) {
-      return DEFAULT_SUICIDE_TIMEOUT_SECS;
-    } else {
-      return timeout.intValue();
-    }
+    return Optional.fromNullable((Number) conf.get(SUICIDE_CONF))
+        .or(DEFAULT_SUICIDE_TIMEOUT_SECS).intValue();
   }
 
   public static Map getFullTopologyConfig(Map conf, TopologyDetails info) {
@@ -107,57 +92,24 @@ public class MesosCommon {
   }
 
   public static double topologyWorkerCpu(Map conf, TopologyDetails info) {
-    conf = getFullTopologyConfig(conf, info);
-    Object cpuObj = conf.get(WORKER_CPU_CONF);
-    if (cpuObj != null && !(cpuObj instanceof Number)) {
-      LOG.warn("Topology has invalid mesos cpu configuration: " + cpuObj + " for topology " + info.getId());
-      cpuObj = null;
-    }
-    LOG.info("CPUObj:" + cpuObj);
-    if (cpuObj == null) {
-      return DEFAULT_WORKER_CPU;
-    } else {
-      return ((Number) cpuObj).doubleValue();
-    }
+    Map topologyConfig = getFullTopologyConfig(conf, info);
+    return Optional.fromNullable((Number) topologyConfig.get(WORKER_CPU_CONF))
+        .or(DEFAULT_WORKER_CPU).doubleValue();
   }
 
   public static double topologyWorkerMem(Map conf, TopologyDetails info) {
-    conf = getFullTopologyConfig(conf, info);
-    Object memObj = conf.get(WORKER_MEM_CONF);
-    if (memObj != null && !(memObj instanceof Number)) {
-      LOG.warn("Topology has invalid mesos mem configuration: " + memObj + " for topology " + info.getId());
-      memObj = null;
-    }
-    if (memObj == null) {
-      return DEFAULT_WORKER_MEM_MB;
-    } else {
-      return ((Number) memObj).doubleValue();
-    }
+    Map topologyConfig = getFullTopologyConfig(conf, info);
+    return Optional.fromNullable((Number) topologyConfig.get(WORKER_MEM_CONF))
+        .or(DEFAULT_WORKER_MEM_MB).doubleValue();
   }
 
   public static double executorCpu(Map conf) {
-    Object cpuObj = conf.get(EXECUTOR_CPU_CONF);
-    if (cpuObj != null && !(cpuObj instanceof Number)) {
-      LOG.warn("Cluster has invalid mesos cpu configuration: " + cpuObj);
-      cpuObj = null;
-    }
-    if (cpuObj == null) {
-      return DEFAULT_EXECUTOR_CPU;
-    } else {
-      return ((Number) cpuObj).doubleValue();
-    }
+    return Optional.fromNullable((Number) conf.get(EXECUTOR_CPU_CONF))
+        .or(DEFAULT_EXECUTOR_CPU).doubleValue();
   }
 
   public static double executorMem(Map conf) {
-    Object memObj = conf.get(EXECUTOR_MEM_CONF);
-    if (memObj != null && !(memObj instanceof Number)) {
-      LOG.warn("Cluster has invalid mesos mem configuration: " + memObj);
-      memObj = null;
-    }
-    if (memObj == null) {
-      return DEFAULT_EXECUTOR_MEM_MB;
-    } else {
-      return ((Number) memObj).doubleValue();
-    }
+    return Optional.fromNullable((Number) conf.get(EXECUTOR_MEM_CONF))
+        .or(DEFAULT_EXECUTOR_MEM_MB).doubleValue();
   }
 }

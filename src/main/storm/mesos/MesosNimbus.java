@@ -67,10 +67,8 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_FRAMEWORK_NAME = "mesos.framework.name";
   public static final String CONF_MESOS_PREFER_RESERVED_RESOURCES = "mesos.prefer.reserved.resources";
   public static final String CONF_MESOS_CONTAINER_DOCKER_IMAGE = "mesos.container.docker.image";
-
-  private static final Logger LOG = Logger.getLogger(MesosNimbus.class);
-
   public static final String FRAMEWORK_ID = "FRAMEWORK_ID";
+  private static final Logger LOG = Logger.getLogger(MesosNimbus.class);
   private final Object _offersLock = new Object();
   protected java.net.URI _configUrl;
   LocalState _state;
@@ -87,7 +85,7 @@ public class MesosNimbus implements INimbus {
   private ScheduledExecutorService timerScheduler =
       Executors.newScheduledThreadPool(1);
   private boolean _preferReservedResources = true;
-  private String _container = null;
+  private Optional<String> _container = Optional.absent();
 
   private static Set listIntoSet(List l) {
     if (l == null) {
@@ -151,7 +149,7 @@ public class MesosNimbus implements INimbus {
     if (preferReservedResources != null) {
       _preferReservedResources = preferReservedResources;
     }
-    _container = (String) conf.get(CONF_MESOS_CONTAINER_DOCKER_IMAGE);
+    _container = Optional.fromNullable((String) conf.get(CONF_MESOS_CONTAINER_DOCKER_IMAGE));
     _scheduler = new NimbusScheduler(this);
     createLocalServerPort();
     setupHttpServer();
@@ -166,8 +164,7 @@ public class MesosNimbus implements INimbus {
       LOG.error("Halting process...", e);
       Runtime.getRuntime().halt(1);
     }
-    Number filterSeconds = (Number) _conf.get(CONF_MESOS_OFFER_FILTER_SECONDS);
-    if (filterSeconds == null) filterSeconds = 120;
+    Number filterSeconds = Optional.fromNullable((Number) _conf.get(CONF_MESOS_OFFER_FILTER_SECONDS)).or(120);
     final Protos.Filters filters = Protos.Filters.newBuilder()
         .setRefuseSeconds(filterSeconds.intValue())
         .build();
@@ -183,8 +180,7 @@ public class MesosNimbus implements INimbus {
         }
     );
 
-    Number lruCacheSize = (Number) _conf.get(CONF_MESOS_OFFER_LRU_CACHE_SIZE);
-    if (lruCacheSize == null) lruCacheSize = 1000;
+    Number lruCacheSize = Optional.fromNullable((Number) _conf.get(CONF_MESOS_OFFER_LRU_CACHE_SIZE)).or(1000);
     final int intLruCacheSize = lruCacheSize.intValue();
     _usedOffers = Collections.synchronizedMap(new LinkedHashMap<Protos.TaskID, Protos.Offer>(intLruCacheSize + 1, .75F, true) {
       // This method is called just after a new entry has been added
@@ -193,10 +189,8 @@ public class MesosNimbus implements INimbus {
       }
     });
 
-    Number offerExpired = (Number) _conf.get(Config.NIMBUS_MONITOR_FREQ_SECS);
-    if (offerExpired == null) offerExpired = 60;
-    Number expiryMultiplier = (Number) _conf.get(CONF_MESOS_OFFER_EXPIRY_MULTIPLIER);
-    if (expiryMultiplier == null) expiryMultiplier = 2.5;
+    Number offerExpired = Optional.fromNullable((Number) _conf.get(Config.NIMBUS_MONITOR_FREQ_SECS)).or(60);
+    Number expiryMultiplier = Optional.fromNullable((Number) _conf.get(CONF_MESOS_OFFER_EXPIRY_MULTIPLIER)).or(2.5);
     _timer.scheduleAtFixedRate(new TimerTask() {
       @Override
       public void run() {
@@ -262,12 +256,9 @@ public class MesosNimbus implements INimbus {
 
   protected void setupHttpServer() throws Exception {
     _httpServer = new LocalFileServer();
-    String dirname = (String) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_DIR);
-    if (dirname == null) {
-      dirname = "conf";
-    }
-    File dirpath = new File(dirname);
-    _configUrl = _httpServer.serveDir("/conf", dirpath.getCanonicalPath(), _localFileServerPort);
+    String dirname = Optional.fromNullable((String) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_DIR)).or("conf");
+    File dirPath = new File(dirname);
+    _configUrl = _httpServer.serveDir("/conf", dirPath.getCanonicalPath(), _localFileServerPort);
 
     LOG.info("Started HTTP server from which config for the MesosSupervisor's may be fetched. URL: " + _configUrl);
   }
@@ -691,7 +682,7 @@ public class MesosNimbus implements INimbus {
     for (WorkerSlot slot : workerSlots) {
       TopologyDetails details = topologies.getById(topologyId);
       String workerPrefix = "";
-      if (_conf.get(MesosCommon.WORKER_NAME_PREFIX) != null) {
+      if (_conf.containsKey(MesosCommon.WORKER_NAME_PREFIX)) {
         workerPrefix = MesosCommon.getWorkerPrefix(_conf, details);
       }
       TaskID taskId = TaskID.newBuilder()
@@ -786,7 +777,7 @@ public class MesosNimbus implements INimbus {
             executorInfoBuilder.addAllResources(executorPortsResources);
           }
         }
-        if (_container != null && !_container.isEmpty()) {
+        if (_container.isPresent()) {
           // An ugly workaround for a bug in DCOS
           Map<String, String> env = System.getenv();
           String javaLibPath = env.get("MESOS_NATIVE_JAVA_LIBRARY");
@@ -804,7 +795,7 @@ public class MesosNimbus implements INimbus {
                       .setType(ContainerInfo.Type.DOCKER)
                       .setDocker(
                           ContainerInfo.DockerInfo.newBuilder()
-                              .setImage(_container)
+                              .setImage(_container.get())
                               .setNetwork(ContainerInfo.DockerInfo.Network.HOST)
                               .setForcePullImage(true)
                               .build()
