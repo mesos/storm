@@ -319,8 +319,7 @@ public class MesosNimbus implements INimbus {
       resources.memSlots = (int) Math.floor((offerMem - executorMem) / mem);
     }
 
-    // Need 1 extra port for logviewer
-    int maxPorts = Math.min(resources.cpuSlots, resources.memSlots) + 1;
+    int maxPorts = Math.min(resources.cpuSlots, resources.memSlots);
 
     List<Integer> portList = new ArrayList<>();
     collectPorts(offer.getResourcesList(), portList, maxPorts);
@@ -365,7 +364,7 @@ public class MesosNimbus implements INimbus {
 
     List<WorkerSlot> ret = new ArrayList<WorkerSlot>();
     int availableSlots = Math.min(resources.cpuSlots, resources.memSlots);
-    availableSlots = Math.min(availableSlots, resources.ports.size() - 1); // 1 port for logviewer
+    availableSlots = Math.min(availableSlots, resources.ports.size());
     for (int i = 0; i < availableSlots; i++) {
       ret.add(new WorkerSlot(offer.getHostname(), resources.ports.get(i)));
     }
@@ -719,7 +718,6 @@ public class MesosNimbus implements INimbus {
         Map executorData = new HashMap();
         executorData.put(MesosCommon.SUPERVISOR_ID, MesosCommon.supervisorId(slot.getNodeId(), details.getId()));
         executorData.put(MesosCommon.ASSIGNMENT_ID, workerPrefix + slot.getNodeId());
-        String extraConfig = "";
 
         Offer.Builder newBuilder = Offer.newBuilder();
         newBuilder.mergeFrom(offer);
@@ -728,7 +726,7 @@ public class MesosNimbus implements INimbus {
         Offer.Builder existingBuilder = Offer.newBuilder();
         existingBuilder.mergeFrom(offer);
         existingBuilder.clearResources();
-
+        String extraConfig = "";
 
         List<Resource> offerResources = new ArrayList<>();
         offerResources.addAll(offer.getResourcesList());
@@ -753,13 +751,17 @@ public class MesosNimbus implements INimbus {
         List<Resource> workerPortsResources = getResourcesRange(offerResources, slot.getPort(), "ports");
         offerResources = subtractResourcesRange(offerResources, slot.getPort(), "ports");
 
-        // Find a port for the logviewer
+        // Find port for the logviewer
         if (!subtractedExecutorResources && MesosCommon.startLogViewer(_conf)) {
           List<Integer> portList = new ArrayList<>();
           collectPorts(offerResources, portList, 1);
-          executorPortsResources = getResourcesRange(offerResources, portList.get(0), "ports");
-          offerResources = subtractResourcesRange(offerResources, portList.get(0), "ports");
-          extraConfig = extraConfig + " -c " + Config.LOGVIEWER_PORT + "=" + portList.get(0);
+          int port = Optional.fromNullable((Number) _conf.get(Config.LOGVIEWER_PORT)).or(8000).intValue();
+          executorPortsResources = getResourcesRange(offerResources, port, "ports");
+          if (!executorPortsResources.isEmpty()) {
+            // Was the port available?
+            extraConfig = " -c " + MesosCommon.AUTO_START_LOGVIEWER_CONF + "=true";
+            offerResources = subtractResourcesRange(offerResources, port, "ports");
+          }
         }
         Offer remainingOffer = existingBuilder.addAllResources(offerResources).build();
 

@@ -488,7 +488,7 @@ public class MesosNimbusTest {
 
     offers.put(
         offerId,
-        buildOfferWithPorts(2.0, 2048, 1000, 1001)
+        buildOfferWithPorts(2.0, 2048, 1000, 1000)
     );
 
     HashMap<String, TopologyDetails> topologyMap = new HashMap<>();

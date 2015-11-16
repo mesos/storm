@@ -21,6 +21,7 @@ supervisor.childopts: "-Xmx256m"
 # The default behavior is to launch the logviewer unless autostart is false.
 # If you enable the logviewer, you'll need to add memory overhead to the
 # executor for the logviewer.
+logviewer.port: 8000
 logviewer.childopts: "-Xmx128m"
 logviewer.cleanup.age.mins: 10080
 logviewer.appender.name: "A1"
