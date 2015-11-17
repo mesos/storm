@@ -149,7 +149,7 @@ from Marathon, using the example app JSON below:
   "container": {
     "type": "DOCKER",
     "docker": {
-      "image": "brndnmtthws/storm",
+      "image": "mesosphere/storm",
       "network": "HOST",
       "forcePullImage":true
     }
@@ -182,5 +182,5 @@ If you'd like to run the example above _without_ Marathon, you can do so by spec
 MESOS_SANDBOX path, and running the container. For example:
 
 ```
-$ docker run -i --net=host -e PORT0=10000 -e PORT1=10001 -e MESOS_SANDBOX=/var/log/storm -t brndnmtthws/storm ./bin/run-with-marathon.sh
+$ docker run -i --net=host -e PORT0=10000 -e PORT1=10001 -e MESOS_SANDBOX=/var/log/storm -t mesosphere/storm ./bin/run-with-marathon.sh
 ```
