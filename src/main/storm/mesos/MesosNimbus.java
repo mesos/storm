@@ -201,7 +201,7 @@ public class MesosNimbus implements INimbus {
       }
     });
 
-    Number offerExpired = Optional.fromNullable((Number) _conf.get(Config.NIMBUS_MONITOR_FREQ_SECS)).or(60);
+    Number offerExpired = Optional.fromNullable((Number) _conf.get(Config.NIMBUS_MONITOR_FREQ_SECS)).or(10);
     Number expiryMultiplier = Optional.fromNullable((Number) _conf.get(CONF_MESOS_OFFER_EXPIRY_MULTIPLIER)).or(2.5);
     _timer.scheduleAtFixedRate(new TimerTask() {
       @Override
