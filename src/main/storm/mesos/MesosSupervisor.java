@@ -16,7 +16,6 @@
  * limitations under the License.
  */
 package storm.mesos;
-
 import backtype.storm.scheduler.ISupervisor;
 import backtype.storm.utils.LocalState;
 import backtype.storm.utils.Utils;
@@ -26,10 +25,6 @@ import org.apache.mesos.ExecutorDriver;
 import org.apache.mesos.MesosExecutorDriver;
 import org.apache.mesos.Protos.*;
 import org.json.simple.JSONValue;
-
-import com.google.common.base.Optional;
-
-import storm.mesos.logviewer.ILogController;
 import storm.mesos.logviewer.LogViewerController;
 
 import java.io.IOException;
@@ -48,7 +43,7 @@ public class MesosSupervisor implements ISupervisor {
   volatile ExecutorDriver _driver;
   StormExecutor _executor;
   LocalState _state;
-
+  Map _conf;
   AtomicReference<Set<Integer>> _myassigned = new AtomicReference<Set<Integer>>(new HashSet<Integer>());
 
   public static void main(String[] args) {
@@ -57,8 +52,8 @@ public class MesosSupervisor implements ISupervisor {
 
   @Override
   public void assigned(Collection<Integer> ports) {
-    if (ports == null) ports = new HashSet<Integer>();
-    _myassigned.set(new HashSet<Integer>(ports));
+    if (ports == null) ports = new HashSet<>();
+    _myassigned.set(new HashSet<>(ports));
   }
 
   @Override
@@ -72,15 +67,16 @@ public class MesosSupervisor implements ISupervisor {
     _driver = new MesosExecutorDriver(_executor);
     _driver.start();
     LOG.info("Waiting for executor to initialize...");
+    _conf = conf;
     try {
       _executor.waitUntilRegistered();
-      
+
       if (startLogViewer(conf)) {
         LOG.info("Starting logviewer...");
-        ILogController logController = new LogViewerController();
+        LogViewerController logController = new LogViewerController(conf);
         logController.start();
       }
-      
+
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -112,7 +108,7 @@ public class MesosSupervisor implements ISupervisor {
 
   @Override
   public String getAssignmentId() {
-    return _assignmentId;
+    return MesosCommon.hostFromAssignmentId(_assignmentId, MesosCommon.getWorkerPrefixDelimiter(_conf));
   }
 
   @Override
@@ -129,11 +125,15 @@ public class MesosSupervisor implements ISupervisor {
     _driver.sendStatusUpdate(status);
   }
 
+  protected boolean startLogViewer(Map conf) {
+    return MesosCommon.startLogViewer(conf);
+  }
+
   class StormExecutor implements Executor {
     private CountDownLatch _registeredLatch = new CountDownLatch(1);
 
     public void waitUntilRegistered() throws InterruptedException {
-        _registeredLatch.await();
+      _registeredLatch.await();
     }
 
     @Override
@@ -194,10 +194,6 @@ public class MesosSupervisor implements ISupervisor {
 
   }
 
-  protected boolean startLogViewer(Map conf) {
-     return Optional.fromNullable((Boolean) conf.get(MesosCommon.AUTO_START_LOGVIEWER_CONF)).or(true);
-  }
-  
   public class SuicideDetector extends Thread {
     long _lastTime = System.currentTimeMillis();
     int _timeoutSecs;

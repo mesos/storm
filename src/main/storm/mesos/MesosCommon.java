@@ -6,9 +6,9 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- *
+ * <p/>
  * http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p/>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -18,6 +18,7 @@
 package storm.mesos;
 
 import backtype.storm.scheduler.TopologyDetails;
+import com.google.common.base.Optional;
 import org.apache.log4j.Logger;
 
 import java.util.*;
@@ -31,13 +32,35 @@ public class MesosCommon {
   public static final String EXECUTOR_MEM_CONF = "topology.mesos.executor.mem.mb";
   public static final String SUICIDE_CONF = "mesos.supervisor.suicide.inactive.timeout.secs";
   public static final String AUTO_START_LOGVIEWER_CONF = "supervisor.autostart.logviewer";
+  public static final String WORKER_NAME_PREFIX = "topology.mesos.worker.prefix";
+  public static final String WORKER_NAME_PREFIX_DELIMITER = "topology.mesos.worker.prefix.delimiter";
 
-  public static final double DEFAULT_CPU = 1;
-  public static final double DEFAULT_MEM_MB = 1000;
+  public static final double DEFAULT_WORKER_CPU = 1;
+  public static final double DEFAULT_WORKER_MEM_MB = 1000;
+  public static final double DEFAULT_EXECUTOR_CPU = 0.1;
+  public static final double DEFAULT_EXECUTOR_MEM_MB = 500;
   public static final int DEFAULT_SUICIDE_TIMEOUT_SECS = 120;
 
   public static final String SUPERVISOR_ID = "supervisorid";
   public static final String ASSIGNMENT_ID = "assignmentid";
+  public static final String DEFAULT_DELIMITER = "_";
+
+  public static String hostFromAssignmentId(String assignmentId, String delimiter) {
+    final int last = assignmentId.lastIndexOf(delimiter);
+    String host = assignmentId.substring(last + delimiter.length());
+    LOG.debug("assignmentId=" + assignmentId + " host=" + host);
+    return host;
+  }
+
+  public static String getWorkerPrefix(Map conf, TopologyDetails info) {
+    Map topologyConf = getFullTopologyConfig(conf, info);
+    String prefix = Optional.fromNullable((String) topologyConf.get(WORKER_NAME_PREFIX)).or("");
+    return prefix + info.getName() + getWorkerPrefixDelimiter(conf);
+  }
+
+  public static String getWorkerPrefixDelimiter(Map conf) {
+    return Optional.fromNullable((String) conf.get(WORKER_NAME_PREFIX_DELIMITER)).or(DEFAULT_DELIMITER);
+  }
 
   public static String taskId(String nodeid, int port) {
     return nodeid + "-" + port;
@@ -47,6 +70,10 @@ public class MesosCommon {
     return nodeid + "-" + topologyId;
   }
 
+  public static boolean startLogViewer(Map conf) {
+    return Optional.fromNullable((Boolean) conf.get(AUTO_START_LOGVIEWER_CONF)).or(true);
+  }
+
   public static int portFromTaskId(String taskId) {
     int last = taskId.lastIndexOf("-");
     String port = taskId.substring(last + 1);
@@ -54,12 +81,8 @@ public class MesosCommon {
   }
 
   public static int getSuicideTimeout(Map conf) {
-    Number timeout = (Number) conf.get(SUICIDE_CONF);
-    if (timeout == null) {
-        return DEFAULT_SUICIDE_TIMEOUT_SECS;
-    } else {
-        return timeout.intValue();
-    }
+    return Optional.fromNullable((Number) conf.get(SUICIDE_CONF))
+        .or(DEFAULT_SUICIDE_TIMEOUT_SECS).intValue();
   }
 
   public static Map getFullTopologyConfig(Map conf, TopologyDetails info) {
@@ -69,67 +92,24 @@ public class MesosCommon {
   }
 
   public static double topologyWorkerCpu(Map conf, TopologyDetails info) {
-    conf = getFullTopologyConfig(conf, info);
-    Object cpuObj = conf.get(WORKER_CPU_CONF);
-    if (cpuObj != null && !(cpuObj instanceof Number)) {
-      LOG.warn("Topology has invalid mesos cpu configuration: " + cpuObj + " for topology " + info.getId());
-      cpuObj = null;
-    }
-    if (cpuObj == null) {
-        return DEFAULT_CPU;
-    } else {
-        return ((Number) cpuObj).doubleValue();
-    }
+    Map topologyConfig = getFullTopologyConfig(conf, info);
+    return Optional.fromNullable((Number) topologyConfig.get(WORKER_CPU_CONF))
+        .or(DEFAULT_WORKER_CPU).doubleValue();
   }
 
   public static double topologyWorkerMem(Map conf, TopologyDetails info) {
-    conf = getFullTopologyConfig(conf, info);
-    Object memObj = conf.get(WORKER_MEM_CONF);
-    if (memObj != null && !(memObj instanceof Number)) {
-      LOG.warn("Topology has invalid mesos mem configuration: " + memObj + " for topology " + info.getId());
-      memObj = null;
-    }
-    if (memObj == null) { 
-        return DEFAULT_MEM_MB;
-    } else {
-        return ((Number) memObj).doubleValue();
-    }
+    Map topologyConfig = getFullTopologyConfig(conf, info);
+    return Optional.fromNullable((Number) topologyConfig.get(WORKER_MEM_CONF))
+        .or(DEFAULT_WORKER_MEM_MB).doubleValue();
   }
 
   public static double executorCpu(Map conf) {
-    Object cpuObj = conf.get(EXECUTOR_CPU_CONF);
-    if (cpuObj != null && !(cpuObj instanceof Number)) {
-      LOG.warn("Cluster has invalid mesos cpu configuration: " + cpuObj);
-      cpuObj = null;
-    }
-    if (cpuObj == null) {
-        return DEFAULT_CPU;
-    } else {
-        return ((Number) cpuObj).doubleValue();
-    }
+    return Optional.fromNullable((Number) conf.get(EXECUTOR_CPU_CONF))
+        .or(DEFAULT_EXECUTOR_CPU).doubleValue();
   }
 
   public static double executorMem(Map conf) {
-    Object memObj = conf.get(EXECUTOR_MEM_CONF);
-    if (memObj != null && !(memObj instanceof Number)) {
-      LOG.warn("Cluster has invalid mesos mem configuration: " + memObj);
-      memObj = null;
-    }
-    if (memObj == null) {
-        return DEFAULT_MEM_MB;
-    } else {
-        return ((Number) memObj).doubleValue();
-    }
-  }
-  public static int numWorkers(Map conf, TopologyDetails info) {
-    return info.getNumWorkers();
-  }
-
-  public static List<String> getTopologyIds(Collection<TopologyDetails> details) {
-    List<String> ret = new ArrayList();
-    for (TopologyDetails d : details) {
-      ret.add(d.getId());
-    }
-    return ret;
+    return Optional.fromNullable((Number) conf.get(EXECUTOR_MEM_CONF))
+        .or(DEFAULT_EXECUTOR_MEM_MB).doubleValue();
   }
 }
