@@ -403,8 +403,7 @@ public class MesosNimbus implements INimbus {
     return
         (_allowedHosts == null && _disallowedHosts == null) ||
             (_allowedHosts != null && _allowedHosts.contains(hostname)) ||
-            (_disallowedHosts != null && !_disallowedHosts.contains(hostname))
-        ;
+            (_disallowedHosts != null && !_disallowedHosts.contains(hostname));
   }
 
   @Override
