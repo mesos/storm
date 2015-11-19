@@ -11,7 +11,7 @@ STORM_CMD = STORM_PATH + "/storm"
 def nimbus(*args):
     os.chdir(STORM_PATH + "/..")
     args = [STORM_CMD, "nimbus", "storm.mesos.MesosNimbus"] + list(args)
-    subprocess.call(args)
+    sys.exit(subprocess.call(args))
 
 COMMANDS = {"nimbus": nimbus}
 
