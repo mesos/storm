@@ -16,8 +16,12 @@
  * limitations under the License.
  */
 package storm.mesos;
+
+
+
+import backtype.storm.generated.JavaObject;
+import backtype.storm.generated.JavaObjectArg;
 import backtype.storm.scheduler.ISupervisor;
-import backtype.storm.utils.LocalState;
 import backtype.storm.utils.Utils;
 import org.apache.log4j.Logger;
 import org.apache.mesos.Executor;
@@ -26,6 +30,8 @@ import org.apache.mesos.MesosExecutorDriver;
 import org.apache.mesos.Protos.*;
 import org.json.simple.JSONValue;
 import storm.mesos.logviewer.LogViewerController;
+import storm.mesos.shims.ILocalStateShim;
+import storm.mesos.shims.LocalStateShim;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -33,6 +39,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import clojure.lang.PersistentVector;
 
@@ -43,7 +50,7 @@ public class MesosSupervisor implements ISupervisor {
   volatile String _assignmentId = null;
   volatile ExecutorDriver _driver;
   StormExecutor _executor;
-  LocalState _state;
+  ILocalStateShim _state;
   Map _conf;
   AtomicReference<Set<Integer>> _myassigned = new AtomicReference<Set<Integer>>(new HashSet<Integer>());
 
@@ -60,7 +67,7 @@ public class MesosSupervisor implements ISupervisor {
   @Override
   public void prepare(Map conf, String localDir) {
     try {
-      _state = new LocalState(localDir);
+      _state = new LocalStateShim(localDir);
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
@@ -89,22 +96,18 @@ public class MesosSupervisor implements ISupervisor {
 
   @Override
   public boolean confirmAssigned(int port) {
-    try {
-      Object val = _state.get(port);
-      return val != null;
-    } catch (IOException ex) {
-      throw new RuntimeException(ex);
-    }
+    String val = _state.get(Integer.toString(port));
+    return val != null;
   }
 
   @Override
   public Object getMetadata() {
-    try {
-      Object[] ports = _state.snapshot().keySet().toArray();
-      return PersistentVector.create(ports);
-    } catch (IOException ex) {
-      throw new RuntimeException(ex);
+    Object[] ports = _state.snapshot().keySet().toArray();
+    Integer[] p = new Integer[ports.length];
+    for (int i = 0; i < ports.length; i++) {
+      p[i] = Integer.parseInt((String) ports[i]);
     }
+    return PersistentVector.create(p);
   }
 
   @Override
@@ -119,11 +122,7 @@ public class MesosSupervisor implements ISupervisor {
 
   @Override
   public void killedWorker(int port) {
-    try {
-      _state.remove(port);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    _state.remove(Integer.toString(port));
     TaskStatus status = TaskStatus.newBuilder()
         .setState(TaskState.TASK_FINISHED)
         .setTaskId(TaskID.newBuilder().setValue(MesosCommon.taskId(_assignmentId, port)))
@@ -158,13 +157,9 @@ public class MesosSupervisor implements ISupervisor {
     @Override
     public void launchTask(ExecutorDriver driver, TaskInfo task) {
       int port = MesosCommon.portFromTaskId(task.getTaskId().getValue());
-      try {
-        LOG.info("Received task assignment for port " + port);
-        _state.put(port, true);
-      } catch (IOException e) {
-        LOG.error("Halting process...", e);
-        Runtime.getRuntime().halt(1);
-      }
+      LOG.info("Received task assignment for port " + port);
+      _state.put(Integer.toString(port), Boolean.TRUE.toString());
+
       TaskStatus status = TaskStatus.newBuilder()
           .setState(TaskState.TASK_RUNNING)
           .setTaskId(task.getTaskId())

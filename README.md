@@ -15,10 +15,10 @@ To use a release, you first need to unpack the distribution, fill in configurati
 Run build-release.sh to download storm distribution and bundle Storm with this framework into one tar release.
 
 ```shell
-bin/build-release.sh
+STORM_RELEASE=0.X.X MESOS_RELEASE=0.Y.Y bin/build-release.sh
 ```
 
-This will build a Mesos executor package.  You'll need to edit `storm.yaml` and supply the Mesos master configuration as well as the executor package URI (produced by the step above).
+Where 0.X.X and 0.Y.Y are the respective versions of Storm and Mesos you wish to build against.  This will build a Mesos executor package.  You'll need to edit `storm.yaml` and supply the Mesos master configuration as well as the executor package URI (produced by the step above).
 
 ## Sub-commands
 

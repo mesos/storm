@@ -9,7 +9,7 @@ RELEASE=`grep -1 -A 0 -B 0 '<version>' /vagrant/pom.xml | head -n 1 | awk '{prin
 
 echo "`date` - Starting nimbus!!" > start-nimbus.log
 
-cd /vagrant/_release/storm-mesos-${RELEASE}
+cd /vagrant/_release/storm-mesos-${RELEASE}-*
 
 # kill existing MesosNimbus and storm UI processes
 kill `ps aux | grep MesosNimbu[s] | awk '{print $2}'` &> /dev/null || /bin/true
