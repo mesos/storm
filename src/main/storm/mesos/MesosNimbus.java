@@ -85,6 +85,7 @@ public class MesosNimbus implements INimbus {
       Executors.newScheduledThreadPool(1);
   private boolean _preferReservedResources = true;
   private Optional<String> _container = Optional.absent();
+  private Path _generatedConfPath;
 
   private static Set listIntoSet(List l) {
     if (l == null) {
@@ -152,16 +153,21 @@ public class MesosNimbus implements INimbus {
     }
     _container = Optional.fromNullable((String) conf.get(CONF_MESOS_CONTAINER_DOCKER_IMAGE));
     _scheduler = new NimbusScheduler(this);
+
+    // Generate YAML to be served up to clients
+    _generatedConfPath = Paths.get(
+        Optional.fromNullable((String) conf.get(Config.STORM_LOCAL_DIR)).or("./"),
+        "generated-conf");
+    if (!_generatedConfPath.toFile().exists() && !_generatedConfPath.toFile().mkdirs()) {
+      throw new RuntimeException("Couldn't create generated-conf dir, _generatedConfPath=" + _generatedConfPath.toString());
+    }
+
     createLocalServerPort();
     setupHttpServer();
 
     _conf.put(Config.NIMBUS_HOST, _configUrl.getHost());
-    // Generate YAML to be served up to clients
-    Path generatedConfPath = Paths.get("generated-conf");
-    if (!generatedConfPath.toFile().exists() && !generatedConfPath.toFile().mkdirs()) {
-      throw new RuntimeException("Couldn't greate generated-conf dir");
-    }
-    File generatedConf = Paths.get(generatedConfPath.toString(), "storm.yaml").toFile();
+
+    File generatedConf = Paths.get(_generatedConfPath.toString(), "storm.yaml").toFile();
     Yaml yaml = new Yaml();
     FileWriter writer = new FileWriter(generatedConf);
     yaml.dump(_conf, writer);
@@ -268,8 +274,7 @@ public class MesosNimbus implements INimbus {
 
   protected void setupHttpServer() throws Exception {
     _httpServer = new LocalFileServer();
-    File dirPath = new File("generated-conf");
-    _configUrl = _httpServer.serveDir("/generated-conf", dirPath.getCanonicalPath(), _localFileServerPort);
+    _configUrl = _httpServer.serveDir("/generated-conf", _generatedConfPath.toString(), _localFileServerPort);
 
     LOG.info("Started HTTP server from which config for the MesosSupervisor's may be fetched. URL: " + _configUrl);
   }
