@@ -780,9 +780,10 @@ public class MesosNimbus implements INimbus {
           throw new RuntimeException(e);
         }
 
-        String topologyAndNodeId = details.getId() + " | " + slot.getNodeId();
-        String executorName = "storm-supervisor | " + topologyAndNodeId;
-        String taskName = "storm-worker | " + topologyAndNodeId + ":" + slot.getPort();
+        String delimiter = MesosCommon.getMesosComponentNameDelimiter(_conf, details);
+        String topologyAndNodeId = details.getId() + delimiter + slot.getNodeId();
+        String executorName = "storm-supervisor" + delimiter + topologyAndNodeId;
+        String taskName = "storm-worker" + delimiter + topologyAndNodeId + ":" + slot.getPort();
         String executorDataStr = JSONValue.toJSONString(executorData);
         ExecutorInfo.Builder executorInfoBuilder = ExecutorInfo.newBuilder();
         executorInfoBuilder
