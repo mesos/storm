@@ -32,8 +32,10 @@ public class MesosCommon {
   public static final String EXECUTOR_MEM_CONF = "topology.mesos.executor.mem.mb";
   public static final String SUICIDE_CONF = "mesos.supervisor.suicide.inactive.timeout.secs";
   public static final String AUTO_START_LOGVIEWER_CONF = "supervisor.autostart.logviewer";
+  // Should we prefix the Worker Task ID with a configurable string (as well as the topology name)?
   public static final String WORKER_NAME_PREFIX = "topology.mesos.worker.prefix";
   public static final String WORKER_NAME_PREFIX_DELIMITER = "topology.mesos.worker.prefix.delimiter";
+  public static final String MESOS_COMPONENT_NAME_DELIMITER = "topology.mesos.component.name.delimiter";
 
   public static final double DEFAULT_WORKER_CPU = 1;
   public static final double DEFAULT_WORKER_MEM_MB = 1000;
@@ -43,7 +45,8 @@ public class MesosCommon {
 
   public static final String SUPERVISOR_ID = "supervisorid";
   public static final String ASSIGNMENT_ID = "assignmentid";
-  public static final String DEFAULT_DELIMITER = "_";
+  public static final String DEFAULT_WORKER_NAME_PREFIX_DELIMITER = "_";
+  public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = " | ";
 
   public static String hostFromAssignmentId(String assignmentId, String delimiter) {
     final int last = assignmentId.lastIndexOf(delimiter);
@@ -59,7 +62,14 @@ public class MesosCommon {
   }
 
   public static String getWorkerPrefixDelimiter(Map conf) {
-    return Optional.fromNullable((String) conf.get(WORKER_NAME_PREFIX_DELIMITER)).or(DEFAULT_DELIMITER);
+    return Optional.fromNullable((String) conf.get(WORKER_NAME_PREFIX_DELIMITER))
+        .or(DEFAULT_WORKER_NAME_PREFIX_DELIMITER);
+  }
+
+  public static String getMesosComponentNameDelimiter(Map conf, TopologyDetails info) {
+    Map topologyConf = getFullTopologyConfig(conf, info);
+    return Optional.fromNullable((String) topologyConf.get(MESOS_COMPONENT_NAME_DELIMITER))
+        .or(DEFAULT_MESOS_COMPONENT_NAME_DELIMITER);
   }
 
   public static String taskId(String nodeid, int port) {

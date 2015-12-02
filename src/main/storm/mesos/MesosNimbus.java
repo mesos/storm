@@ -780,9 +780,14 @@ public class MesosNimbus implements INimbus {
           throw new RuntimeException(e);
         }
 
+        String delimiter = MesosCommon.getMesosComponentNameDelimiter(_conf, details);
+        String topologyAndNodeId = details.getId() + delimiter + slot.getNodeId();
+        String executorName = "storm-supervisor" + delimiter + topologyAndNodeId;
+        String taskName = "storm-worker" + delimiter + topologyAndNodeId + ":" + slot.getPort();
         String executorDataStr = JSONValue.toJSONString(executorData);
         ExecutorInfo.Builder executorInfoBuilder = ExecutorInfo.newBuilder();
         executorInfoBuilder
+            .setName(executorName)
             .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
             .setData(ByteString.copyFromUtf8(executorDataStr));
         if (!subtractedExecutorResources) {
@@ -830,7 +835,7 @@ public class MesosNimbus implements INimbus {
         LOG.info("Launching task with Mesos Executor data: <"
             + executorDataStr + ">");
         TaskInfo task = TaskInfo.newBuilder()
-            .setName("worker " + slot.getNodeId() + ":" + slot.getPort())
+            .setName(taskName)
             .setTaskId(taskId)
             .setSlaveId(offer.getSlaveId())
             .setExecutor(executorInfoBuilder.build())
