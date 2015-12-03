@@ -22,6 +22,6 @@ RUN apt-get update && \
   tar xf storm-mesos-*.tgz -C /opt/storm --strip=1 && \
   rm -rf /work ~/.m2 && \
   apt-get -yf autoremove openjdk-7-jdk maven && \
-  apt-get clean && rm -rf /var/lib/apt/lists/*
+  apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 WORKDIR /opt/storm
