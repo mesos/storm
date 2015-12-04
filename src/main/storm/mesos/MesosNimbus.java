@@ -789,15 +789,11 @@ public class MesosNimbus implements INimbus {
         executorInfoBuilder
             .setName(executorName)
             .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
-            .setData(ByteString.copyFromUtf8(executorDataStr));
-        if (!subtractedExecutorResources) {
-          subtractedExecutorResources = true;
-          executorInfoBuilder
-              .addAllResources(executorCpuResources)
-              .addAllResources(executorMemResources);
-          if (executorPortsResources != null) {
-            executorInfoBuilder.addAllResources(executorPortsResources);
-          }
+            .setData(ByteString.copyFromUtf8(executorDataStr))
+            .addAllResources(executorCpuResources)
+            .addAllResources(executorMemResources);
+        if (executorPortsResources != null) {
+          executorInfoBuilder.addAllResources(executorPortsResources);
         }
         if (_container.isPresent()) {
           // An ugly workaround for a bug in DCOS
