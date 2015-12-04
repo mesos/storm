@@ -747,6 +747,7 @@ public class MesosNimbus implements INimbus {
           offerResources = subtractResourcesScalar(offerResources, executorCpu, "cpus");
           executorMemResources = getResourcesScalar(offerResources, executorMem, "mem");
           offerResources = subtractResourcesScalar(offerResources, executorMem, "mem");
+          subtractedExecutorResources = true;
         }
         List<Resource> workerCpuResources = getResourcesScalar(offerResources, workerCpu, "cpus");
         offerResources = subtractResourcesScalar(offerResources, workerCpu, "cpus");
