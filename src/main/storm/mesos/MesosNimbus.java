@@ -306,7 +306,7 @@ public class MesosNimbus implements INimbus {
 
     for (Resource r : offer.getResourcesList()) {
       if (r.hasReservation()) {
-        // skip resources with reservations
+        // skip resources with dynamic reservations
         continue;
       }
       if (r.getType() == Type.SCALAR) {
@@ -495,7 +495,7 @@ public class MesosNimbus implements INimbus {
     double valueNeeded = value;
     for (Resource r : offerResources) {
       if (r.hasReservation()) {
-        // skip resources with reservations
+        // skip resources with dynamic reservations
         continue;
       }
       if (r.getType() == Type.SCALAR &&
@@ -739,13 +739,11 @@ public class MesosNimbus implements INimbus {
           Collections.sort(offerResources, new ResourceRoleComparator());
         }
 
-        List<Resource> executorCpuResources = null;
-        List<Resource> executorMemResources = null;
+        List<Resource> executorCpuResources = getResourcesScalar(offerResources, executorCpu, "cpus");
+        List<Resource> executorMemResources = getResourcesScalar(offerResources, executorMem, "mem");
         List<Resource> executorPortsResources = null;
         if (!subtractedExecutorResources) {
-          executorCpuResources = getResourcesScalar(offerResources, executorCpu, "cpus");
           offerResources = subtractResourcesScalar(offerResources, executorCpu, "cpus");
-          executorMemResources = getResourcesScalar(offerResources, executorMem, "mem");
           offerResources = subtractResourcesScalar(offerResources, executorMem, "mem");
           subtractedExecutorResources = true;
         }
