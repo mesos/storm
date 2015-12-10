@@ -24,7 +24,7 @@ This will build a Mesos executor package.  You'll need to edit `storm.yaml` and 
 
 Sub-commands can be invoked similar to git sub-commands.
 
-For example the following command will download the Storm release zip into the current working directory.
+For example the following command will download the Storm release tarball into the current working directory.
 ```bash
 bin/build-release.sh downloadStormRelease
 ```
@@ -36,6 +36,12 @@ bin/build-release.sh downloadStormRelease
 
   Attempts to clean working files and directories created when building.
 
+* `downloadStormRelease`
+
+  A utility function to download the Storm release tarball for the targeted storm release.
+
+  _Set `MIRROR` environment variable to configure download mirror._
+
 * `mvnPackage`
 
   Runs the maven targets necessary to build the Storm Mesos framework.
@@ -43,21 +49,16 @@ bin/build-release.sh downloadStormRelease
 * `prePackage`
 
   Prepares the working directories to be able to package the Storm Mesos framework.
-  * Optional argument specifying the Storm release zip to package against.
+  * Optional argument specifying the Storm release tarball to package against.
 
 * `package`
 
   Packages the Storm Mesos Framework.
 
-* `downloadStormRelease`
-
-  A utility function to download the Storm release zip for the targeted storm release.
-
-  _Set `MIRROR` environment variable to configure download mirror._
-
 * `dockerImage`
 
-  Builds a Docker image based on the current packaged storm. Run ./bin/build-release.sh before running this subcommand.
+  Builds a Docker image from the current code.
+  * Notably, the mesos/storm repo on Github also has a hook that auomatically builds a [new Docker image on Dockerhub](https://hub.docker.com/r/mesosphere/storm/) upon every commit.
 
 * `help`
 
@@ -76,11 +77,15 @@ It's recommended that you also run the UI on the same machine as Nimbus via the 
 bin/storm ui
 ```
 
-There's a minor bug in the UI where it displays the number of slots in the cluster – you don't need to worry about this.
+There's a minor bug in the UI regarding how it displays the number of slots in the cluster – you don't need to worry about this, it's an artifact of there being no pre-existing slots when Storm runs on Mesos.  Slots are created from available cluster resources when a topology needs its Storm worker processes to be launched.
 
 Topologies are submitted to a Storm/Mesos cluster the exact same way they are submitted to a regular Storm cluster.
 
 Storm/Mesos provides resource isolation between topologies. So you don't need to worry about topologies interfering with one another.
+
+## Vagrant setup
+
+For local development and familiarizing yourself with Storm/Mesos, please see the [Vagrant setup docs](docs/vagrant.md).
 
 ## Mandatory configuration
 
@@ -93,7 +98,7 @@ Storm/Mesos provides resource isolation between topologies. So you don't need to
 
 2. `mesos.master.url`: URL for the Mesos master.
 
-3. `storm.zookeeper.servers`: The location of the Zookeeper servers to be used by the Storm master.
+3. `storm.zookeeper.servers`: The location of the ZooKeeper servers to be used by the Storm master.
 
 ## Optional configuration
 
@@ -178,7 +183,7 @@ $ ./bin/storm jar -c nimbus.host=10.0.0.1 -c nimbus.thrift.port=32001 examples/s
 
 ## Running without Marathon
 
-If you'd like to run the example above _without_ Marathon, you can do so by specifying 2 required ports, the 
+If you'd like to run the example above _without_ Marathon, you can do so by specifying 2 required ports, the
 MESOS_SANDBOX path, and running the container. For example:
 
 ```

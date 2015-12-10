@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# Uncomment to debug this script
+#set -x
+
 set -o errexit -o nounset -o pipefail
 
 function _rm {
@@ -11,16 +15,20 @@ MIRROR=${MIRROR:-"http://www.gtlib.gatech.edu/pub"}
 
 function help {
   cat <<USAGE
-Usage: bin/build-release.sh <storm.zip>
-  clean                   Attempts to clean working files and directories
-                            created when building.
-  mvnPackage              Runs the maven targets necessary to build the Storm
-                            Mesos framework.
-  prePackage <storm.zip>  Prepares the working directories to be able to
-                            package the Storm Mesos framework.
-  package                 Packages the Storm Mesos Framework.
-  downloadStormRelease    A utility function to download the Storm release zip
-                            for the targeted storm release.
+Usage: bin/build-release.sh [<storm.tar.gz>]
+  clean                     Cleans working files and directories created when
+                              building.
+  mvnPackage                Runs the maven targets necessary to build the Storm
+                              Mesos framework.
+  prePackage <storm.tar.gz> Prepares the working directories to be able to
+                              package the Storm Mesos framework.
+  package                   Packages the Storm Mesos Framework.
+  downloadStormRelease      A utility function to download the Storm release zip
+                              for the targeted storm release.
+  dockerImage               Build a dockerImage from the current code. Not
+                              part of the standard steps from a raw invocation of
+                              bin/build-release.sh.
+
   ENV
     MIRROR        Specify Apache Storm Mirror to download from
                     Default: ${MIRROR}
@@ -30,8 +38,8 @@ USAGE
 }; function --help { help ;}; function -h { help ;}
 
 function downloadStormRelease {
-  if [ ! -f apache-storm-${RELEASE}.zip ]; then
-      wget --progress=dot:mega ${MIRROR}/apache/storm/apache-storm-${RELEASE}/apache-storm-${RELEASE}.zip
+  if [ ! -f apache-storm-${RELEASE}.tar.gz ]; then
+      wget --progress=dot:mega ${MIRROR}/apache/storm/apache-storm-${RELEASE}/apache-storm-${RELEASE}.tar.gz
   fi
 }
 
@@ -50,10 +58,10 @@ function mvnPackage {
 function prePackage {(
   _rm _release
   mkdir -p _release
-  cp $1 _release/storm.zip
+  cp $1 _release/.
   cd _release
-  unzip storm.zip
-  _rm storm.zip
+  tar xvf $1
+  _rm $1
 )}
 
 function package {(
@@ -72,33 +80,47 @@ function package {(
   cd _release
   # When supervisor starts up it looks for storm-mesos not apache-storm.
   mv apache-storm-${RELEASE} storm-mesos-${RELEASE}
-  tar cvzf ${tarName} storm-mesos-${RELEASE}
+
+  tar cvzf ${tarName} --numeric-owner --owner 0 --group 0 storm-mesos-${RELEASE}
   echo "Copying ${tarName} to $(cd .. && pwd)/${tarName}"
   cp ${tarName} ../
+
+  # create logs dir for MesosNimbus to use -- when you rebuild this package and are using the
+  # vagrant setup in this repo, the virtualbox shared-file driver gets confused about whether
+  # the logs dir is really there or not, since it is being deleted when we rebuild.
+  mkdir storm-mesos-${RELEASE}/logs
+
   cd ..
 )}
 
 function dockerImage {(
-  rm -rf _docker && \
-  mkdir _docker && \
-  cp storm-mesos-${RELEASE}.tgz _docker && \
-  cd _docker && \
-  tar xvf storm-mesos-${RELEASE}.tgz &&
-  rm storm-mesos-${RELEASE}.tgz && \
-  cd storm-mesos-${RELEASE} && \
-  cp ../../Dockerfile . && \
-  docker build -t mesos/storm:git-`git rev-parse --short HEAD` . && \
-  cd ../../ && \
-  rm -rf _docker
+  docker build -t mesos/storm:git-`git rev-parse --short HEAD`
+)}
+
+# Ensure we have GNU tar so that we can use options such as --owner, etc.
+function ensureCorrectTar {(
+  if ! tar --version | grep -q 'GNU tar'; then
+    echo "ERROR: 'tar' command is not from GNU.
+         Assuming you are on Mac OS X please use homebrew to install gnu-tar and ensure that 'tar' resolves to the
+         tar binary from that package.  Please see this page for more info:
+           https://apple.stackexchange.com/questions/69223/how-to-replace-mac-os-x-utilities-with-gnu-core-utilities
+         The following steps *may* work for you, assuming you have homebrew:
+           brew uninstall gnu-tar   # in case you've previously installed gnu-tar but the binary is named 'gtar' instead of 'tar'
+           brew install --with-default-names gnu-tar  # install gnu-tar as 'tar'
+           hash -r  # resets shell's recorded command paths"
+    exit 1
+  fi
 )}
 
 function main {
   clean
   downloadStormRelease
   mvnPackage
-  prePackage apache-storm-${RELEASE}.zip
+  prePackage apache-storm-${RELEASE}.tar.gz
   package
 }
+
+ensureCorrectTar
 
 ######################### Delegates to subcommands or runs main, as appropriate
 if [[ ${1:-} ]] && declare -F | cut -d' ' -f3 | fgrep -qx -- "${1:-}"
