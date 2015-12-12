@@ -61,7 +61,50 @@
                 <exclude>defaults.yaml</exclude>
               </excludes>
             </filter>
-          </filters>
+	  </filters>
+	  <!-- The mesos/storm dependencies can conflict with the topology jar's dependencies.
+               To avoid this problem, we shade every dependency of mesos/storm that we can.  We weren't
+	       able to shade org.apache.mesos because it is loaded directly by the Mesos "drivers",
+               that run within the MesosNimbus and MesosSupervisor processes.
+         -->
+          <relocations>
+            <relocation>
+              <pattern>com.google.common</pattern>
+              <shadedPattern>com.google.common.shaded</shadedPattern>
+            </relocation>
+            <relocation>
+              <pattern>com.google.protobuf</pattern>
+              <shadedPattern>com.google.protobuf.shaded</shadedPattern>
+            </relocation>
+	    <relocation>
+              <pattern>org.apache.commons</pattern>
+              <shadedPattern>com.apache.commons.shaded</shadedPattern>
+            </relocation>
+            <relocation>
+	      <pattern>org.slf4j</pattern>
+              <shadedPattern>org.slf4j.shaded</shadedPattern>
+            </relocation>
+            <relocation>
+	      <pattern>org.apache.log4j</pattern>
+              <shadedPattern>org.apache.log4j.shaded</shadedPattern>
+            </relocation>
+            <relocation>
+	      <pattern>org.json.simple</pattern>
+              <shadedPattern>org.json.simple.shaded</shadedPattern>
+            </relocation>
+            <relocation>
+              <pattern>com.google.guava</pattern>
+              <shadedPattern>com.google.guava.shaded</shadedPattern>
+            </relocation>
+	    <relocation>
+              <pattern>org.mortbay</pattern>
+              <shadedPattern>org.mortbay.shaded</shadedPattern>
+	    </relocation>
+	    <relocation>
+	      <pattern>javax.servlet</pattern>
+              <shadedPattern>javax.servlet.shaded</shadedPattern>
+	    </relocation>
+          </relocations>
         </configuration>
         <executions>
           <execution>
