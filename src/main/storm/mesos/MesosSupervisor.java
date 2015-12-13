@@ -34,6 +34,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
+import clojure.lang.PersistentVector;
 
 public class MesosSupervisor implements ISupervisor {
   public static final Logger LOG = Logger.getLogger(MesosSupervisor.class);
@@ -98,7 +99,12 @@ public class MesosSupervisor implements ISupervisor {
 
   @Override
   public Object getMetadata() {
-    return null;
+    try {
+      Object[] ports = _state.snapshot().keySet().toArray();
+      return PersistentVector.create(ports);
+    } catch (IOException ex) {
+      throw new RuntimeException(ex);
+    }
   }
 
   @Override
