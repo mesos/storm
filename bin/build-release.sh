@@ -69,6 +69,10 @@ function package {(
   _rm $stormDir/*.jar
 
   # copies storm-mesos jar over
+  # We only want the shaded jar. Its important to remove the original
+  # jar so we dont have both shaded as well as original jar in the classpath
+  # for mesos nimbus
+  rm target/original-storm-0.9.6.jar
   cp target/*.jar $stormDir/lib/
   cp bin/storm-mesos $stormDir/bin/
   cp bin/run-with-marathon.sh $stormDir/bin/
