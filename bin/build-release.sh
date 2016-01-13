@@ -98,7 +98,9 @@ function package {(
 )}
 
 function dockerImage {(
-  docker build -t mesos/storm:git-`git rev-parse --short HEAD`
+  cmd="docker build -t karthick/mesos-storm:git-`git rev-parse --short HEAD` ."
+  echo $cmd
+  $cmd
 )}
 
 # Ensure we have GNU tar so that we can use options such as --owner, etc.

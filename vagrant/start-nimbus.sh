@@ -18,7 +18,7 @@ kill `ps aux | grep backtype.storm.ui.cor[e] | awk '{print $2}'` &> /dev/null ||
 # Start storm nimbus, which also acts as the mesos scheduler in this case.
 # Point the STORM_CONF_DIR to where the repo's storm.yaml lives, so we can modify it
 # without having to rebuild the framework tarball and fully reprovision.
-STORM_CONF_DIR=/vagrant bin/storm-mesos nimbus &
+MESOS_NATIVE_JAVA_LIBRARY=/usr/lib/libmesos.so STORM_CONF_DIR=/vagrant bin/storm-mesos nimbus &
 
 # Start storm UI
 bin/storm ui &
