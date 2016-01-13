@@ -5,6 +5,12 @@ VAGRANTFILE_API_VERSION = "2"
 
 $provision_script = <<SCRIPT
 
+function install_package {
+  name_of_package=$1
+  echo "Installing ${name_of_package}"
+  apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install ${name_of_package}
+}
+
 PREFIX="PROVISIONER:"
 
 set -e
@@ -20,16 +26,22 @@ DISTRO=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
 CODENAME=$(lsb_release -cs)
 echo "deb http://repos.mesosphere.io/${DISTRO} ${CODENAME} main" | sudo tee /etc/apt/sources.list.d/mesosphere.list
 
-apt-get -q -y update
+apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y update
 echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
-apt-get -q -y install oracle-java8-installer
-apt-get -q -y install oracle-java8-set-default
-apt-get -q -y install libcurl3
-apt-get -q -y install zookeeperd
-apt-get -q -y install aria2
+
+echo "Installing oracle-java8-installer..."
+install_package "oracle-java8-installer"
+echo "Installing oracle-java8-set-default..."
+apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install oracle-java8-set-default
+echo "Installing libcurl3..."
+apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install libcurl3
+echo "Installing zookeeperd..."
+apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install zookeeperd
+echo "Installing aria2..."
+apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install aria2
 
 echo "${PREFIX}Installing mesos ..."
-apt-get -q -y install mesos
+apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install mesos=0.25.0-0.2.70.ubuntu1404
 echo "Done"
 
 ln -sf /usr/lib/jvm/java-8-oracle/jre/lib/amd64/server/libjvm.so /usr/lib/libjvm.so
@@ -37,7 +49,7 @@ ln -sf /usr/lib/jvm/java-8-oracle/jre/lib/amd64/server/libjvm.so /usr/lib/libjvm
 echo "${PREFIX}Successfully provisioned machine for storm development"
 
 # Install docker
-apt-get -q -y install docker.io
+apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install docker.io
 
 SCRIPT
 
