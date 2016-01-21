@@ -109,7 +109,7 @@ function package {(
 )}
 
 function dockerImage {(
-  cmd="docker build -t karthick/mesos-storm:git-`git rev-parse --short HEAD` ."
+  cmd="docker build -t mesos/storm:git-`git rev-parse --short HEAD` ."
   echo $cmd
   $cmd
 )}
