@@ -4,5 +4,7 @@ target
 *.swp
 _release
 *.iml
+*.zip
+*.tgz
 dependency-reduced-pom.xml
 /build/

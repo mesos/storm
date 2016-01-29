@@ -11,6 +11,16 @@ function _rm {
 
 RELEASE=${RELEASE:-`grep -1 -A 0 -B 0 '<version>' pom.xml | head -n 1 | awk '{print $1}' | sed -e 's/.*<version>//' | sed -e 's/<\/version>.*//'`}
 
+STORM_RELEASE=${STORM_RELEASE:-`grep -1 -A 0 -B 0 '<storm.default.version>' pom.xml | head -n 1 | awk '{print $1}' | sed -e 's/.*<storm.default.version>//' | sed -e 's/<\/storm.default.version>.*//'`}
+
+if [[ $STORM_RELEASE == "0.10"* ]]; then
+  PROFILE=storm10
+else
+  PROFILE=storm9
+fi
+
+MESOS_RELEASE=${MESOS_RELEASE:-`grep -1 -A 0 -B 0 '<mesos.default.version>' pom.xml | head -n 1 | awk '{print $1}' | sed -e 's/.*<mesos.default.version>//' | sed -e 's/<\/mesos.default.version>.*//'`}
+
 MIRROR=${MIRROR:-"http://www.gtlib.gatech.edu/pub"}
 
 function help {
@@ -32,14 +42,17 @@ Usage: bin/build-release.sh [<storm.tar.gz>]
   ENV
     MIRROR        Specify Apache Storm Mirror to download from
                     Default: ${MIRROR}
-    RELEASE       The targeted release version of Storm
-                    Default: ${RELEASE}
+    STORM_RELEASE       The targeted release version of Storm
+                    Default: ${STORM_RELEASE}
+    MESOS_RELEASE       The targeted release version of MESOS
+                    Default: ${MESOS_RELEASE}
+
 USAGE
 }; function --help { help ;}; function -h { help ;}
 
 function downloadStormRelease {
-  if [ ! -f apache-storm-${RELEASE}.tar.gz ]; then
-      wget --progress=dot:mega ${MIRROR}/apache/storm/apache-storm-${RELEASE}/apache-storm-${RELEASE}.tar.gz
+  if [ ! -f apache-storm-${STORM_RELEASE}.tar.gz ]; then
+      wget --progress=dot:mega ${MIRROR}/apache/storm/apache-storm-${STORM_RELEASE}/apache-storm-${STORM_RELEASE}.tar.gz
   fi
 }
 
@@ -51,8 +64,7 @@ function clean {
 }
 
 function mvnPackage {
-  mvn package
-  mvn dependency:copy-dependencies
+  mvn clean package -P$PROFILE -Dstorm.version=$STORM_RELEASE -Dmesos.version=$MESOS_RELEASE
 }
 
 function prePackage {(
@@ -72,33 +84,32 @@ function package {(
   # We only want the shaded jar. Its important to remove the original
   # jar so we dont have both shaded as well as original jar in the classpath
   # for mesos nimbus
-  rm target/original-storm-0.9.6.jar
-  cp target/*.jar $stormDir/lib/
+  cp storm/target/storm-mesos-${RELEASE}-storm${STORM_RELEASE}-mesos${MESOS_RELEASE}.jar $stormDir/lib
   cp bin/storm-mesos $stormDir/bin/
   cp bin/run-with-marathon.sh $stormDir/bin/
   chmod +x $stormDir/bin/*
   mkdir -p $stormDir/native
   cp storm.yaml $stormDir/conf/storm.yaml
 
-  local tarName="storm-mesos-${RELEASE}.tgz"
+  local dirName="storm-mesos-${RELEASE}-storm${STORM_RELEASE}-mesos${MESOS_RELEASE}"
+  local tarName="${dirName}.tgz"
   cd _release
   # When supervisor starts up it looks for storm-mesos not apache-storm.
-  mv apache-storm-${RELEASE} storm-mesos-${RELEASE}
-
-  tar cvzf ${tarName} --numeric-owner --owner 0 --group 0 storm-mesos-${RELEASE}
+  mv apache-storm-${STORM_RELEASE} ${dirName}
+  tar cvzf ${tarName} --numeric-owner --owner 0 --group 0 ${dirName}
   echo "Copying ${tarName} to $(cd .. && pwd)/${tarName}"
   cp ${tarName} ../
 
   # create logs dir for MesosNimbus to use -- when you rebuild this package and are using the
   # vagrant setup in this repo, the virtualbox shared-file driver gets confused about whether
   # the logs dir is really there or not, since it is being deleted when we rebuild.
-  mkdir storm-mesos-${RELEASE}/logs
+  mkdir ${dirName}/logs
 
   cd ..
 )}
 
 function dockerImage {(
-  cmd="docker build -t karthick/mesos-storm:git-`git rev-parse --short HEAD` ."
+  cmd="docker build -t mesos/storm:git-`git rev-parse --short HEAD` ."
   echo $cmd
   $cmd
 )}
@@ -122,7 +133,7 @@ function main {
   clean
   downloadStormRelease
   mvnPackage
-  prePackage apache-storm-${RELEASE}.tar.gz
+  prePackage apache-storm-${STORM_RELEASE}.tar.gz
   package
 }
 

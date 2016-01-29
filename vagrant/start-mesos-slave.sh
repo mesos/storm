@@ -19,7 +19,7 @@ echo "$2" > /etc/mesos-slave/ip
 # Allow executor to be loaded from the tarball built by build-release.sh
 mkdir -p /usr/local/storm
 rm -rf /usr/local/storm/* || /bin/true
-cp /vagrant/storm-mesos-${RELEASE}.tgz /usr/local/storm
+cp /vagrant/storm-mesos-${RELEASE}-*.tgz /usr/local/storm
 
 # clean up previous runs' mesos-slave work_dir
 rm -rf /tmp/mesos/*
