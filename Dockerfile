@@ -11,6 +11,10 @@ ENV JAVA_HOME /usr/lib/jvm/java-7-openjdk-amd64
 
 ENV MESOS_NATIVE_JAVA_LIBRARY /usr/lib/libmesos.so
 
+ARG MESOS_RELEASE=0.25.0
+ARG STORM_RELEASE=0.9.6
+ARG MIRROR=http://www.gtlib.gatech.edu/pub
+
 ADD . /work
 
 WORKDIR /work
