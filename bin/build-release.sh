@@ -109,7 +109,11 @@ function package {(
 )}
 
 function dockerImage {(
-  cmd="docker build -t mesos/storm:git-`git rev-parse --short HEAD` ."
+  cmd="docker build \
+       --build-arg MESOS_RELEASE=$MESOS_RELEASE \
+       --build-arg STORM_RELEASE=$STORM_RELEASE \
+       --build-arg MIRROR=$MIRROR \
+        -t mesos/storm:git-`git rev-parse --short HEAD` ."
   echo $cmd
   $cmd
 )}
