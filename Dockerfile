@@ -1,7 +1,7 @@
 #
 # Dockerfile for Storm Mesos framework
 #
-FROM mesosphere/mesos:0.25.0-0.2.70.ubuntu1404
+FROM mesosphere/mesos:0.27.0-0.2.190.ubuntu1404
 MAINTAINER Timothy Chen <tnachen@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -10,6 +10,10 @@ ENV DEBIAN_FRONTEND noninteractive
 ENV JAVA_HOME /usr/lib/jvm/java-7-openjdk-amd64
 
 ENV MESOS_NATIVE_JAVA_LIBRARY /usr/lib/libmesos.so
+
+ARG MESOS_RELEASE=0.27.0
+ARG STORM_RELEASE=0.9.6
+ARG MIRROR=http://www.gtlib.gatech.edu/pub
 
 ADD . /work
 
