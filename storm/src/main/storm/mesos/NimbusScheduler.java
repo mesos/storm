@@ -25,7 +25,7 @@ import org.apache.log4j.Logger;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
-import static storm.mesos.PrettyProtobuf.taskStatusToString;
+import static storm.mesos.util.PrettyProtobuf.taskStatusToString;
 
 public class NimbusScheduler implements Scheduler {
   private MesosNimbus mesosNimbus;

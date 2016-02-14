@@ -19,8 +19,6 @@ package storm.mesos;
 
 
 
-import backtype.storm.generated.JavaObject;
-import backtype.storm.generated.JavaObjectArg;
 import backtype.storm.scheduler.ISupervisor;
 import backtype.storm.utils.Utils;
 import org.apache.log4j.Logger;
@@ -39,9 +37,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import clojure.lang.PersistentVector;
+import storm.mesos.util.MesosCommon;
 
 public class MesosSupervisor implements ISupervisor {
   public static final Logger LOG = Logger.getLogger(MesosSupervisor.class);

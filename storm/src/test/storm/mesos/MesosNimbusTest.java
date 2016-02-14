@@ -25,6 +25,9 @@ import org.apache.mesos.MesosSchedulerDriver;
 import org.apache.mesos.Protos.*;
 import org.junit.Test;
 import org.mockito.Mockito;
+import storm.mesos.schedulers.OfferResources;
+import storm.mesos.util.MesosCommon;
+import storm.mesos.util.RotatingMap;
 
 import java.net.URI;
 import java.util.*;
@@ -82,31 +85,6 @@ public class MesosNimbusTest {
             )
         )
         .build();
-  }
-
-  @Test
-  public void testGetResources() throws Exception {
-    MesosNimbus mesosNimbus = new MesosNimbus();
-
-    Offer offer1 = buildOffer(2.0, 2.0);
-    OfferResources offerResources1 = mesosNimbus.getResources(offer1, 1.0, 1.0, 1.0, 1.0);
-    assertEquals(1, offerResources1.cpuSlots);
-    assertEquals(1, offerResources1.memSlots);
-
-    Offer offer2 = buildOffer(1.0, 1.0);
-    OfferResources offerResources2 = mesosNimbus.getResources(offer2, 1.0, 1.0, 1.0, 1.0);
-    assertEquals(0, offerResources2.cpuSlots);
-    assertEquals(0, offerResources2.memSlots);
-
-    Offer offer3 = buildOfferWithReservation(2.0, 2.0, 1.0, 1.0);
-    OfferResources offerResources3 = mesosNimbus.getResources(offer3, 1.0, 1.0, 1.0, 1.0);
-    assertEquals(2, offerResources3.cpuSlots);
-    assertEquals(2, offerResources3.memSlots);
-
-    Offer offer4 = buildOfferWithReservation(2.0, 2.0, 1.5, 1.5);
-    OfferResources offerResources4 = mesosNimbus.getResources(offer4, 2.5, 2.5, 1.0, 1.0);
-    assertEquals(1, offerResources4.cpuSlots);
-    assertEquals(1, offerResources4.memSlots);
   }
 
   @Test

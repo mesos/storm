@@ -34,6 +34,7 @@ import org.apache.mesos.Protos.Value.Type;
 import org.apache.mesos.SchedulerDriver;
 import org.json.simple.JSONValue;
 import org.yaml.snakeyaml.Yaml;
+import storm.mesos.schedulers.IMesosStormScheduler;
 import storm.mesos.shims.CommandLineShimFactory;
 import storm.mesos.shims.ICommandLineShim;
 import storm.mesos.shims.LocalStateShim;
@@ -50,7 +51,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static storm.mesos.PrettyProtobuf.*;
+import static storm.mesos.util.PrettyProtobuf.*;
+import storm.mesos.schedulers.DefaultScheduler;
+import storm.mesos.util.MesosCommon;
+import storm.mesos.util.RotatingMap;
 
 public class MesosNimbus implements INimbus {
   public static final String CONF_EXECUTOR_URI = "mesos.executor.uri";
@@ -87,6 +91,8 @@ public class MesosNimbus implements INimbus {
   private Map<TaskID, Offer> _usedOffers;
   private ScheduledExecutorService timerScheduler =
       Executors.newScheduledThreadPool(1);
+  private IMesosStormScheduler _mesosStormScheduler = null;
+
   private boolean _preferReservedResources = true;
   private Optional<String> _container = Optional.absent();
   private Path _generatedConfPath;
@@ -97,6 +103,10 @@ public class MesosNimbus implements INimbus {
     } else {
       return new HashSet<>(l);
     }
+  }
+
+  public MesosNimbus() {
+    this._mesosStormScheduler = new DefaultScheduler();
   }
 
   public static void main(String[] args) {
@@ -246,7 +256,7 @@ public class MesosNimbus implements INimbus {
         }
       }
       LOG.debug("resourceOffers: After processing offers, now have " +
-          _offers.size() + " offers buffered:" + offerMapToString(_offers));
+                _offers.size() + " offers buffered:" + offerMapToString(_offers));
     }
   }
 
@@ -297,43 +307,6 @@ public class MesosNimbus implements INimbus {
     return driver;
   }
 
-  protected OfferResources getResources(Offer offer, double executorCpu, double executorMem, double cpu, double mem) {
-    OfferResources resources = new OfferResources();
-
-    double offerCpu = 0;
-    double offerMem = 0;
-
-    for (Resource r : offer.getResourcesList()) {
-      if (r.hasReservation()) {
-        // skip resources with dynamic reservations
-        continue;
-      }
-      if (r.getType() == Type.SCALAR) {
-        if (r.getName().equals("cpus")) {
-          offerCpu += r.getScalar().getValue();
-        } else if (r.getName().equals("mem")) {
-          offerMem += r.getScalar().getValue();
-        }
-      }
-    }
-
-    if (offerCpu >= executorCpu + cpu &&
-        offerMem >= executorMem + mem) {
-      resources.cpuSlots = (int) Math.floor((offerCpu - executorCpu) / cpu);
-      resources.memSlots = (int) Math.floor((offerMem - executorMem) / mem);
-    }
-
-    int maxPorts = Math.min(resources.cpuSlots, resources.memSlots);
-
-    List<Integer> portList = new ArrayList<>();
-    collectPorts(offer.getResourcesList(), portList, maxPorts);
-    resources.ports.addAll(portList);
-
-    LOG.debug("Offer: " + offerToString(offer));
-    LOG.debug("Extracted resources: " + resources.toString());
-    return resources;
-  }
-
   private void collectPorts(List<Resource> offers, List<Integer> portList, int maxPorts) {
     for (Resource r : offers) {
       if (r.getName().equals("ports")) {
@@ -353,26 +326,6 @@ public class MesosNimbus implements INimbus {
         }
       }
     }
-  }
-
-  private List<WorkerSlot> toSlots(Offer offer, double cpu, double mem, boolean supervisorExists) {
-    double executorCpuDemand = supervisorExists ? 0 : MesosCommon.executorCpu(_conf);
-    double executorMemDemand = supervisorExists ? 0 : MesosCommon.executorMem(_conf);
-
-    OfferResources resources = getResources(
-        offer,
-        executorCpuDemand,
-        executorMemDemand,
-        cpu,
-        mem);
-
-    List<WorkerSlot> ret = new ArrayList<WorkerSlot>();
-    int availableSlots = Math.min(resources.cpuSlots, resources.memSlots);
-    availableSlots = Math.min(availableSlots, resources.ports.size());
-    for (int i = 0; i < availableSlots; i++) {
-      ret.add(new WorkerSlot(offer.getHostname(), resources.ports.get(i)));
-    }
-    return ret;
   }
 
   /**
@@ -410,69 +363,17 @@ public class MesosNimbus implements INimbus {
             (_disallowedHosts != null && !_disallowedHosts.contains(hostname));
   }
 
+
   @Override
   public Collection<WorkerSlot> allSlotsAvailableForScheduling(
-      Collection<SupervisorDetails> existingSupervisors, Topologies topologies, Set<String> topologiesMissingAssignments) {
+          Collection<SupervisorDetails> existingSupervisors, Topologies topologies, Set<String> topologiesMissingAssignments) {
     synchronized (_offersLock) {
-      LOG.debug("allSlotsAvailableForScheduling: Currently have " + _offers.size() + " offers buffered" +
-          (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
-      if (!topologiesMissingAssignments.isEmpty()) {
-        LOG.info("Topologies that need assignments: " + topologiesMissingAssignments.toString());
-
-        // Revive any filtered offers
-        _driver.reviveOffers();
-      } else {
-        LOG.info("Declining offers because no topologies need assignments");
-        _offers.clear();
-        return new ArrayList<>();
-      }
+      return _mesosStormScheduler.allSlotsAvailableForScheduling(
+              _offers,
+              existingSupervisors,
+              topologies,
+              topologiesMissingAssignments);
     }
-
-    Double cpu = null;
-    Double mem = null;
-    // TODO: maybe this isn't the best approach. if a topology raises #cpus keeps failing,
-    // it will mess up scheduling on this cluster permanently
-    for (String id : topologiesMissingAssignments) {
-      TopologyDetails details = topologies.getById(id);
-      double tcpu = MesosCommon.topologyWorkerCpu(_conf, details);
-      double tmem = MesosCommon.topologyWorkerMem(_conf, details);
-      if (cpu == null || tcpu > cpu) {
-        cpu = tcpu;
-      }
-      if (mem == null || tmem > mem) {
-        mem = tmem;
-      }
-    }
-
-    LOG.info("allSlotsAvailableForScheduling: pending topologies' max resource requirements per worker: cpu: " +
-        String.valueOf(cpu) + " & mem: " + String.valueOf(mem));
-
-    List<WorkerSlot> allSlots = new ArrayList<>();
-
-    if (cpu != null && mem != null) {
-      synchronized (_offersLock) {
-        for (Offer offer : _offers.newestValues()) {
-          boolean supervisorExists = supervisorExists(offer, existingSupervisors, topologiesMissingAssignments);
-          List<WorkerSlot> offerSlots = toSlots(offer, cpu, mem, supervisorExists);
-          if (offerSlots.isEmpty()) {
-            _offers.clearKey(offer.getId());
-            LOG.debug("Declining offer `" + offerToString(offer) + "' because it wasn't " +
-                "usable to create a slot which fits largest pending topologies' aggregate needs " +
-                "(max cpu: " + String.valueOf(cpu) + " max mem: " + String.valueOf(mem) + ")");
-          } else {
-            allSlots.addAll(offerSlots);
-          }
-        }
-      }
-    }
-
-    LOG.info("Number of available slots: " + allSlots.size());
-    if (LOG.isDebugEnabled()) {
-      for (WorkerSlot slot : allSlots) {
-        LOG.debug("available slot: " + slot);
-      }
-    }
-    return allSlots;
   }
 
   private OfferID findOffer(WorkerSlot worker) {
