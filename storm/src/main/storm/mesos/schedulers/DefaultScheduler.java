@@ -64,22 +64,18 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
    * in case where ALL topologies in 'allSlotsAvailableForScheduling' method satisfy condition of supervisor existence
    * @param offerHost hostname corresponding to the offer
    * @param existingSupervisors Supervisors which already placed on the node for the Offer
-   * @param topologiesMissingAssignments Topology ids required assignment
+   * @param topologyId Topology id for which we are checking if the supervisor exists already
    * @return boolean value indicating supervisor existence
    */
-  private boolean supervisorExists(String offerHost, Collection<SupervisorDetails> existingSupervisors,
-                                   Set<String> topologiesMissingAssignments) {
-    boolean alreadyExists = true;
-    for (String topologyId : topologiesMissingAssignments) {
-      boolean supervisorExists = false;
-      for (SupervisorDetails d : existingSupervisors) {
-        if (d.getId().equals(MesosCommon.supervisorId(offerHost, topologyId))) {
-          supervisorExists = true;
-        }
+  boolean supervisorExists(String offerHost, Collection<SupervisorDetails> existingSupervisors,
+                                   String topologyId) {
+    boolean supervisorExists = false;
+    for (SupervisorDetails d : existingSupervisors) {
+      if (d.getId().equals(MesosCommon.supervisorId(offerHost, topologyId))) {
+        supervisorExists = true;
       }
-      alreadyExists = (alreadyExists && supervisorExists);
     }
-    return alreadyExists;
+    return supervisorExists;
   }
 
   private Map<String, List<OfferResources>> getOfferResourcesListPerNode(RotatingMap<Protos.OfferID, Protos.Offer> offers) {
@@ -183,7 +179,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
     for (Protos.Offer offer : offers.newestValues()) {
       boolean isOfferUseful = false;
       for (String currentTopology : topologiesMissingAssignments) {
-        boolean supervisorExists = supervisorExists(offer.getHostname(), existingSupervisors, topologiesMissingAssignments);
+        boolean supervisorExists = supervisorExists(offer.getHostname(), existingSupervisors, currentTopology);
         TopologyDetails topologyDetails = topologies.getById(currentTopology);
         if (isFit(offer, topologyDetails, supervisorExists)) {
           isOfferUseful = true;
@@ -223,7 +219,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
       do {
         slotFound = false;
         for (Object currentNode : nodes) {
-          boolean supervisorExists = supervisorExists((String) currentNode, existingSupervisors, topologiesMissingAssignments);
+          boolean supervisorExists = supervisorExists((String) currentNode, existingSupervisors, currentTopology);
 
           for (OfferResources resources : offerResourcesListPerNode.get(currentNode)) {
             boolean isFit = this.isFit(resources, topologyDetails, supervisorExists);
