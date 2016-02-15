@@ -66,6 +66,10 @@ public class OfferResources {
 
     String hostName = offer.getHostname();
     for (Protos.Resource r : offer.getResourcesList()) {
+      if (r.hasReservation()) {
+        // skip resources with dynamic reservations
+        continue;
+      }
       if (r.getName().equals("cpus")) {
         offerCpu = r.getScalar().getValue();
       } else if (r.getName().equals("mem")) {
