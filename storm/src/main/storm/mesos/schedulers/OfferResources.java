@@ -71,11 +71,16 @@ public class OfferResources {
         continue;
       }
       if (r.getName().equals("cpus")) {
-        offerCpu = r.getScalar().getValue();
+        offerCpu += r.getScalar().getValue();
       } else if (r.getName().equals("mem")) {
-        offerMem = r.getScalar().getValue();
+        offerMem += r.getScalar().getValue();
       } else if (r.getName().equals("ports")) {
-        portRanges = r.getRanges();
+        Protos.Value.Ranges tmp  = r.getRanges();
+        if (portRanges == null) {
+           portRanges = tmp ;
+           continue;
+        }
+        portRanges.getRangeList().addAll(tmp.getRangeList());
       }
     }
 
