@@ -77,8 +77,8 @@ public class OfferResources {
       } else if (r.getName().equals("ports")) {
         Protos.Value.Ranges tmp  = r.getRanges();
         if (portRanges == null) {
-           portRanges = tmp ;
-           continue;
+          portRanges = tmp;
+          continue;
         }
         portRanges.getRangeList().addAll(tmp.getRangeList());
       }

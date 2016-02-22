@@ -133,7 +133,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
           }
 
           for (OfferResources resources : offerResourcesListPerNode.get(currentNode)) {
-            boolean isFit = SchedulerUtils.isFit(mesosStormConf,resources, topologyDetails, supervisorExists);
+            boolean isFit = SchedulerUtils.isFit(mesosStormConf, resources, topologyDetails, supervisorExists);
             if (isFit) {
               log.info(resources.toString() + " is a fit for " +
                        topologyDetails.getId() + " requestedWorkerCpu: " + requestedWorkerCpu + " requestedWorkerMem: " +
