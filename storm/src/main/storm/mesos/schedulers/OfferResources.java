@@ -25,13 +25,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class OfferResources {
-  private final Logger log = Logger.getLogger(OfferResources.class);
-
-  public enum ResourceType {
-    CPU,
-    MEM,
-    PORT
-  }
 
   private class PortRange {
     public long begin;
@@ -43,11 +36,11 @@ public class OfferResources {
     }
   }
 
-  Protos.Offer offer;
-  Protos.OfferID offerId;
-  String hostName;
-  double mem;
-  double cpu;
+  private Protos.Offer offer;
+  private Protos.OfferID offerId;
+  private String hostName;
+  private double mem;
+  private double cpu;
 
   List<PortRange> portRanges = new ArrayList<>();
 
@@ -112,41 +105,12 @@ public class OfferResources {
     return this.cpu;
   }
 
-  public void incMem(double val) {
-    mem += val;
-  }
-
-  public void incCpu(double val) {
-    cpu += val;
-  }
-
   public void decCpu(double val) {
     cpu -= val;
   }
 
   public void decMem(double val) {
     mem -= val;
-  }
-
-  public void incResources(ResourceType resourceType, Object val) {
-    try {
-      switch (resourceType) {
-        case CPU:
-          incCpu((double) val);
-          break;
-        case MEM:
-          incMem((double) val);
-          break;
-        case PORT:
-          addPortRanges((Protos.Value.Ranges) val);
-          break;
-        default:
-          new RuntimeException("Unrecognized resource type " + resourceType);
-          break;
-      }
-    } catch (ClassCastException classCastException) {
-      log.info("Exception while trying to increment resources." + classCastException.getStackTrace());
-    }
   }
 
   public long getPort() {

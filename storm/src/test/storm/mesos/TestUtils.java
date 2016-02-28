@@ -18,13 +18,30 @@ package storm.mesos;
  * limitations under the License.
  */
 
+import backtype.storm.generated.StormTopology;
+import backtype.storm.scheduler.TopologyDetails;
 import org.apache.mesos.Protos;
+import storm.mesos.util.MesosCommon;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TestUtils {
+
+  public static TopologyDetails constructTopologyDetails(String topologyName, int numWorkers, double numCpus, double memSize) {
+    Map<String, TopologyDetails> topologyConf = new HashMap<>();
+
+    StormTopology stormTopology = new StormTopology();
+    TopologyDetails topologyDetails= new TopologyDetails(topologyName, topologyConf, stormTopology, numWorkers);
+    topologyDetails.getConf().put(MesosCommon.WORKER_CPU_CONF, Double.valueOf(numCpus));
+    topologyDetails.getConf().put(MesosCommon.WORKER_MEM_CONF, Double.valueOf(memSize));
+
+    return topologyDetails;
+  }
 
   public static Protos.Offer buildOffer(String offerId, String hostName, double cpus, double mem) {
     return Protos.Offer.newBuilder()
@@ -59,12 +76,12 @@ public class TestUtils {
                        .build();
   }
 
-  public static Protos.Offer buildOfferWithReservation(double cpus, double mem, double reservedCpu, double reservedMem) {
+  public static Protos.Offer buildOfferWithReservation(String offerId, String hostName, double cpus, double mem, double reservedCpu, double reservedMem) {
     return Protos.Offer.newBuilder()
-                       .setId(Protos.OfferID.newBuilder().setValue("derp").build())
+                       .setId(Protos.OfferID.newBuilder().setValue(offerId).build())
                        .setFrameworkId(Protos.FrameworkID.newBuilder().setValue("derp").build())
                        .setSlaveId(Protos.SlaveID.newBuilder().setValue("derp").build())
-                       .setHostname("derp")
+                       .setHostname(hostName)
                        .addAllResources(
                          Arrays.asList(
                            buildScalarResource("cpus", cpus),
@@ -210,5 +227,31 @@ public class TestUtils {
       )
     );
     return resourceList;
+  }
+
+  public static Protos.Offer buildOffer() {
+    List <Protos.Resource> resourceList = Arrays.asList(
+      Protos.Resource
+        .newBuilder().setRole("*").setName("cpus").setType(Protos.Value.Type.SCALAR).setScalar(Protos.Value.Scalar.newBuilder().setValue(1).build()).build(),
+      Protos.Resource
+        .newBuilder().setRole("*").setName("mem").setType(Protos.Value.Type.SCALAR).setScalar(Protos.Value.Scalar.newBuilder().setValue(1).build()).build(),
+      Protos.Resource
+        .newBuilder().setRole("role").setName("cpus").setType(Protos.Value.Type.SCALAR).setScalar(Protos.Value.Scalar.newBuilder().setValue(1).build()).build(),
+      Protos.Resource
+        .newBuilder().setRole("role").setName("mem").setType(Protos.Value.Type.SCALAR).setScalar(Protos.Value.Scalar.newBuilder().setValue(1).build()).build(),
+      Protos.Resource.newBuilder().setRole("otherRole").setName("cpus").setType(Protos.Value.Type.SCALAR).setScalar(
+        Protos.Value.Scalar.newBuilder().setValue(1).build()).build(),
+      Protos.Resource.newBuilder().setRole("otherRole").setName("mem").setType(Protos.Value.Type.SCALAR).setScalar(
+        Protos.Value.Scalar.newBuilder().setValue(1).build()).build()
+    );
+    Collections.shuffle(resourceList);
+
+    return Protos.Offer.newBuilder()
+                       .setId(Protos.OfferID.newBuilder().setValue("derp").build())
+                       .setFrameworkId(Protos.FrameworkID.newBuilder().setValue("derp").build())
+                       .setSlaveId(Protos.SlaveID.newBuilder().setValue("derp").build())
+                       .setHostname("derp")
+                       .addAllResources(resourceList)
+                       .build();
   }
 }

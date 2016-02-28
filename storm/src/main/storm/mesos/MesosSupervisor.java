@@ -18,18 +18,25 @@
 package storm.mesos;
 
 
-
 import backtype.storm.scheduler.ISupervisor;
 import backtype.storm.utils.Utils;
+import clojure.lang.PersistentVector;
 import org.apache.log4j.Logger;
 import org.apache.mesos.Executor;
 import org.apache.mesos.ExecutorDriver;
 import org.apache.mesos.MesosExecutorDriver;
-import org.apache.mesos.Protos.*;
+import org.apache.mesos.Protos.ExecutorInfo;
+import org.apache.mesos.Protos.FrameworkInfo;
+import org.apache.mesos.Protos.SlaveInfo;
+import org.apache.mesos.Protos.TaskID;
+import org.apache.mesos.Protos.TaskInfo;
+import org.apache.mesos.Protos.TaskState;
+import org.apache.mesos.Protos.TaskStatus;
 import org.json.simple.JSONValue;
 import storm.mesos.logviewer.LogViewerController;
 import storm.mesos.shims.ILocalStateShim;
 import storm.mesos.shims.LocalStateShim;
+import storm.mesos.util.MesosCommon;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -38,8 +45,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
-import clojure.lang.PersistentVector;
-import storm.mesos.util.MesosCommon;
 
 public class MesosSupervisor implements ISupervisor {
   public static final Logger LOG = Logger.getLogger(MesosSupervisor.class);

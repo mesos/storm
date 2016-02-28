@@ -17,12 +17,19 @@
  */
 package storm.mesos;
 
-import org.apache.mesos.Protos.*;
+import org.apache.log4j.Logger;
+import org.apache.mesos.Protos.ExecutorID;
+import org.apache.mesos.Protos.FrameworkID;
+import org.apache.mesos.Protos.MasterInfo;
+import org.apache.mesos.Protos.Offer;
+import org.apache.mesos.Protos.OfferID;
+import org.apache.mesos.Protos.SlaveID;
+import org.apache.mesos.Protos.TaskID;
+import org.apache.mesos.Protos.TaskStatus;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
-import org.apache.log4j.Logger;
 
-import java.util.*;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import static storm.mesos.util.PrettyProtobuf.taskStatusToString;

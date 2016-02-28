@@ -56,7 +56,6 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
     mesosStormConf = conf;
   }
 
-
   /*
    * Different topologies have different resource requirements in terms of cpu and memory. So when Mesos asks
    * this scheduler for a list of available worker slots, we create "MesosWorkerSlot" and store them into mesosWorkerSlotMap.
@@ -169,13 +168,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
   }
 
 
-  /**
-   * Schedule function looks in the "mesosWorkerSlotMap" to determine which topology owns the particular
-   * WorkerSlot and assigns the executors accordingly.
-   */
-  @Override
-  public void schedule(Topologies topologies, Cluster cluster) {
-    List<WorkerSlot> workerSlots = cluster.getAvailableSlots();
+  Map<String, List<MesosWorkerSlot>> getMesosWorkerSlotPerTopology(List<WorkerSlot> workerSlots) {
     HashMap<String, List<MesosWorkerSlot>> perTopologySlotList = new HashMap<>();
 
     for (WorkerSlot workerSlot : workerSlots) {
@@ -185,12 +178,53 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
       }
       MesosWorkerSlot mesosWorkerSlot = mesosWorkerSlotMap.get(workerSlot.getNodeId() +
                                                                ":" + String.valueOf(workerSlot.getPort()));
+
       String topologyId = mesosWorkerSlot.getTopologyId();
       if (perTopologySlotList.get(topologyId) == null) {
         perTopologySlotList.put(topologyId, new ArrayList<MesosWorkerSlot>());
       }
       perTopologySlotList.get(topologyId).add(mesosWorkerSlot);
     }
+
+    return  perTopologySlotList;
+  }
+
+  List<List<ExecutorDetails>> executorsPerWorkerList(Cluster cluster, TopologyDetails topologyDetails, Integer slotsAvailable) {
+    Collection<ExecutorDetails> executors = cluster.getUnassignedExecutors(topologyDetails);
+    List<List<ExecutorDetails>> executorsPerWorkerList = new ArrayList<>();
+
+    for (int i = 0; i < slotsAvailable; i++) {
+      executorsPerWorkerList.add(new ArrayList<ExecutorDetails>());
+    }
+
+    List<ExecutorDetails> executorList = new ArrayList<>(executors);
+
+    /* The goal of this scheduler is to mimic Storm's default version. Storm's default scheduler sorts the
+     * executors by their id before spreading them across the available workers.
+     */
+    Collections.sort(executorList, new Comparator<ExecutorDetails>() {
+      public int compare(ExecutorDetails e1, ExecutorDetails e2) {
+        return e1.getStartTask() - e2.getStartTask();
+      }
+    });
+
+    int index = -1;
+    for (ExecutorDetails executorDetails : executorList) {
+      index = ++index % slotsAvailable;
+      executorsPerWorkerList.get(index).add(executorDetails);
+    }
+
+    return executorsPerWorkerList;
+  }
+
+  /**
+   * Schedule function looks in the "mesosWorkerSlotMap" to determine which topology owns the particular
+   * WorkerSlot and assigns the executors accordingly.
+   */
+  @Override
+  public void schedule(Topologies topologies, Cluster cluster) {
+    List<WorkerSlot> workerSlots = cluster.getAvailableSlots();
+    Map<String, List<MesosWorkerSlot>> perTopologySlotList = getMesosWorkerSlotPerTopology(workerSlots);
 
     // So far we know how many MesosSlots each of the topologies have got. Lets assign executors for each of them
     for (String topologyId : perTopologySlotList.keySet()) {
@@ -200,44 +234,14 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
       int countSlotsRequested = topologyDetails.getNumWorkers();
       int countSlotsAssigned = cluster.getAssignedNumWorkers(topologyDetails);
 
-      if ((countSlotsRequested - countSlotsAssigned) < 0) {
-        log.error("Topology has been assigned more workers than it has requested: Workers Requested =" +
-                  String.valueOf(countSlotsRequested) + " Workers Assigned: " + String.valueOf(countSlotsAssigned));
-        continue;
-      }
-
-      if ((countSlotsRequested - countSlotsAssigned) == 0) {
-        log.warn("Topology " + topologyId + " does not need any new slots but schedule is being invoked for it");
-        continue;
-      } else if (mesosWorkerSlots.size() == 0) {
+      if (mesosWorkerSlots.size() == 0) {
         log.warn("No slots found for topology " + topologyId + " while scheduling");
         continue;
       }
 
       int countSlotsAvailable = Math.min(mesosWorkerSlots.size(), (countSlotsRequested - countSlotsAssigned));
 
-      Collection<ExecutorDetails> executors = cluster.getUnassignedExecutors(topologyDetails);
-      List<List<ExecutorDetails>> executorsPerWorkerList = new ArrayList<>();
-
-      for (int i = 0; i < countSlotsAvailable; i++) {
-        executorsPerWorkerList.add(new ArrayList<ExecutorDetails>());
-      }
-
-      List<ExecutorDetails> executorList = new ArrayList<>(executors);
-      /* The goal of this scheduler is to mimic Storm's default version. Storm's default scheduler sorts the
-       * executors by their id before spreading them across the available workers.
-       */
-      Collections.sort(executorList, new Comparator<ExecutorDetails>() {
-        public int compare(ExecutorDetails e1, ExecutorDetails e2) {
-          return e1.getStartTask() - e2.getStartTask();
-        }
-      });
-
-      int index = -1;
-      for (ExecutorDetails executorDetails : executorList) {
-        index = ++index % countSlotsAvailable;
-        executorsPerWorkerList.get(index).add(executorDetails);
-      }
+      List<List<ExecutorDetails>> executorsPerWorkerList = executorsPerWorkerList(cluster, topologyDetails, countSlotsAvailable);
 
       for (int i = 0; i < countSlotsAvailable; i++) {
         cluster.assign(mesosWorkerSlots.remove(0), topologyId, executorsPerWorkerList.remove(0));

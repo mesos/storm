@@ -22,89 +22,41 @@ import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
 import org.apache.mesos.MesosSchedulerDriver;
-import org.apache.mesos.Protos.*;
+import org.apache.mesos.Protos.Offer;
+import org.apache.mesos.Protos.OfferID;
 import org.junit.Test;
 import org.mockito.Mockito;
-import storm.mesos.schedulers.OfferResources;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
 
 import java.net.URI;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 
 // TODO(dskarthick) : Leverage the build methods defined in TestUtils function.
 public class MesosNimbusTest {
 
-  private Offer buildOffer(double cpus, double mem) {
-    return Offer.newBuilder()
-        .setId(OfferID.newBuilder().setValue("derp").build())
-        .setFrameworkId(FrameworkID.newBuilder().setValue("derp").build())
-        .setSlaveId(SlaveID.newBuilder().setValue("derp").build())
-        .setHostname("derp")
-        .addAllResources(
-            Arrays.asList(
-                buildScalarResource("cpus", cpus),
-                buildScalarResourceWithReservation("cpus", 1.0, "dynamicallyReserved"),
-                buildScalarResource("mem", mem)
-            )
-        )
-        .build();
-  }
-
-  private Offer buildOfferWithPorts(double cpus, double mem, int portBegin, int portEnd) {
-    return Offer.newBuilder()
-        .setId(OfferID.newBuilder().setValue("derp").build())
-        .setFrameworkId(FrameworkID.newBuilder().setValue("derp").build())
-        .setSlaveId(SlaveID.newBuilder().setValue("derp").build())
-        .setHostname("derp")
-        .addAllResources(
-            Arrays.asList(
-                buildScalarResource("cpus", cpus),
-                buildScalarResourceWithReservation("cpus", 1.0, "dynamicallyReserved"),
-                buildScalarResource("mem", mem),
-                buildRangeResource("ports", portBegin, portEnd)
-            )
-        )
-        .build();
-  }
-
-  private Offer buildOfferWithReservation(double cpus, double mem, double reservedCpu, double reservedMem) {
-    return Offer.newBuilder()
-        .setId(OfferID.newBuilder().setValue("derp").build())
-        .setFrameworkId(FrameworkID.newBuilder().setValue("derp").build())
-        .setSlaveId(SlaveID.newBuilder().setValue("derp").build())
-        .setHostname("derp")
-        .addAllResources(
-            Arrays.asList(
-                buildScalarResource("cpus", cpus),
-                buildScalarResourceWithReservation("cpus", 1.0, "dynamicallyReserved"),
-                buildScalarResource("mem", mem),
-                buildScalarResourceWithRole("cpus", reservedCpu, "reserved"),
-                buildScalarResourceWithRole("mem", reservedMem, "reserved")
-            )
-        )
-        .build();
-  }
-
   @Test
   public void testGetResourcesScalar() throws Exception {
     MesosNimbus mesosNimbus = new MesosNimbus();
 
     assertEquals(
-        Arrays.asList(buildScalarResource("cpus", 1.0)),
+        Arrays.asList(TestUtils.buildScalarResource("cpus", 1.0)),
         mesosNimbus.getResourcesScalar(
-            buildResourceList(1, 2, 3, 4),
+            TestUtils.buildResourceList(1, 2, 3, 4),
             1.0,
             "cpus"
         )
     );
 
     assertEquals(
-        Arrays.asList(buildScalarResource("mem", 2.0)),
+        Arrays.asList(TestUtils.buildScalarResource("mem", 2.0)),
         mesosNimbus.getResourcesScalar(
-            buildResourceList(1, 2, 3, 4),
+            TestUtils.buildResourceList(1, 2, 3, 4),
             2.0,
             "mem"
         )
@@ -112,11 +64,11 @@ public class MesosNimbusTest {
 
     assertEquals(
         Arrays.asList(
-            buildScalarResource("cpus", 1.0),
-            buildScalarResourceWithRole("cpus", 1.0, "reserved")
+            TestUtils.buildScalarResource("cpus", 1.0),
+            TestUtils.buildScalarResourceWithRole("cpus", 1.0, "reserved")
         ),
         mesosNimbus.getResourcesScalar(
-            buildResourceList(1, 2, 3, 4),
+            TestUtils.buildResourceList(1, 2, 3, 4),
             2.0,
             "cpus"
         )
@@ -124,11 +76,11 @@ public class MesosNimbusTest {
 
     assertEquals(
         Arrays.asList(
-            buildScalarResource("mem", 2.0),
-            buildScalarResourceWithRole("mem", 1.0, "reserved")
+            TestUtils.buildScalarResource("mem", 2.0),
+            TestUtils.buildScalarResourceWithRole("mem", 1.0, "reserved")
         ),
         mesosNimbus.getResourcesScalar(
-            buildResourceList(1, 2, 3, 4),
+            TestUtils.buildResourceList(1, 2, 3, 4),
             3.0,
             "mem"
         )
@@ -136,11 +88,11 @@ public class MesosNimbusTest {
 
     assertEquals(
         Arrays.asList(
-            buildScalarResource("cpus", 1.0),
-            buildScalarResourceWithRole("cpus", 3.0, "reserved")
+            TestUtils.buildScalarResource("cpus", 1.0),
+            TestUtils.buildScalarResourceWithRole("cpus", 3.0, "reserved")
         ),
         mesosNimbus.getResourcesScalar(
-            buildResourceList(1, 2, 3, 4),
+            TestUtils.buildResourceList(1, 2, 3, 4),
             4.0,
             "cpus"
         )
@@ -148,11 +100,11 @@ public class MesosNimbusTest {
 
     assertEquals(
         Arrays.asList(
-            buildScalarResource("mem", 2.0),
-            buildScalarResourceWithRole("mem", 4.0, "reserved")
+            TestUtils.buildScalarResource("mem", 2.0),
+            TestUtils.buildScalarResourceWithRole("mem", 4.0, "reserved")
         ),
         mesosNimbus.getResourcesScalar(
-            buildResourceList(1, 2, 3, 4),
+            TestUtils.buildResourceList(1, 2, 3, 4),
             6.0,
             "mem"
         )
@@ -160,11 +112,11 @@ public class MesosNimbusTest {
 
     assertEquals(
         Arrays.asList(
-            buildScalarResource("cpus", 1.0),
-            buildScalarResourceWithRole("cpus", 0.5, "reserved")
+            TestUtils.buildScalarResource("cpus", 1.0),
+            TestUtils.buildScalarResourceWithRole("cpus", 0.5, "reserved")
         ),
         mesosNimbus.getResourcesScalar(
-            buildResourceList(1, 2, 3, 4),
+            TestUtils.buildResourceList(1, 2, 3, 4),
             1.5,
             "cpus"
         )
@@ -172,11 +124,11 @@ public class MesosNimbusTest {
 
     assertEquals(
         Arrays.asList(
-            buildScalarResource("mem", 2.0),
-            buildScalarResourceWithRole("mem", 0.5, "reserved")
+            TestUtils.buildScalarResource("mem", 2.0),
+            TestUtils.buildScalarResourceWithRole("mem", 0.5, "reserved")
         ),
         mesosNimbus.getResourcesScalar(
-            buildResourceList(1, 2, 3, 4),
+            TestUtils.buildResourceList(1, 2, 3, 4),
             2.5,
             "mem"
         )
@@ -189,12 +141,12 @@ public class MesosNimbusTest {
 
     assertEquals(
         Arrays.asList(
-            buildScalarResource("mem", 2.0),
-            buildScalarResourceWithRole("cpus", 3.0, "reserved"),
-            buildScalarResourceWithRole("mem", 4.0, "reserved")
+            TestUtils.buildScalarResource("mem", 2.0),
+            TestUtils.buildScalarResourceWithRole("cpus", 3.0, "reserved"),
+            TestUtils.buildScalarResourceWithRole("mem", 4.0, "reserved")
         ),
         mesosNimbus.subtractResourcesScalar(
-            buildResourceList(1, 2, 3, 4),
+            TestUtils.buildResourceList(1, 2, 3, 4),
             1.0,
             "cpus"
         )
@@ -202,13 +154,13 @@ public class MesosNimbusTest {
 
     assertEquals(
         Arrays.asList(
-            buildScalarResource("cpus", 1.0),
-            buildScalarResource("mem", 1.0),
-            buildScalarResourceWithRole("cpus", 3.0, "reserved"),
-            buildScalarResourceWithRole("mem", 4.0, "reserved")
+            TestUtils.buildScalarResource("cpus", 1.0),
+            TestUtils.buildScalarResource("mem", 1.0),
+            TestUtils.buildScalarResourceWithRole("cpus", 3.0, "reserved"),
+            TestUtils.buildScalarResourceWithRole("mem", 4.0, "reserved")
         ),
         mesosNimbus.subtractResourcesScalar(
-            buildResourceList(1, 2, 3, 4),
+            TestUtils.buildResourceList(1, 2, 3, 4),
             1.0,
             "mem"
         )
@@ -216,79 +168,29 @@ public class MesosNimbusTest {
 
     assertEquals(
         Arrays.asList(
-            buildScalarResource("mem", 2.0),
-            buildScalarResourceWithRole("cpus", 2.5, "reserved"),
-            buildScalarResourceWithRole("mem", 4.0, "reserved")
+            TestUtils.buildScalarResource("mem", 2.0),
+            TestUtils.buildScalarResourceWithRole("cpus", 2.5, "reserved"),
+            TestUtils.buildScalarResourceWithRole("mem", 4.0, "reserved")
         ),
         mesosNimbus.subtractResourcesScalar(
-            buildResourceList(1, 2, 3, 4),
+            TestUtils.buildResourceList(1, 2, 3, 4),
             1.5,
             "cpus"
         )
     );
 
     assertEquals(
-        Arrays.asList(
-            buildScalarResource("cpus", 1.0),
-            buildScalarResourceWithRole("cpus", 3.0, "reserved"),
-            buildScalarResourceWithRole("mem", 3.5, "reserved")
-        ),
-        mesosNimbus.subtractResourcesScalar(
-            buildResourceList(1, 2, 3, 4),
-            2.5,
-            "mem"
-        )
+      Arrays.asList(
+        TestUtils.buildScalarResource("cpus", 1.0),
+        TestUtils.buildScalarResourceWithRole("cpus", 3.0, "reserved"),
+        TestUtils.buildScalarResourceWithRole("mem", 3.5, "reserved")
+      ),
+      mesosNimbus.subtractResourcesScalar(
+        TestUtils.buildResourceList(1, 2, 3, 4),
+        2.5,
+        "mem"
+      )
     );
-  }
-
-  private Resource buildScalarResource(String name, double value) {
-    return Resource.newBuilder()
-        .setType(Value.Type.SCALAR)
-        .setScalar(Value.Scalar.newBuilder()
-            .setValue(value)
-            .build())
-        .setName(name)
-        .build();
-  }
-
-  private Resource buildScalarResourceWithRole(String name, double value, String role) {
-    return Resource.newBuilder()
-        .setType(Value.Type.SCALAR)
-        .setScalar(Value.Scalar.newBuilder()
-            .setValue(value)
-            .build())
-        .setName(name)
-        .setRole(role)
-        .build();
-  }
-
-  private Resource buildScalarResourceWithReservation(String name, double value, String role) {
-    return Resource.newBuilder()
-        .setType(Value.Type.SCALAR)
-        .setScalar(Value.Scalar.newBuilder()
-            .setValue(value)
-            .build())
-        .setName(name)
-        .setRole(role)
-        .setReservation(
-            Resource.ReservationInfo.newBuilder()
-                .setPrincipal("derp")
-                .build()
-        )
-        .build();
-  }
-
-  private List<Resource> buildResourceList(double cpus, double mem, double reservedCpu, double reservedMem) {
-    List<Resource> resourceList = new ArrayList<>();
-    resourceList.addAll(
-        Arrays.asList(
-            buildScalarResource("cpus", cpus),
-            buildScalarResource("mem", mem),
-            buildScalarResourceWithRole("cpus", reservedCpu, "reserved"),
-            buildScalarResourceWithRole("mem", reservedMem, "reserved")
-        )
-    );
-    return resourceList;
   }
 
   @Test
@@ -297,10 +199,10 @@ public class MesosNimbusTest {
 
     assertEquals(
         Arrays.asList(
-            buildRangeResource("ports", 100, 100)
+            TestUtils.buildRangeResource("ports", 100, 100)
         ),
         mesosNimbus.getResourcesRange(
-            buildRangeResourceList(100, 100),
+            TestUtils.buildRangeResourceList(100, 100),
             100,
             "ports"
         )
@@ -308,10 +210,10 @@ public class MesosNimbusTest {
 
     assertEquals(
         Arrays.asList(
-            buildRangeResource("ports", 105, 105)
+            TestUtils.buildRangeResource("ports", 105, 105)
         ),
         mesosNimbus.getResourcesRange(
-            buildRangeResourceList(100, 200),
+            TestUtils.buildRangeResourceList(100, 200),
             105,
             "ports"
         )
@@ -320,7 +222,7 @@ public class MesosNimbusTest {
     assertEquals(
         0,
         mesosNimbus.getResourcesRange(
-            buildRangeResourceList(100, 100),
+            TestUtils.buildRangeResourceList(100, 100),
             200,
             "ports"
         ).size()
@@ -334,120 +236,35 @@ public class MesosNimbusTest {
 
     assertEquals(
         Arrays.asList(
-            buildScalarResource("cpus", 1.0),
-            buildScalarResource("mem", 2.0),
-            buildScalarResourceWithRole("cpus", 3.0, "reserved"),
-            buildScalarResourceWithRole("mem", 4.0, "reserved")
+            TestUtils.buildScalarResource("cpus", 1.0),
+            TestUtils.buildScalarResource("mem", 2.0),
+            TestUtils.buildScalarResourceWithRole("cpus", 3.0, "reserved"),
+            TestUtils.buildScalarResourceWithRole("mem", 4.0, "reserved")
         ),
         mesosNimbus.subtractResourcesRange(
-            buildRangeResourceList(100, 100),
+            TestUtils.buildRangeResourceList(100, 100),
             100,
             "ports"
         )
     );
 
     assertEquals(
-        Arrays.asList(
-            buildMultiRangeResource("ports", 100, 104, 106, 200),
-            buildMultiRangeResourceWithRole("ports", 100, 104, 106, 200, "reserved"),
-            buildScalarResource("cpus", 1.0),
-            buildScalarResource("mem", 2.0),
-            buildScalarResourceWithRole("cpus", 3.0, "reserved"),
-            buildScalarResourceWithRole("mem", 4.0, "reserved")
-        ),
-        mesosNimbus.subtractResourcesRange(
-            buildRangeResourceList(100, 200),
-            105,
-            "ports"
-        )
+      Arrays.asList(
+        TestUtils.buildMultiRangeResource("ports", 100, 104, 106, 200),
+        TestUtils.buildMultiRangeResourceWithRole("ports", 100, 104, 106, 200, "reserved"),
+        TestUtils.buildScalarResource("cpus", 1.0),
+        TestUtils.buildScalarResource("mem", 2.0),
+        TestUtils.buildScalarResourceWithRole("cpus", 3.0, "reserved"),
+        TestUtils.buildScalarResourceWithRole("mem", 4.0, "reserved")
+      ),
+      mesosNimbus.subtractResourcesRange(
+        TestUtils.buildRangeResourceList(100, 200),
+        105,
+        "ports"
+      )
     );
   }
 
-
-  private Resource buildRangeResource(String name, int begin, int end) {
-    return Resource.newBuilder()
-        .setType(Value.Type.RANGES)
-        .setRanges(
-            Value.Ranges.newBuilder()
-                .addRange(Value.Range.newBuilder()
-                    .setBegin(begin)
-                    .setEnd(end)
-                    .build())
-                .build()
-        )
-        .setName(name)
-        .build();
-  }
-
-  private Resource buildRangeResourceWithRole(String name, int begin, int end, String role) {
-    return Resource.newBuilder()
-        .setType(Value.Type.RANGES)
-        .setRanges(
-            Value.Ranges.newBuilder()
-                .addRange(Value.Range.newBuilder()
-                    .setBegin(begin)
-                    .setEnd(end)
-                    .build())
-                .build()
-        )
-        .setName(name)
-        .setRole(role)
-        .build();
-  }
-
-  private Resource buildMultiRangeResource(String name, int begin1, int end1, int begin2, int end2) {
-    return Resource.newBuilder()
-        .setType(Value.Type.RANGES)
-        .setRanges(
-            Value.Ranges.newBuilder()
-                .addRange(Value.Range.newBuilder()
-                    .setBegin(begin1)
-                    .setEnd(end1)
-                    .build())
-                .addRange(Value.Range.newBuilder()
-                    .setBegin(begin2)
-                    .setEnd(end2)
-                    .build())
-                .build()
-        )
-        .setName(name)
-        .build();
-  }
-
-  private Resource buildMultiRangeResourceWithRole(String name, int begin1, int end1, int begin2, int end2, String role) {
-    return Resource.newBuilder()
-        .setType(Value.Type.RANGES)
-        .setRanges(
-            Value.Ranges.newBuilder()
-                .addRange(Value.Range.newBuilder()
-                    .setBegin(begin1)
-                    .setEnd(end1)
-                    .build())
-                .addRange(Value.Range.newBuilder()
-                    .setBegin(begin2)
-                    .setEnd(end2)
-                    .build())
-                .build()
-        )
-        .setName(name)
-        .setRole(role)
-        .build();
-  }
-
-  private List<Resource> buildRangeResourceList(int begin, int end) {
-    List<Resource> resourceList = new ArrayList<>();
-    resourceList.addAll(
-        Arrays.asList(
-            buildRangeResource("ports", begin, end),
-            buildRangeResourceWithRole("ports", begin, end, "reserved"),
-            buildScalarResource("cpus", 1),
-            buildScalarResource("mem", 2),
-            buildScalarResourceWithRole("cpus", 3, "reserved"),
-            buildScalarResourceWithRole("mem", 4, "reserved")
-        )
-    );
-    return resourceList;
-  }
 
   @Test
   public void testComputeResourcesForSlot() throws Exception {
@@ -467,7 +284,7 @@ public class MesosNimbusTest {
 
     offers.put(
         offerId,
-        buildOfferWithPorts(2.0, 2048, 1000, 1000)
+        TestUtils.buildOfferWithPorts("offer1", "host1.west", 2.0, 2048, 1000, 1000)
     );
 
     HashMap<String, TopologyDetails> topologyMap = new HashMap<>();
@@ -498,7 +315,7 @@ public class MesosNimbusTest {
     assertEquals(1, launchList.get(offerId).size());
 
     assertEquals(
-        buildScalarResource("cpus", 1.0),
+        TestUtils.buildScalarResource("cpus", 1.0),
         launchList.get(offerId).get(0).getTask().getResources(0)
     );
 

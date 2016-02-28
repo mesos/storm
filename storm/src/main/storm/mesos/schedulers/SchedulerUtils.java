@@ -34,6 +34,24 @@ public class SchedulerUtils {
 
   private static final Logger log = Logger.getLogger(SchedulerUtils.class);
 
+  public static boolean isFit(Map mesosStormConf, OfferResources offerResources, TopologyDetails topologyDetails, boolean supervisorExists) {
+    double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
+    double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
+
+    requestedWorkerCpu += supervisorExists ? 0 : MesosCommon.executorCpu(mesosStormConf);
+    requestedWorkerMem += supervisorExists ? 0 : MesosCommon.executorMem(mesosStormConf);
+
+    if (requestedWorkerCpu <= offerResources.getCpu() && requestedWorkerMem <= offerResources.getMem()) {
+      return true;
+    }
+    return false;
+  }
+
+  public static boolean isFit(Map mesosStormConf, Protos.Offer offer, TopologyDetails topologyDetails, boolean supervisorExists) {
+    OfferResources offerResources = new OfferResources(offer);
+    return isFit(mesosStormConf, offerResources, topologyDetails, supervisorExists);
+  }
+
   /**
    * Method checks if all topologies that need assignment already have supervisor running on the node where the Offer
    * comes from. Required for more accurate available resource calculation where we can exclude supervisor's demand from
@@ -106,24 +124,4 @@ public class SchedulerUtils {
 
     return new MesosWorkerSlot(offerResources.getHostName(), port, topologyDetails.getId());
   }
-
-
-  public static boolean isFit(Map mesosStormConf, OfferResources offerResources, TopologyDetails topologyDetails, boolean supervisorExists) {
-    double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
-    double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
-
-    requestedWorkerCpu += supervisorExists ? 0 : MesosCommon.executorCpu(mesosStormConf);
-    requestedWorkerMem += supervisorExists ? 0 : MesosCommon.executorMem(mesosStormConf);
-
-    if (requestedWorkerCpu <= offerResources.getCpu() && requestedWorkerMem <= offerResources.getMem()) {
-      return true;
-    }
-    return false;
-  }
-
-  public static boolean isFit(Map mesosStormConf, Protos.Offer offer, TopologyDetails topologyDetails, boolean supervisorExists) {
-    OfferResources offerResources = new OfferResources(offer);
-    return isFit(mesosStormConf, offerResources, topologyDetails, supervisorExists);
-  }
-
 }
