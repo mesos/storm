@@ -60,7 +60,6 @@ import static storm.mesos.TestUtils.buildOfferWithPorts;
 public class DefaultSchedulerTest {
 
   @Spy
-  @InjectMocks
   private DefaultScheduler defaultScheduler;
   private Map<String, MesosWorkerSlot> mesosWorkerSlotMap;
 
@@ -161,6 +160,7 @@ public class DefaultSchedulerTest {
 
   @Before
   public void initialize() {
+    defaultScheduler = new DefaultScheduler();
     Map<String, Object> mesosStormConf = new HashMap<>();
     defaultScheduler.prepare(mesosStormConf);
 

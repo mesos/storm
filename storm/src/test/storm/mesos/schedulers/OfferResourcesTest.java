@@ -19,7 +19,7 @@
 package storm.mesos.schedulers;
 
 import org.apache.mesos.Protos.Offer;
-import org.apache.mesos.v1.Protos;
+import org.apache.mesos.Protos;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
@@ -59,11 +59,6 @@ public class OfferResourcesTest {
     assertEquals(1, offerResources.getCpu(), 0.0);
     assertEquals(1000, offerResources.getMem(), 0.0);
     assertEquals(3000, offerResources.getPort());
-    assertEquals(3101, offerResources.getPort());
-
-    Protos.Value.Range range = Protos.Value.Range.newBuilder().setBegin(3000).setEnd(3100).build();
-
-    Protos.Value.Ranges ranges =
-    offerResources.addPortRanges(range);
+    assertEquals(3001, offerResources.getPort());
   }
 }
