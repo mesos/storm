@@ -41,7 +41,9 @@ import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -362,13 +364,14 @@ public class DefaultSchedulerTest {
       workerCountPerHostMap.put(workerSlot.getNodeId(), tmp + 1);
     }
 
-    Integer[] expectedWorkerCountArray = { 3, 3, 4 };
-    Integer[] actualWorkerCountArray = new Integer[3];
-    actualWorkerCountArray[0] = workerCountPerHostMap.get("host1.east");
-    actualWorkerCountArray[1] = workerCountPerHostMap.get("host2.east");
-    actualWorkerCountArray[2] = workerCountPerHostMap.get("host3.east");
+    List<Integer> expectedWorkerCountArray = Arrays.asList(3, 3, 4);
+    List<Integer> actualWorkerCountArray = Arrays.asList(
+                                                workerCountPerHostMap.get("host1.east"),
+                                                workerCountPerHostMap.get("host2.east"),
+                                                workerCountPerHostMap.get("host3.east"));
 
-    assertArrayEquals(expectedWorkerCountArray, actualWorkerCountArray);
+    Collections.sort(actualWorkerCountArray);
+    assertEquals(expectedWorkerCountArray, actualWorkerCountArray);
   }
 
   @Test
@@ -423,7 +426,7 @@ public class DefaultSchedulerTest {
 
     for (WorkerSlot workerSlot : workerSlotExecutorDetailsMap.keySet()) {
       List<ExecutorDetails> executorDetails = workerSlotExecutorDetailsMap.get(workerSlot);
-      assertEquals(executorDetails.get(0).getStartTask() - executorDetails.get(1).getEndTask(), 3);
+      assertEquals(3, Math.abs(executorDetails.get(0).getStartTask() - executorDetails.get(1).getEndTask()));
     }
   }
 }

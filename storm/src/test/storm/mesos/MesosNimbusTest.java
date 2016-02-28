@@ -270,7 +270,6 @@ public class MesosNimbusTest {
   public void testComputeResourcesForSlot() throws Exception {
     MesosNimbus mesosNimbus = new MesosNimbus();
 
-    mesosNimbus._driver = Mockito.any(MesosSchedulerDriver.class);
     mesosNimbus._configUrl = new URI("http://127.0.0.1/");
 
     OfferID offerId = OfferID.newBuilder().setValue("derp").build();
@@ -296,7 +295,7 @@ public class MesosNimbusTest {
     conf.put(MesosNimbus.CONF_EXECUTOR_URI, "");
     mesosNimbus._conf = conf;
 
-    topologyMap.put("t1", new TopologyDetails("t1", conf, Mockito.any(StormTopology.class), 5));
+    topologyMap.put("t1", new TopologyDetails("t1", conf, new StormTopology(), 5));
     HashMap<OfferID, List<LaunchTask>> launchList = new HashMap<>();
     HashMap<OfferID, List<WorkerSlot>> slotList = new HashMap<>();
     slotList.put(offerId, Arrays.asList(new WorkerSlot("", 1000)));
@@ -310,7 +309,6 @@ public class MesosNimbusTest {
         slotList,
         OfferID.newBuilder().setValue("derp").build()
     );
-
     assertEquals(1, launchList.size());
     assertEquals(1, launchList.get(offerId).size());
 
