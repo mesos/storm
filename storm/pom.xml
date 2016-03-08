@@ -70,6 +70,19 @@
             </filter>
           </filters>
           <relocations>
+          <!-- List of dependencies that should not be shaded
+                 1. org.slf4j:
+                     shading org.slf4j would lead to a couple of issues:
+                     a) Shading org.slf4j corresponding to slf4j-api would prevent its classes
+                        from binding to the concrete implementations that the storm's
+                        logging libraries provide. Eg. org.slf4j.Logger interface in slf4j-api
+                        becomes org.slf4j.shaded.Logger and none of the Logger implementations
+                        provided by storm would implement org.slf4j.shaded.Logger. This in turn
+                        would lead slf4j-api to bind to NOPLogger resulting in loss of application
+                        logs.
+                     b) Classes from org.slf4j are referenced within slf4j bridge artifacts like
+                        'log4j-over-slf4j'. So shading them would cause MesosNimbus to throw
+                        java.lang.NoClassDefFoundError -->
             <relocation>
               <pattern>com.google.common</pattern>
               <shadedPattern>com.google.common.shaded</shadedPattern>
@@ -81,10 +94,6 @@
             <relocation>
               <pattern>org.apache.commons</pattern>
               <shadedPattern>com.apache.commons.shaded</shadedPattern>
-            </relocation>
-            <relocation>
-              <pattern>org.slf4j</pattern>
-              <shadedPattern>org.slf4j.shaded</shadedPattern>
             </relocation>
             <relocation>
               <pattern>org.apache.log4j</pattern>
