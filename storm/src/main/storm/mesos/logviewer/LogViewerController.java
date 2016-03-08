@@ -19,7 +19,8 @@ package storm.mesos.logviewer;
 
 import backtype.storm.Config;
 import com.google.common.base.Optional;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,7 +30,7 @@ import java.nio.file.Paths;
 import java.util.Map;
 
 public class LogViewerController {
-  private static final Logger LOG = Logger.getLogger(LogViewerController.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LogViewerController.class);
   protected Process process;
   protected SocketUrlDetection urlDetector;
   protected Integer port;

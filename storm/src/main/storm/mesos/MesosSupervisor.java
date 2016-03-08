@@ -18,17 +18,22 @@
 package storm.mesos;
 
 
-
-import backtype.storm.generated.JavaObject;
-import backtype.storm.generated.JavaObjectArg;
 import backtype.storm.scheduler.ISupervisor;
 import backtype.storm.utils.Utils;
-import org.apache.log4j.Logger;
+import clojure.lang.PersistentVector;
 import org.apache.mesos.Executor;
 import org.apache.mesos.ExecutorDriver;
 import org.apache.mesos.MesosExecutorDriver;
-import org.apache.mesos.Protos.*;
+import org.apache.mesos.Protos.ExecutorInfo;
+import org.apache.mesos.Protos.FrameworkInfo;
+import org.apache.mesos.Protos.SlaveInfo;
+import org.apache.mesos.Protos.TaskID;
+import org.apache.mesos.Protos.TaskInfo;
+import org.apache.mesos.Protos.TaskState;
+import org.apache.mesos.Protos.TaskStatus;
 import org.json.simple.JSONValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.mesos.logviewer.LogViewerController;
 import storm.mesos.shims.ILocalStateShim;
 import storm.mesos.shims.LocalStateShim;
@@ -39,12 +44,10 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
-import clojure.lang.PersistentVector;
 
 public class MesosSupervisor implements ISupervisor {
-  public static final Logger LOG = Logger.getLogger(MesosSupervisor.class);
+  public static final Logger LOG = LoggerFactory.getLogger(MesosSupervisor.class);
 
   volatile String _id = null;
   volatile String _assignmentId = null;
@@ -143,11 +146,11 @@ public class MesosSupervisor implements ISupervisor {
 
     @Override
     public void registered(ExecutorDriver driver, ExecutorInfo executorInfo, FrameworkInfo frameworkInfo, SlaveInfo slaveInfo) {
-      LOG.info("Received executor data <" + executorInfo.getData().toStringUtf8() + ">");
+      LOG.info("Received executor data < {} >", executorInfo.getData().toStringUtf8());
       Map ids = (Map) JSONValue.parse(executorInfo.getData().toStringUtf8());
       _id = (String) ids.get(MesosCommon.SUPERVISOR_ID);
       _assignmentId = (String) ids.get(MesosCommon.ASSIGNMENT_ID);
-      LOG.info("Registered supervisor with Mesos: " + _id + ", " + _assignmentId);
+      LOG.info("Registered supervisor with Mesos: {}, {} ", _id, _assignmentId);
 
       // Completed registration, let anything waiting for us to do so continue
       _registeredLatch.countDown();
@@ -157,7 +160,7 @@ public class MesosSupervisor implements ISupervisor {
     @Override
     public void launchTask(ExecutorDriver driver, TaskInfo task) {
       int port = MesosCommon.portFromTaskId(task.getTaskId().getValue());
-      LOG.info("Received task assignment for port " + port);
+      LOG.info("Received task assignment for port {}", port);
       _state.put(Integer.toString(port), Boolean.TRUE.toString());
 
       TaskStatus status = TaskStatus.newBuilder()
@@ -181,7 +184,7 @@ public class MesosSupervisor implements ISupervisor {
 
     @Override
     public void error(ExecutorDriver driver, String msg) {
-      LOG.error("Received fatal error \nmsg:" + msg + "\nHalting process...");
+      LOG.error("Received fatal error \nmsg: {} \nHalting process...", msg);
       Runtime.getRuntime().halt(2);
     }
 
@@ -212,13 +215,13 @@ public class MesosSupervisor implements ISupervisor {
             _lastTime = now;
           }
           if ((now - _lastTime) > 1000L * _timeoutSecs) {
-            LOG.info("Supervisor has not had anything assigned for " + _timeoutSecs + " secs. Committing suicide...");
+            LOG.info("Supervisor has not had anything assigned for {} secs. Committing suicide...", _timeoutSecs);
             Runtime.getRuntime().halt(0);
           }
           Utils.sleep(5000);
         }
       } catch (Throwable t) {
-        LOG.error(t);
+        LOG.error(t.getMessage());
         Runtime.getRuntime().halt(2);
       }
     }

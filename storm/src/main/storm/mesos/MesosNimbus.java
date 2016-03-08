@@ -18,39 +18,72 @@
 package storm.mesos;
 
 import backtype.storm.Config;
-import backtype.storm.scheduler.*;
+import backtype.storm.scheduler.INimbus;
+import backtype.storm.scheduler.IScheduler;
+import backtype.storm.scheduler.SupervisorDetails;
+import backtype.storm.scheduler.Topologies;
+import backtype.storm.scheduler.TopologyDetails;
+import backtype.storm.scheduler.WorkerSlot;
 import com.google.common.base.Optional;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
 import org.apache.mesos.MesosSchedulerDriver;
 import org.apache.mesos.Protos;
-import org.apache.mesos.Protos.*;
+import org.apache.mesos.Protos.CommandInfo;
 import org.apache.mesos.Protos.CommandInfo.URI;
+import org.apache.mesos.Protos.ContainerInfo;
+import org.apache.mesos.Protos.Credential;
+import org.apache.mesos.Protos.ExecutorID;
+import org.apache.mesos.Protos.ExecutorInfo;
+import org.apache.mesos.Protos.FrameworkID;
+import org.apache.mesos.Protos.FrameworkInfo;
+import org.apache.mesos.Protos.Offer;
+import org.apache.mesos.Protos.OfferID;
+import org.apache.mesos.Protos.Resource;
+import org.apache.mesos.Protos.TaskID;
+import org.apache.mesos.Protos.TaskInfo;
 import org.apache.mesos.Protos.Value.Range;
 import org.apache.mesos.Protos.Value.Ranges;
 import org.apache.mesos.Protos.Value.Scalar;
 import org.apache.mesos.Protos.Value.Type;
 import org.apache.mesos.SchedulerDriver;
 import org.json.simple.JSONValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import storm.mesos.shims.CommandLineShimFactory;
 import storm.mesos.shims.ICommandLineShim;
 import storm.mesos.shims.LocalStateShim;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static storm.mesos.PrettyProtobuf.*;
+import static storm.mesos.PrettyProtobuf.offerMapToString;
+import static storm.mesos.PrettyProtobuf.offerToString;
 
 public class MesosNimbus implements INimbus {
   public static final String CONF_EXECUTOR_URI = "mesos.executor.uri";
@@ -71,7 +104,7 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_PREFER_RESERVED_RESOURCES = "mesos.prefer.reserved.resources";
   public static final String CONF_MESOS_CONTAINER_DOCKER_IMAGE = "mesos.container.docker.image";
   public static final String FRAMEWORK_ID = "FRAMEWORK_ID";
-  private static final Logger LOG = Logger.getLogger(MesosNimbus.class);
+  private static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
   private final Object _offersLock = new Object();
   protected java.net.URI _configUrl;
   LocalStateShim _state;
@@ -232,21 +265,22 @@ public class MesosNimbus implements INimbus {
       if (_offers == null) {
         return;
       }
-      LOG.debug("resourceOffers: Currently have " + _offers.size() + " offers buffered" +
-          (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
+      LOG.debug("resourceOffers: Currently have {} offers buffered {}",
+                _offers.size(), (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
+
       for (Protos.Offer offer : offers) {
         if (isHostAccepted(offer.getHostname())) {
-          LOG.debug("resourceOffers: Recording offer from host: " +
-              offer.getHostname() + ", offerId: " + offer.getId().getValue());
+          LOG.debug("resourceOffers: Recording offer from host: {}, offerId: {}",
+                    offer.getHostname(), offer.getId().getValue());
           _offers.put(offer.getId(), offer);
         } else {
-          LOG.debug("resourceOffers: Declining offer from host: " +
-              offer.getHostname() + ", offerId: " + offer.getId().getValue());
+          LOG.debug("resourceOffers: Declining offer from host: {} offerId: {}",
+                    offer.getHostname(), offer.getId().getValue());
           driver.declineOffer(offer.getId());
         }
       }
-      LOG.debug("resourceOffers: After processing offers, now have " +
-          _offers.size() + " offers buffered:" + offerMapToString(_offers));
+      LOG.debug("resourceOffers: After processing offers, now have {} offers buffered: {}",
+                _offers.size(), offerMapToString(_offers));
     }
   }
 
@@ -267,7 +301,7 @@ public class MesosNimbus implements INimbus {
 
   protected void createLocalServerPort() {
     Integer port = (Integer) _conf.get(CONF_MESOS_LOCAL_FILE_SERVER_PORT);
-    LOG.debug("LocalFileServer configured to listen on port: " + port);
+    LOG.debug("LocalFileServer configured to listen on port: {}", port);
     _localFileServerPort = Optional.fromNullable(port);
   }
 
@@ -275,7 +309,7 @@ public class MesosNimbus implements INimbus {
     _httpServer = new LocalFileServer();
     _configUrl = _httpServer.serveDir("/generated-conf", _generatedConfPath.toString(), _localFileServerPort);
 
-    LOG.info("Started HTTP server from which config for the MesosSupervisor's may be fetched. URL: " + _configUrl);
+    LOG.info("Started HTTP server from which config for the MesosSupervisor's may be fetched. URL: {}", _configUrl);
   }
 
   protected MesosSchedulerDriver createMesosDriver() throws IOException {
@@ -330,7 +364,7 @@ public class MesosNimbus implements INimbus {
     resources.ports.addAll(portList);
 
     LOG.debug("Offer: " + offerToString(offer));
-    LOG.debug("Extracted resources: " + resources.toString());
+    LOG.debug("Extracted resources: {}", resources.toString());
     return resources;
   }
 
@@ -415,9 +449,11 @@ public class MesosNimbus implements INimbus {
       Collection<SupervisorDetails> existingSupervisors, Topologies topologies, Set<String> topologiesMissingAssignments) {
     synchronized (_offersLock) {
       LOG.debug("allSlotsAvailableForScheduling: Currently have " + _offers.size() + " offers buffered" +
-          (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
+                (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
+      LOG.debug("allSlotsAvailableForScheduling: Currently have {} offers buffered {}",
+                _offers.size(), (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
       if (!topologiesMissingAssignments.isEmpty()) {
-        LOG.info("Topologies that need assignments: " + topologiesMissingAssignments.toString());
+        LOG.info("Topologies that need assignments: {}", topologiesMissingAssignments.toString());
 
         // Revive any filtered offers
         _driver.reviveOffers();
@@ -444,8 +480,8 @@ public class MesosNimbus implements INimbus {
       }
     }
 
-    LOG.info("allSlotsAvailableForScheduling: pending topologies' max resource requirements per worker: cpu: " +
-        String.valueOf(cpu) + " & mem: " + String.valueOf(mem));
+    LOG.info("allSlotsAvailableForScheduling: pending topologies' max resource requirements per worker: cpu: {} & mem: {}",
+             String.valueOf(cpu), String.valueOf(mem));
 
     List<WorkerSlot> allSlots = new ArrayList<>();
 
@@ -456,9 +492,9 @@ public class MesosNimbus implements INimbus {
           List<WorkerSlot> offerSlots = toSlots(offer, cpu, mem, supervisorExists);
           if (offerSlots.isEmpty()) {
             _offers.clearKey(offer.getId());
-            LOG.debug("Declining offer `" + offerToString(offer) + "' because it wasn't " +
-                "usable to create a slot which fits largest pending topologies' aggregate needs " +
-                "(max cpu: " + String.valueOf(cpu) + " max mem: " + String.valueOf(mem) + ")");
+            LOG.debug("Declining offer `{}' because it wasn't usable to create a slot which fits largest " +
+                      "pending topologies' aggregate needs (max cpu: {} max mem: {})",
+                      offerToString(offer), String.valueOf(cpu), String.valueOf(mem));
           } else {
             allSlots.addAll(offerSlots);
           }
@@ -466,10 +502,10 @@ public class MesosNimbus implements INimbus {
       }
     }
 
-    LOG.info("Number of available slots: " + allSlots.size());
+    LOG.info("Number of available slots: {}", allSlots.size());
     if (LOG.isDebugEnabled()) {
       for (WorkerSlot slot : allSlots) {
-        LOG.debug("available slot: " + slot);
+        LOG.debug("available slot: {}", slot);
       }
     }
     return allSlots;
@@ -637,9 +673,8 @@ public class MesosNimbus implements INimbus {
       String topologyId = topologyToSlots.getKey();
       for (WorkerSlot slot : topologyToSlots.getValue()) {
         TopologyDetails details = topologies.getById(topologyId);
-        LOG.debug("assignSlots: topologyId: " + topologyId + " worker being assigned to slot: " + slot +
-            " with workerCpu: " + MesosCommon.topologyWorkerCpu(_conf, details) +
-            " workerMem: " + MesosCommon.topologyWorkerMem(_conf, details));
+        LOG.debug("assignSlots: topologyId: {} worker being assigned to slot: {} with workerCpu: {} workerMem: {}",
+                  topologyId, slot, MesosCommon.topologyWorkerCpu(_conf, details), MesosCommon.topologyWorkerMem(_conf, details));
       }
     }
     synchronized (_offersLock) {
@@ -668,7 +703,7 @@ public class MesosNimbus implements INimbus {
       List<LaunchTask> tasks = toLaunch.get(id);
       List<TaskInfo> launchList = new ArrayList<>();
 
-      LOG.info("Launching tasks for offerId: " + id.getValue() + ":" + launchTaskListToString(tasks));
+      LOG.info("Launching tasks for offerId: {} : {}", id.getValue(), launchTaskListToString(tasks));
       for (LaunchTask t : tasks) {
         launchList.add(t.getTask());
         _usedOffers.put(t.getTask().getTaskId(), t.getOffer());
@@ -819,8 +854,7 @@ public class MesosNimbus implements INimbus {
                   .setValue(commandLineShim.getCommandLine()));
         }
 
-        LOG.info("Launching task with Mesos Executor data: <"
-            + executorDataStr + ">");
+        LOG.info("Launching task with Mesos Executor data: < {} >", executorDataStr);
         TaskInfo task = TaskInfo.newBuilder()
             .setName(taskName)
             .setTaskId(taskId)
@@ -834,7 +868,7 @@ public class MesosNimbus implements INimbus {
         Offer newOffer = offer.toBuilder()
             .addAllResources(task.getResourcesList()).build();
 
-        LOG.debug("Launching task: " + task.toString());
+        LOG.debug("Launching task: {}", task.toString());
 
         toLaunch.get(id).add(new LaunchTask(task, newOffer));
       }
