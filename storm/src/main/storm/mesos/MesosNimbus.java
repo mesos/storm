@@ -274,7 +274,7 @@ public class MesosNimbus implements INimbus {
                     offer.getHostname(), offer.getId().getValue());
           _offers.put(offer.getId(), offer);
         } else {
-          LOG.debug("resourceOffers: Declining offer from host: {} offerId: {}",
+          LOG.debug("resourceOffers: Declining offer from host: {}, offerId: {}",
                     offer.getHostname(), offer.getId().getValue());
           driver.declineOffer(offer.getId());
         }
@@ -448,8 +448,6 @@ public class MesosNimbus implements INimbus {
   public Collection<WorkerSlot> allSlotsAvailableForScheduling(
       Collection<SupervisorDetails> existingSupervisors, Topologies topologies, Set<String> topologiesMissingAssignments) {
     synchronized (_offersLock) {
-      LOG.debug("allSlotsAvailableForScheduling: Currently have " + _offers.size() + " offers buffered" +
-                (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
       LOG.debug("allSlotsAvailableForScheduling: Currently have {} offers buffered {}",
                 _offers.size(), (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
       if (!topologiesMissingAssignments.isEmpty()) {

@@ -146,7 +146,7 @@ public class MesosSupervisor implements ISupervisor {
 
     @Override
     public void registered(ExecutorDriver driver, ExecutorInfo executorInfo, FrameworkInfo frameworkInfo, SlaveInfo slaveInfo) {
-      LOG.info("Received executor data < {} >", executorInfo.getData().toStringUtf8());
+      LOG.info("Received executor data <{}>", executorInfo.getData().toStringUtf8());
       Map ids = (Map) JSONValue.parse(executorInfo.getData().toStringUtf8());
       _id = (String) ids.get(MesosCommon.SUPERVISOR_ID);
       _assignmentId = (String) ids.get(MesosCommon.ASSIGNMENT_ID);
