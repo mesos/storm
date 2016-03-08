@@ -18,15 +18,15 @@
 package storm.mesos.logviewer;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 public class SocketUrlDetection {
-  private static final Logger LOG = Logger.getLogger(SocketUrlDetection.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SocketUrlDetection.class);
   protected Integer port;
 
   public SocketUrlDetection(Integer port) {
@@ -37,13 +37,13 @@ public class SocketUrlDetection {
     Socket socket = null;
     boolean reachable = false;
     try {
-      LOG.info("Checking host " + InetAddress.getLocalHost() + " and port " + getPort());
+      LOG.info("Checking host {} and port {}", InetAddress.getLocalHost(), getPort());
 
       socket = new Socket(InetAddress.getLocalHost(), getPort());
       reachable = true;
     } catch (IOException e) {
       // don't care.
-      LOG.warn(e);
+      LOG.warn(e.getMessage());
     } finally {
       IOUtils.closeQuietly(socket);
     }

@@ -17,7 +17,7 @@
  */
 package storm.mesos;
 
-import org.apache.mesos.Protos.*;
+import org.apache.mesos.Protos.Resource;
 
 import java.util.Comparator;
 

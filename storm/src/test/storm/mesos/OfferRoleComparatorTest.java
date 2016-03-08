@@ -17,14 +17,20 @@
  */
 package storm.mesos;
 
-import static org.junit.Assert.*;
-import org.apache.mesos.Protos.*;
+import org.apache.mesos.Protos.FrameworkID;
+import org.apache.mesos.Protos.Offer;
+import org.apache.mesos.Protos.OfferID;
+import org.apache.mesos.Protos.Resource;
+import org.apache.mesos.Protos.SlaveID;
+import org.apache.mesos.Protos.Value;
 import org.junit.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
+import static org.junit.Assert.assertEquals;
 
 public class OfferRoleComparatorTest {
 

@@ -17,12 +17,20 @@
  */
 package storm.mesos;
 
-import org.apache.mesos.Protos.*;
+import org.apache.mesos.Protos.ExecutorID;
+import org.apache.mesos.Protos.FrameworkID;
+import org.apache.mesos.Protos.MasterInfo;
+import org.apache.mesos.Protos.Offer;
+import org.apache.mesos.Protos.OfferID;
+import org.apache.mesos.Protos.SlaveID;
+import org.apache.mesos.Protos.TaskID;
+import org.apache.mesos.Protos.TaskStatus;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
 import static storm.mesos.PrettyProtobuf.taskStatusToString;
@@ -30,7 +38,7 @@ import static storm.mesos.PrettyProtobuf.taskStatusToString;
 public class NimbusScheduler implements Scheduler {
   private MesosNimbus mesosNimbus;
   private CountDownLatch _registeredLatch = new CountDownLatch(1);
-  public static final Logger LOG = Logger.getLogger(MesosNimbus.class);
+  public static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
 
   public NimbusScheduler(MesosNimbus mesosNimbus) {
     this.mesosNimbus = mesosNimbus;
@@ -58,7 +66,7 @@ public class NimbusScheduler implements Scheduler {
 
   @Override
   public void error(SchedulerDriver driver, String msg) {
-    LOG.error("Received fatal error \nmsg:" + msg + "\nHalting process...");
+    LOG.error("Received fatal error \nmsg: {} \nHalting process...", msg);
     try {
       mesosNimbus.shutdown();
     } catch (Exception e) {
@@ -74,13 +82,13 @@ public class NimbusScheduler implements Scheduler {
 
   @Override
   public void offerRescinded(SchedulerDriver driver, OfferID id) {
-    LOG.info("Offer rescinded. offerId: " + id.getValue());
+    LOG.info("Offer rescinded. offerId: {}", id.getValue());
     mesosNimbus.offerRescinded(id);
   }
 
   @Override
   public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
-    LOG.debug("Received status update: " + taskStatusToString(status));
+    LOG.debug("Received status update: {}", taskStatusToString(status));
     switch (status.getState()) {
       case TASK_FINISHED:
       case TASK_FAILED:
@@ -100,12 +108,11 @@ public class NimbusScheduler implements Scheduler {
 
   @Override
   public void slaveLost(SchedulerDriver driver, SlaveID id) {
-    LOG.warn("Lost slave id: " + id.getValue());
+    LOG.warn("Lost slave id: {}", id.getValue());
   }
 
   @Override
   public void executorLost(SchedulerDriver driver, ExecutorID executor, SlaveID slave, int status) {
-    LOG.warn("Mesos Executor lost: executor: " + executor.getValue() +
-        " slave: " + slave.getValue() + " status: " + status);
+    LOG.warn("Mesos Executor lost: executor: {} slave: {} status: {}", executor.getValue(), slave.getValue(), status);
   }
 }
