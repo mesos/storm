@@ -145,6 +145,18 @@
         <groupId>org.slf4j</groupId>
         <artifactId>log4j-over-slf4j</artifactId>
         <version>1.6.6</version>
+	<exclusions>
+	  <!-- slf4j-api is provided by storm-core. We might as well
+               use the one that is provided to us by storm rather than including
+               the slf4j-api classes in the jar.
+               WARNING: Please do *not* shade org.slf4j. Classes from org.slf4j
+                        are referenced within log4j-over-slf4j and shading them
+                        would lead to java.lang.NoClassDefFoundError -->
+	  <exclusion>
+	    <groupId>org.slf4j</groupId>
+	    <artifactId>slf4j-api</artifactId>
+          </exclusion>
+	</exclusions>
       </dependency>
       <dependency>
         <groupId>org.mortbay.jetty</groupId>
