@@ -72,8 +72,15 @@ public class MesosCommon {
         .or(DEFAULT_MESOS_COMPONENT_NAME_DELIMITER);
   }
 
+  public static String timestampMillis() {
+    long now = System.currentTimeMillis();
+    long sec = now / 1000L;
+    long msec = now % 1000L;
+    return String.valueOf(sec) + "." + String.valueOf(msec);
+  }
+
   public static String taskId(String nodeid, int port) {
-    return nodeid + "-" + port;
+    return nodeid + "-" + port + "-" + timestampMillis();
   }
 
   public static String supervisorId(String nodeid, String topologyId) {
@@ -85,9 +92,29 @@ public class MesosCommon {
   }
 
   public static int portFromTaskId(String taskId) {
-    int last = taskId.lastIndexOf("-");
-    String port = taskId.substring(last + 1);
-    return Integer.parseInt(port);
+    String[] parts = taskId.trim().split("-");
+    if (parts.length < 3) {
+      throw new IllegalArgumentException("TaskID " + taskId.trim() + " is invalid. " +
+          "Number of dash-delimited components (" + parts.length + ") is less than expected. " +
+          "Expected format is HOSTNAME-PORT-TIMESTAMP");
+    }
+
+    // TaskID format: HOSTNAME-PORT-TIMESTAMP. Notably, HOSTNAME can have dashes too,
+    // so the port is the 2nd-to-last part after splitting on dash.
+    String portString = parts[parts.length - 2];
+    int port;
+    try {
+      port = Integer.parseInt(portString);
+    } catch (NumberFormatException e) {
+      LOG.error("Failed to parse string (" + portString + ") that was supposed to contain a port.");
+      throw e;
+    }
+
+    if (port < 0 || port > 0xFFFF) {
+      throw new IllegalArgumentException(port + " is not a valid port number");
+    }
+
+    return port;
   }
 
   public static int getSuicideTimeout(Map conf) {
