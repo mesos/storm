@@ -18,7 +18,8 @@
 package storm.mesos.shims;
 
 import backtype.storm.utils.LocalState;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -26,7 +27,7 @@ import java.util.Map;
 
 public class LocalStateShim implements ILocalStateShim {
   LocalState _state;
-  private static final Logger LOG = Logger.getLogger(LocalStateShim.class);
+  private static final Logger LOG = LoggerFactory.getLogger(LocalStateShim.class);
 
   public LocalStateShim(String localDir) throws IOException {
     _state = new LocalState(localDir);
