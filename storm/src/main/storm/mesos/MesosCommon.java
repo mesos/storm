@@ -19,12 +19,14 @@ package storm.mesos;
 
 import backtype.storm.scheduler.TopologyDetails;
 import com.google.common.base.Optional;
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MesosCommon {
-  public static final Logger LOG = Logger.getLogger(MesosCommon.class);
+  public static final Logger LOG = LoggerFactory.getLogger(MesosCommon.class);
 
   public static final String WORKER_CPU_CONF = "topology.mesos.worker.cpu";
   public static final String WORKER_MEM_CONF = "topology.mesos.worker.mem.mb";
@@ -51,7 +53,7 @@ public class MesosCommon {
   public static String hostFromAssignmentId(String assignmentId, String delimiter) {
     final int last = assignmentId.lastIndexOf(delimiter);
     String host = assignmentId.substring(last + delimiter.length());
-    LOG.debug("assignmentId=" + assignmentId + " host=" + host);
+    LOG.debug("assignmentId={} host={}", assignmentId, host);
     return host;
   }
 
