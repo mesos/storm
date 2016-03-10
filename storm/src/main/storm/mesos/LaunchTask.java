@@ -19,8 +19,8 @@ package storm.mesos;
 
 import org.apache.mesos.Protos;
 
-import static storm.mesos.PrettyProtobuf.offerToString;
-import static storm.mesos.PrettyProtobuf.taskInfoToString;
+import static storm.mesos.util.PrettyProtobuf.offerToString;
+import static storm.mesos.util.PrettyProtobuf.taskInfoToString;
 
 class LaunchTask {
   private final Protos.TaskInfo task;

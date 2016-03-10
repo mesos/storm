@@ -15,13 +15,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package storm.mesos;
+package storm.mesos.util;
 
 import backtype.storm.scheduler.TopologyDetails;
 import com.google.common.base.Optional;
 import org.apache.log4j.Logger;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MesosCommon {
   public static final Logger LOG = Logger.getLogger(MesosCommon.class);
