@@ -17,6 +17,7 @@
  */
 package storm.mesos;
 
+import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,9 +57,11 @@ public enum TaskAssignments {
     INACTIVE
   }
 
-  private static class AssignmentInfo {
-    public final TaskID taskId;
-    public final TaskState taskState;
+  // NOTE: this doesn't *really* need to be Serializable -- this is only done to avoid
+  // an exception thrown during mk-supervisor if the ISupervisor object isn't serializable.
+  private static class AssignmentInfo implements Serializable {
+    public final transient TaskID taskId;
+    public final transient TaskState taskState;
 
     public AssignmentInfo(TaskID taskId, TaskState taskState) {
       this.taskId = taskId;
