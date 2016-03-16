@@ -24,6 +24,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 public class MesosCommon {
   public static final Logger LOG = LoggerFactory.getLogger(MesosCommon.class);
@@ -76,9 +77,9 @@ public class MesosCommon {
 
   public static String timestampMillis() {
     long now = System.currentTimeMillis();
-    long sec = now / 1000L;
-    long msec = now % 1000L;
-    return String.valueOf(sec) + "." + String.valueOf(msec);
+    long secs = TimeUnit.MILLISECONDS.toSeconds(now);
+    long msecs = now - TimeUnit.SECONDS.toMillis(secs);
+    return String.format("%d.%03d", secs, msecs);
   }
 
   public static String taskId(String nodeid, int port) {
