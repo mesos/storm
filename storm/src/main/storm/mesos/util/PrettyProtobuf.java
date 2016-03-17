@@ -20,42 +20,45 @@ package storm.mesos.util;
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.mesos.Protos.ExecutorID;
 import org.apache.mesos.Protos.Offer;
 import org.apache.mesos.Protos.OfferID;
 import org.apache.mesos.Protos.Resource;
-import org.apache.mesos.Protos.SlaveID;
-import org.apache.mesos.Protos.TaskID;
 import org.apache.mesos.Protos.TaskInfo;
-import org.apache.mesos.Protos.TaskState;
 import org.apache.mesos.Protos.TaskStatus;
 import org.apache.mesos.Protos.Value.Range;
+import org.apache.mesos.Protos.Value.Ranges;
+import org.apache.mesos.Protos.Value.Set;
 import org.json.simple.JSONValue;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 /**
  * This utility class provides methods to improve logging of Mesos protobuf objects.
  * These methods don't perform any logging directly, instead they return Strings
  * which can be logged by callers.
- * <p/>
+ *
  * The methods offer more concise and readable String representations of protobuf
  * objects than you get by calling a protobuf object's native toString method.
- * <p/>
+ *
  * Another advantage over standard protobuf toString() output is that this output is
  * in proper JSON format, resulting in logs that can be more easily parsed.
- * <p/>
+ * This desire to print in JSON is why we populate Maps below for each multi-field
+ * object. Also, we use LinkedHashMap and TreeMap to ensure the order of the fields
+ * in multi-field objects stays consistent. That allows log lines to be visually
+ * compared whilst examining the state of the system.
+ *
  * TODO(erikdw):
- * 1. Check whether a value is set/null when deciding whether to include it.
- * 2. Currently we only include the object values that we care about for Groupon's
- *    storm-only mesos-cluster.  We should instead allow configuration for choosing
- *    which fields to include (e.g., a bitmap toggling certain fields on/off).
- * 3. Allow cleanly logging to separate Logger, to allow configuring the logs going to
- *    a separate log file.  The complication is that these methods lack context,
- *    they are just pretty-printing the protobuf objects.
+ *  1. Check whether a value is set/null when deciding whether to include it.
+ *  2. Currently we only include the object values that we care about for a
+ *     storm-only mesos-cluster.  We should instead allow configuration for choosing
+ *     which fields to include (e.g., a bitmap toggling certain fields on/off).
+ *  3. Allow cleanly logging to separate Logger, to allow configuring the logs going to
+ *     a separate log file.  The complication is that these methods lack context,
+ *     they are just pretty-printing the protobuf objects.
  */
 public class PrettyProtobuf {
 
@@ -91,8 +94,6 @@ public class PrettyProtobuf {
    * Pretty-print mesos protobuf Offer.
    * <p/>
    * XXX(erikdw): not including slave_id, attributes, executor_ids, nor framework_id.
-   * XXX(erikdw): Why is the framework_id included in Offer?  (Ask tnachen)
-   * XXX(erikdw): Why are both slave_id & hostname included in Offer?  (Ask tnachen)
    */
   public static String offerToString(Offer offer) {
     Map<String, String> map = new LinkedHashMap<>();
@@ -183,48 +184,49 @@ public class PrettyProtobuf {
   }
 
   /**
-   * Pretty-print List of mesos protobuf Ranges.
+   * Pretty-print mesos protobuf Ranges.
    */
-  private static String rangeListToString(List<Range> ranges) {
-    List<String> rangesAsStrings = Lists.transform(ranges, rangeToStringTransform);
+  private static String rangesToString(Ranges ranges) {
+    List<String> rangesAsStrings = Lists.transform(ranges.getRangeList(), rangeToStringTransform);
     return "[" + StringUtils.join(rangesAsStrings, ",") + "]";
   }
 
   /**
-   * Construct a Map of Resource names to String values.
-   * Ensure the order is always the same (cpu, mem, then ports), so that
-   * we have consistently ordered log output.
+   * Pretty-print mesos protobuf Set.
+   */
+  private static String setToString(Set set) {
+    return "[" + StringUtils.join(set.getItemList(), ",") + "]";
+  }
+
+  /**
+   * Return Resource names mapped to values.
    */
   private static Map<String, String> resourcesToOrderedMap(List<Resource> resources) {
-    String cpus = null;
-    String mem = null;
-    String ports = null;
-
+    Map<String, String> map = new TreeMap<>();
     for (Resource r : resources) {
-      switch (r.getName()) {
-        case "cpus":
-          cpus = String.valueOf(r.getScalar().getValue());
+      String name;
+      String value = "";
+      if (r.hasRole()) {
+        name = r.getName() + "(" + r.getRole() + ")";
+      } else {
+        name = r.getName();
+      }
+      switch (r.getType()) {
+        case SCALAR:
+          value = String.valueOf(r.getScalar().getValue());
           break;
-        case "mem":
-          mem = String.valueOf(r.getScalar().getValue());
+        case RANGES:
+          value = rangesToString(r.getRanges());
           break;
-        case "ports":
-          ports = rangeListToString(r.getRanges().getRangeList());
+        case SET:
+          value = setToString(r.getSet());
           break;
         default:
-          new RuntimeException("Unrecognized resource " + r.getName());
+          // If hit, then a new Resource Type needs to be handled here.
+          value = "Unrecognized Resource Type: `" + r.getType() + "'";
           break;
       }
-    }
-    Map<String, String> map = new LinkedHashMap<>();
-    if (cpus != null) {
-      map.put("cpus", cpus);
-    }
-    if (mem != null) {
-      map.put("mem", mem);
-    }
-    if (ports != null) {
-      map.put("ports", ports);
+      map.put(name, value);
     }
     return map;
   }
