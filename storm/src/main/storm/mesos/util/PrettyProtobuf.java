@@ -51,63 +51,22 @@ import java.util.Map;
  * TODO(erikdw):
  * 1. Check whether a value is set/null when deciding whether to include it.
  * 2. Currently we only include the object values that we care about for Groupon's
- * storm-only mesos-cluster.  We should instead allow configuration for choosing
- * which fields to include (e.g., a bitmap toggling certain fields on/off).
+ *    storm-only mesos-cluster.  We should instead allow configuration for choosing
+ *    which fields to include (e.g., a bitmap toggling certain fields on/off).
  * 3. Allow cleanly logging to separate Logger, to allow configuring the logs going to
- * a separate log file.  The complication is that these methods lack context,
- * they are just pretty-printing the protobuf objects.
+ *    a separate log file.  The complication is that these methods lack context,
+ *    they are just pretty-printing the protobuf objects.
  */
 public class PrettyProtobuf {
-
-  /**
-   * Ideally we'd have a generic method for these getTrimmedString methods, but
-   * these protobuf types don't implement a common interface (which would need
-   * to include getValue()).
-   */
-
-  /**
-   * Pretty-print the mesos protobuf OfferID.
-   */
-  public static String getTrimmedString(OfferID id) {
-    return id.getValue().toString().trim();
-  }
-
-  /**
-   * Pretty-print the mesos protobuf SlaveID.
-   */
-  public static String getTrimmedString(SlaveID id) {
-    return id.getValue().toString().trim();
-  }
-
-  /**
-   * Pretty-print the mesos protobuf ExecutorID.
-   */
-  public static String getTrimmedString(ExecutorID id) {
-    return id.getValue().toString().trim();
-  }
-
-  /**
-   * Pretty-print the mesos protobuf TaskID.
-   */
-  public static String getTrimmedString(TaskID id) {
-    return id.getValue().toString().trim();
-  }
-
-  /**
-   * Pretty-print the mesos protobuf TaskState.
-   */
-  public static String getTrimmedString(TaskState state) {
-    return state.toString().trim();
-  }
 
   /**
    * Pretty-print mesos protobuf TaskStatus.
    */
   public static String taskStatusToString(TaskStatus taskStatus) {
     Map<String, String> map = new LinkedHashMap<>();
-    map.put("task_id", getTrimmedString(taskStatus.getTaskId()));
-    map.put("slave_id", getTrimmedString(taskStatus.getSlaveId()));
-    map.put("state", getTrimmedString(taskStatus.getState()));
+    map.put("task_id", taskStatus.getTaskId().getValue());
+    map.put("slave_id", taskStatus.getSlaveId().getValue());
+    map.put("state", taskStatus.getState().toString());
     if (taskStatus.hasMessage()) {
       map.put("message", taskStatus.getMessage());
     }
@@ -121,10 +80,10 @@ public class PrettyProtobuf {
    */
   public static String taskInfoToString(TaskInfo task) {
     Map<String, String> map = new LinkedHashMap<>();
-    map.put("task_id", getTrimmedString(task.getTaskId()));
-    map.put("slave_id", getTrimmedString(task.getSlaveId()));
+    map.put("task_id", task.getTaskId().getValue());
+    map.put("slave_id", task.getSlaveId().getValue());
     map.putAll(resourcesToOrderedMap(task.getResourcesList()));
-    map.put("executor_id", getTrimmedString(task.getExecutor().getExecutorId()));
+    map.put("executor_id", task.getExecutor().getExecutorId().getValue());
     return JSONValue.toJSONString(map);
   }
 
@@ -137,7 +96,7 @@ public class PrettyProtobuf {
    */
   public static String offerToString(Offer offer) {
     Map<String, String> map = new LinkedHashMap<>();
-    map.put("offer_id", getTrimmedString(offer.getId()));
+    map.put("offer_id", offer.getId().getValue());
     map.put("hostname", offer.getHostname());
     map.putAll(resourcesToOrderedMap(offer.getResourcesList()));
     return JSONValue.toJSONString(map);

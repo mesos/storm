@@ -40,9 +40,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static storm.mesos.util.PrettyProtobuf.getTrimmedString;
-
-
 /**
  *  Default Scheduler used by mesos-storm framework.
  */
@@ -96,7 +93,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
         }
       }
       if (!isOfferUseful) {
-        log.info("Declining Offer " + getTrimmedString(offer.getId()) + " because it does not fit any of the topologies that need assignments");
+        log.info("Declining Offer " + offer.getId().getValue() + " because it does not fit any of the topologies that need assignments");
         offers.clearKey(offer.getId());
       }
     }
