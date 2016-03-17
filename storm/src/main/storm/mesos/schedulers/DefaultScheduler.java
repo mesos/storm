@@ -6,16 +6,15 @@
  * to you under the Apache License, Version 2.0 (the
  * "License"); you may not use this file except in compliance
  * with the License.  You may obtain a copy of the License at
- * <p/>
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package storm.mesos.schedulers;
 
 import backtype.storm.scheduler.Cluster;
@@ -36,6 +35,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -114,16 +114,18 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
         continue;
       }
 
-      Map<String, Boolean> supervisorExistsPerNodeMap = new HashMap<>();
+      Set<String> nodesWithExistingSupervisors = new HashSet<>();
       for (String currentNode : offerResourcesListPerNode.keySet()) {
-        supervisorExistsPerNodeMap.put(currentNode, SchedulerUtils.supervisorExists(currentNode, existingSupervisors, currentTopology));
+        if (SchedulerUtils.supervisorExists(currentNode, existingSupervisors, currentTopology)) {
+          nodesWithExistingSupervisors.add(currentNode);
+        }
       }
 
       Boolean slotFound;
       do {
         slotFound = false;
         for (String currentNode : offerResourcesListPerNode.keySet()) {
-          boolean supervisorExists =  supervisorExistsPerNodeMap.get(currentNode);
+          boolean supervisorExists = nodesWithExistingSupervisors.contains(currentNode);
           if (slotsNeeded == 0) {
             break;
           }
@@ -134,7 +136,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
               log.info(resources.toString() + " is a fit for " +
                        topologyDetails.getId() + " requestedWorkerCpu: " + requestedWorkerCpu + " requestedWorkerMem: " +
                        requestedWorkerMem);
-              supervisorExistsPerNodeMap.put(currentNode, true);
+              nodesWithExistingSupervisors.add(currentNode);
               MesosWorkerSlot mesosWorkerSlot = SchedulerUtils.createWorkerSlotFromOfferResources(mesosStormConf, resources, topologyDetails, supervisorExists);
               if (mesosWorkerSlot == null) {
                 continue;

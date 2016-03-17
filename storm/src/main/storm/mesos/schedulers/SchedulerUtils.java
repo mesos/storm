@@ -1,18 +1,3 @@
-package storm.mesos.schedulers;
-
-import backtype.storm.scheduler.SupervisorDetails;
-import backtype.storm.scheduler.TopologyDetails;
-import org.apache.log4j.Logger;
-import org.apache.mesos.Protos;
-import storm.mesos.util.MesosCommon;
-import storm.mesos.util.RotatingMap;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -30,6 +15,21 @@ import java.util.Map;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package storm.mesos.schedulers;
+
+import backtype.storm.scheduler.SupervisorDetails;
+import backtype.storm.scheduler.TopologyDetails;
+import org.apache.log4j.Logger;
+import org.apache.mesos.Protos;
+import storm.mesos.util.MesosCommon;
+import storm.mesos.util.RotatingMap;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 public class SchedulerUtils {
 
   private static final Logger log = Logger.getLogger(SchedulerUtils.class);

@@ -1,5 +1,3 @@
-package storm.mesos;
-
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -17,6 +15,7 @@ package storm.mesos;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package storm.mesos;
 
 import backtype.storm.generated.StormTopology;
 import backtype.storm.scheduler.TopologyDetails;

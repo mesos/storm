@@ -23,7 +23,6 @@ import org.apache.log4j.Logger;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException;
 
 public class SocketUrlDetection {
   private static final Logger LOG = Logger.getLogger(SocketUrlDetection.class);
