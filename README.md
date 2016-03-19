@@ -140,8 +140,13 @@ To get started quickly, you can run Storm on Mesos with Marathon and Docker, pro
 in your cluster. If you're not using Mesos-DNS, set the MESOS_MASTER_ZK environment variable to point to your
 ZooKeeper cluster. Included is a script (`bin/run-with-marathon.sh`) which sets the necessary config parameters,
 and starts the UI and Nimbus. Since Storm writes stateful data to disk, you may want to consider mounting an
-external volume for the `storm.local.dir` config param, and pinning Nimbus to a particular host. You can run this
-from Marathon, using the example app JSON below:
+external volume for the `storm.local.dir` config param, and pinning Nimbus to a particular host.
+
+It is also possible to add  command line parameter to both the ui and nimbus through `STORM_UI_OPTS` and `STORM_NIMBUS_OPTS` respectadly:
+
+```STORM_NIMBUS_OPTS="-c storm.local.dir=/my/mounted/volume -c topology.mesos.worker.cpu=1.5"```
+
+You can run this from Marathon, using the example app JSON below:
 
 ```json
 {
