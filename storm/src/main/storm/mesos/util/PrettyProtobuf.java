@@ -136,6 +136,24 @@ public class PrettyProtobuf {
   }
 
   /**
+   * Pretty-print the list of OfferIDs.
+   */
+  public static String offerIDListToString(List<OfferID> offerIDList) {
+    List<String> offerIDsAsStrings = Lists.transform(offerIDList, offerIDToStringTransform);
+    return "[" + StringUtils.join(offerIDsAsStrings, ", ") + "]";
+  }
+
+  /**
+   * Wrapper around getTrimmedString which allows using gauva's transform utility.
+   */
+  private static Function<OfferID, String> offerIDToStringTransform =
+      new Function<OfferID, String>() {
+        public String apply(OfferID o) {
+          return o.getValue().toString();
+        }
+      };
+
+  /**
    * Wrapper around offerToString which allows using gauva's transform utility.
    */
   private static Function<Offer, String> offerToStringTransform =

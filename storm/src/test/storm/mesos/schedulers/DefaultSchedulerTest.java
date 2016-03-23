@@ -303,8 +303,7 @@ public class DefaultSchedulerTest {
     rotatingMap.put(offer.getId(), offer);
     offer = buildOffer("offer5", sampleHost2, 0.91, 9000);
     rotatingMap.put(offer.getId(), offer);
-    offer = buildOfferWithPorts("offer6", sampleHost2, 5 * MesosCommon.DEFAULT_WORKER_CPU + MesosCommon.DEFAULT_EXECUTOR_CPU,
-                                5 * MesosCommon.DEFAULT_WORKER_MEM_MB + MesosCommon.DEFAULT_EXECUTOR_MEM_MB, samplePort, samplePort + 5);
+    offer = buildOfferWithPorts("offer6", sampleHost2, 0, 0, samplePort, samplePort + 5);
     rotatingMap.put(offer.getId(), offer);
 
     topologyMap.clear();
@@ -312,8 +311,7 @@ public class DefaultSchedulerTest {
     topologyMap.put(sampleTopologyId, topologyDetails);
     defaultScheduler.prepare(topologyDetails.getConf());
 
-    // Increase available cpu by a tiny fraction in order
-    offer = buildOfferWithPorts("offer6", sampleHost, 5 * MesosCommon.DEFAULT_WORKER_CPU + 1.1 * MesosCommon.DEFAULT_EXECUTOR_CPU,
+    offer = buildOfferWithPorts("offer6", sampleHost, 5 * MesosCommon.DEFAULT_WORKER_CPU + 1 * MesosCommon.DEFAULT_EXECUTOR_CPU,
                                 5 * MesosCommon.DEFAULT_WORKER_MEM_MB + MesosCommon.DEFAULT_EXECUTOR_MEM_MB, samplePort, samplePort + 5);
     rotatingMap.put(offer.getId(), offer);
 
@@ -324,8 +322,8 @@ public class DefaultSchedulerTest {
 
     workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
-    assertEquals(workerSlotsAvailableForScheduling.size(), 5); // Note that by increasing the executor cpu by a fraction, we are able to get 5 worker slots as we expect
-
+    // We only have one offer with 6 ports
+    assertEquals(workerSlotsAvailableForScheduling.size(), 6);
 
     topologyMap.clear();
     topologyDetails = constructTopologyDetails(sampleTopologyId, 10);
@@ -334,7 +332,7 @@ public class DefaultSchedulerTest {
 
     workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
-    assertEquals(workerSlotsAvailableForScheduling.size(), 5);
+    assertEquals(workerSlotsAvailableForScheduling.size(), 6);
 
     offer = buildOfferWithPorts("offer7", "host2.east", 3 * MesosCommon.DEFAULT_WORKER_CPU + MesosCommon.DEFAULT_EXECUTOR_CPU,
                                 3 * MesosCommon.DEFAULT_WORKER_MEM_MB + MesosCommon.DEFAULT_EXECUTOR_MEM_MB, samplePort, samplePort + 5);

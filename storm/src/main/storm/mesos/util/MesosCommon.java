@@ -20,6 +20,8 @@ package storm.mesos.util;
 import backtype.storm.scheduler.TopologyDetails;
 import com.google.common.base.Optional;
 import org.apache.log4j.Logger;
+import org.apache.mesos.Protos;
+import storm.mesos.schedulers.OfferResources;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -37,6 +39,7 @@ public class MesosCommon {
   public static final String WORKER_NAME_PREFIX = "topology.mesos.worker.prefix";
   public static final String WORKER_NAME_PREFIX_DELIMITER = "topology.mesos.worker.prefix.delimiter";
   public static final String MESOS_COMPONENT_NAME_DELIMITER = "topology.mesos.component.name.delimiter";
+  public static final String CONF_MESOS_ROLE = "mesos.framework.role";
 
   public static final double DEFAULT_WORKER_CPU = 1;
   public static final double DEFAULT_WORKER_MEM_MB = 1000;
@@ -81,7 +84,7 @@ public class MesosCommon {
     return nodeid + "-" + topologyId;
   }
 
-  public static boolean startLogViewer(Map conf) {
+  public static boolean autoStartLogViewer(Map conf) {
     return Optional.fromNullable((Boolean) conf.get(AUTO_START_LOGVIEWER_CONF)).or(true);
   }
 
@@ -89,6 +92,25 @@ public class MesosCommon {
     int last = taskId.lastIndexOf("-");
     String port = taskId.substring(last + 1);
     return Integer.parseInt(port);
+  }
+
+  public static Map<String, OfferResources> getConsolidatedOfferResourcesPerNode(Map conf, RotatingMap<Protos.OfferID, Protos.Offer> offers) {
+    Map<String, OfferResources> offerResourcesPerNode = new HashMap<>();
+
+    for (Protos.Offer offer : offers.values()) {
+      String hostName = offer.getHostname();
+
+      OfferResources offerResourcesForHost = offerResourcesPerNode.get(hostName);
+      if (offerResourcesForHost == null) {
+        offerResourcesForHost = new OfferResources(offer);
+        offerResourcesPerNode.put(hostName, offerResourcesForHost);
+      } else {
+        offerResourcesForHost.merge(offer);
+      }
+      LOG.info("Available resources at " + hostName + ": " + offerResourcesForHost.toString());
+    }
+
+    return offerResourcesPerNode;
   }
 
   public static int getSuicideTimeout(Map conf) {
@@ -122,5 +144,9 @@ public class MesosCommon {
   public static double executorMem(Map conf) {
     return Optional.fromNullable((Number) conf.get(EXECUTOR_MEM_CONF))
         .or(DEFAULT_EXECUTOR_MEM_MB).doubleValue();
+  }
+
+  public static String getRole(Map conf) {
+    return Optional.fromNullable((String) conf.get(CONF_MESOS_ROLE)).or("*");
   }
 }
