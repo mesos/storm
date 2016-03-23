@@ -53,6 +53,7 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import storm.mesos.schedulers.DefaultScheduler;
 import storm.mesos.schedulers.IMesosStormScheduler;
+import storm.mesos.schedulers.OfferResources;
 import storm.mesos.shims.CommandLineShimFactory;
 import storm.mesos.shims.ICommandLineShim;
 import storm.mesos.shims.LocalStateShim;
@@ -87,6 +88,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static storm.mesos.util.PrettyProtobuf.offerMapToString;
+import static storm.mesos.util.PrettyProtobuf.taskInfoListToString;
+import static storm.mesos.util.PrettyProtobuf.offerIDListToString;
 
 public class MesosNimbus implements INimbus {
   public static final String CONF_EXECUTOR_URI = "mesos.executor.uri";
@@ -94,7 +97,6 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MASTER_FAILOVER_TIMEOUT_SECS = "mesos.master.failover.timeout.secs";
   public static final String CONF_MESOS_ALLOWED_HOSTS = "mesos.allowed.hosts";
   public static final String CONF_MESOS_DISALLOWED_HOSTS = "mesos.disallowed.hosts";
-  public static final String CONF_MESOS_ROLE = "mesos.framework.role";
   public static final String CONF_MESOS_PRINCIPAL = "mesos.framework.principal";
   public static final String CONF_MESOS_SECRET_FILE = "mesos.framework.secret.file";
 
@@ -121,8 +123,7 @@ public class MesosNimbus implements INimbus {
   private RotatingMap<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
   private Map<TaskID, Offer> _usedOffers;
-  private ScheduledExecutorService timerScheduler =
-      Executors.newScheduledThreadPool(1);
+  private ScheduledExecutorService timerScheduler = Executors.newScheduledThreadPool(1);
   private IMesosStormScheduler _mesosStormScheduler = null;
 
   private boolean _preferReservedResources = true;
@@ -356,34 +357,6 @@ public class MesosNimbus implements INimbus {
     }
   }
 
-  /**
-   * Method checks if all topologies that need assignment already have supervisor running on the node where the Offer
-   * comes from. Required for more accurate available resource calculation where we can exclude supervisor's demand from
-   * the Offer.
-   * Unfortunately because of WorkerSlot type is not topology agnostic, we need to exclude supervisor's resources only
-   * in case where ALL topologies in 'allSlotsAvailableForScheduling' method satisfy condition of supervisor existence
-   *
-   * @param offer                        Offer
-   * @param existingSupervisors          Supervisors which already placed on the node for the Offer
-   * @param topologiesMissingAssignments Topology ids required assignment
-   * @return Boolean value indicating supervisor existence
-   */
-  private boolean supervisorExists(
-      Offer offer, Collection<SupervisorDetails> existingSupervisors, Set<String> topologiesMissingAssignments) {
-    boolean alreadyExists = true;
-    for (String topologyId : topologiesMissingAssignments) {
-      String offerHost = offer.getHostname();
-      boolean exists = false;
-      for (SupervisorDetails d : existingSupervisors) {
-        if (d.getId().equals(MesosCommon.supervisorId(offerHost, topologyId))) {
-          exists = true;
-        }
-      }
-      alreadyExists = (alreadyExists && exists);
-    }
-    return alreadyExists;
-  }
-
   public boolean isHostAccepted(String hostname) {
     return
         (_allowedHosts == null && _disallowedHosts == null) ||
@@ -402,53 +375,6 @@ public class MesosNimbus implements INimbus {
               topologies,
               topologiesMissingAssignments);
     }
-  }
-
-  private OfferID findOffer(WorkerSlot worker) {
-    int port = worker.getPort();
-    for (Offer offer : _offers.values()) {
-      if (offer.getHostname().equals(worker.getNodeId())) {
-        List<Resource> r = getResourcesRange(offer.getResourcesList(), port, "ports");
-        if (r != null) return offer.getId();
-      }
-    }
-    // Still haven't found the slot? Maybe it's an offer we already used.
-    return null;
-  }
-
-  protected List<Resource> getResourcesScalar(final List<Resource> offerResources,
-                                              final double value,
-                                              final String name) {
-    List<Resource> resources = new ArrayList<>();
-    double valueNeeded = value;
-    for (Resource r : offerResources) {
-      if (r.hasReservation()) {
-        // skip resources with dynamic reservations
-        continue;
-      }
-      if (r.getType() == Type.SCALAR &&
-          r.getName().equals(name)) {
-        if (r.getScalar().getValue() > valueNeeded) {
-          resources.add(
-              r.toBuilder()
-                  .setScalar(Scalar.newBuilder().setValue(valueNeeded))
-                  .build()
-          );
-          return resources;
-        } else if (Math.abs(r.getScalar().getValue() - valueNeeded) < 0.0001) { // check if zero
-          resources.add(
-              r.toBuilder()
-                  .setScalar(Scalar.newBuilder().setValue(valueNeeded))
-                  .build()
-          );
-          return resources;
-        } else {
-          resources.add(r.toBuilder().build());
-          valueNeeded -= r.getScalar().getValue();
-        }
-      }
-    }
-    return resources;
   }
 
   protected List<Resource> subtractResourcesScalar(final List<Resource> offerResources,
@@ -480,32 +406,6 @@ public class MesosNimbus implements INimbus {
     return resources;
   }
 
-  protected List<Resource> getResourcesRange(final List<Resource> offerResources,
-                                             final long value,
-                                             final String name) {
-    for (Resource r : offerResources) {
-      if (r.hasReservation()) {
-        // skip reserved resources
-        continue;
-      }
-      if (r.getType() == Type.RANGES && r.getName().equals(name)) {
-        for (Range range : r.getRanges().getRangeList()) {
-          if (value >= range.getBegin() && value <= range.getEnd()) {
-            return Arrays.asList(r.toBuilder()
-                .setRanges(
-                    Ranges.newBuilder()
-                        .addRange(
-                            Range.newBuilder().setBegin(value).setEnd(value).build()
-                        ).build()
-                )
-                .build()
-            );
-          }
-        }
-      }
-    }
-    return new ArrayList<>();
-  }
 
   protected List<Resource> subtractResourcesRange(final List<Resource> offerResources,
                                                   final long value,
@@ -556,225 +456,188 @@ public class MesosNimbus implements INimbus {
     return resources;
   }
 
-  @Override
-  public void assignSlots(Topologies topologies, Map<String, Collection<WorkerSlot>> slots) {
-    if (slots.size() == 0) {
-      LOG.debug("assignSlots: no slots passed in, nothing to do");
-      return;
-    }
-    for (Map.Entry<String, Collection<WorkerSlot>> topologyToSlots : slots.entrySet()) {
-      String topologyId = topologyToSlots.getKey();
-      for (WorkerSlot slot : topologyToSlots.getValue()) {
-        TopologyDetails details = topologies.getById(topologyId);
-        LOG.debug("assignSlots: topologyId: {} worker being assigned to slot: {} with workerCpu: {} workerMem: {}",
-                  topologyId, slot, MesosCommon.topologyWorkerCpu(_conf, details), MesosCommon.topologyWorkerMem(_conf, details));
-      }
-    }
-    synchronized (_offersLock) {
-      computeLaunchList(topologies, slots);
-    }
+
+
+
+  private String getLogViewerConfig() {
+    String logViewerConfig = null;
+    // Find port for the logviewer
+    return " -c " + MesosCommon.AUTO_START_LOGVIEWER_CONF + "=true";
   }
 
-  protected void computeLaunchList(Topologies topologies, Map<String, Collection<WorkerSlot>> slots) {
-    Map<OfferID, List<LaunchTask>> toLaunch = new HashMap<>();
+  private ExecutorInfo.Builder getExecutorInfoBuilder(TopologyDetails details, String executorDataStr,
+                                                      String executorName,
+                                                      List<Resource> executorCpuResources, List<Resource> executorMemResources, List<Resource> executorPortsResources, String extraConfig) {
+    String configUri;
+    try {
+      configUri = new URL(_configUrl.toURL(),
+                          _configUrl.getPath() + "/storm.yaml").toString();
+    } catch (MalformedURLException e) {
+      throw new RuntimeException(e);
+    }
+
+    ExecutorInfo.Builder executorInfoBuilder = ExecutorInfo.newBuilder();
+
+    executorInfoBuilder
+      .setName(executorName)
+      .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
+      .setData(ByteString.copyFromUtf8(executorDataStr))
+      .addAllResources(executorCpuResources)
+      .addAllResources(executorMemResources)
+      .addAllResources(executorPortsResources);
+
+    ICommandLineShim commandLineShim = CommandLineShimFactory.makeCommandLineShim(_container.isPresent(), extraConfig);
+    if (_container.isPresent()) {
+      executorInfoBuilder.setCommand(CommandInfo.newBuilder()
+                                                .addUris(URI.newBuilder().setValue(configUri))
+                                                .setValue(commandLineShim.getCommandLine()))
+                         .setContainer(ContainerInfo.newBuilder()
+                                                    .setType(ContainerInfo.Type.DOCKER)
+                                                    .setDocker(ContainerInfo.DockerInfo.newBuilder()
+                                                                                       .setImage(_container.get())
+                                                                                       .setNetwork(ContainerInfo.DockerInfo.Network.HOST)
+                                                                                       .setForcePullImage(true)
+                                                                                       .build()
+                                                    ).build());
+    } else {
+      executorInfoBuilder.setCommand(CommandInfo.newBuilder()
+                                                .addUris(URI.newBuilder().setValue((String) _conf.get(CONF_EXECUTOR_URI)))
+                                                .addUris(URI.newBuilder().setValue(configUri))
+                                                .setValue(commandLineShim.getCommandLine()));
+    }
+
+    return executorInfoBuilder;
+  }
+
+
+
+  public Map<String, List<TaskInfo>> getTasksToLaunch(Topologies topologies,
+                                                     Map<String, Collection<WorkerSlot>> slots,
+                                                     Map<String, OfferResources> offerResourcesPerNode) {
+    Map<String, List<TaskInfo>> tasksToLaunchPerNode = new HashMap<>();
+
     for (String topologyId : slots.keySet()) {
-      Map<OfferID, List<WorkerSlot>> slotList = new HashMap<>();
-      for (WorkerSlot slot : slots.get(topologyId)) {
-        OfferID id = findOffer(slot);
-        if (!slotList.containsKey(id)) {
-          slotList.put(id, new ArrayList<WorkerSlot>());
-        }
-        slotList.get(id).add(slot);
-      }
-
-      for (OfferID id : slotList.keySet()) {
-        computeResourcesForSlot(_offers, topologies, toLaunch, topologyId, slotList, id);
-      }
-    }
-
-    for (OfferID id : toLaunch.keySet()) {
-      List<LaunchTask> tasks = toLaunch.get(id);
-      List<TaskInfo> launchList = new ArrayList<>();
-
-      LOG.info("Launching tasks for offerId: {} : {}", id.getValue(), launchTaskListToString(tasks));
-      for (LaunchTask t : tasks) {
-        launchList.add(t.getTask());
-        _usedOffers.put(t.getTask().getTaskId(), t.getOffer());
-      }
-
-      List<OfferID> launchOffer = new ArrayList<>();
-      launchOffer.add(id);
-      _driver.launchTasks(launchOffer, launchList);
-      _offers.remove(id);
-    }
-  }
-
-  protected void computeResourcesForSlot(final RotatingMap<OfferID, Offer> offers,
-                                         Topologies topologies,
-                                         Map<OfferID, List<LaunchTask>> toLaunch,
-                                         String topologyId,
-                                         Map<OfferID, List<WorkerSlot>> slotList,
-                                         OfferID id) {
-    Offer offer = offers.get(id);
-    List<WorkerSlot> workerSlots = slotList.get(id);
-    boolean usingExistingOffer = false;
-    boolean subtractedExecutorResources = false;
-
-    for (WorkerSlot slot : workerSlots) {
+      Collection<WorkerSlot> slotList = slots.get(topologyId);
       TopologyDetails details = topologies.getById(topologyId);
-      String workerPrefix = "";
-      if (_conf.containsKey(MesosCommon.WORKER_NAME_PREFIX)) {
-        workerPrefix = MesosCommon.getWorkerPrefix(_conf, details);
-      }
-      TaskID taskId = TaskID.newBuilder()
-          .setValue(MesosCommon.taskId(workerPrefix + slot.getNodeId(), slot.getPort()))
-          .build();
+      boolean subtractedExecutorResources = false;
 
-      if ((id == null || offer == null) && _usedOffers.containsKey(taskId)) {
-        offer = _usedOffers.get(taskId);
-        if (offer != null) {
-          id = offer.getId();
-          usingExistingOffer = true;
+      double workerCpu = MesosCommon.topologyWorkerCpu(_conf, details);
+      double workerMem = MesosCommon.topologyWorkerMem(_conf, details);
+      double executorCpu = MesosCommon.executorCpu(_conf);
+      double executorMem = MesosCommon.executorMem(_conf);
+
+      for (WorkerSlot slot : slotList) {
+        OfferResources offerResources = offerResourcesPerNode.get(slot.getNodeId());
+        String workerPrefix = "";
+        if (_conf.containsKey(MesosCommon.WORKER_NAME_PREFIX)) {
+          workerPrefix = MesosCommon.getWorkerPrefix(_conf, details);
         }
-      }
-      if (id != null && offer != null) {
-        if (!toLaunch.containsKey(id)) {
-          toLaunch.put(id, new ArrayList<LaunchTask>());
+
+        List<OfferID> ids = offerResources.getOfferIds();
+
+        if (ids.isEmpty()) {
+          LOG.warn("Unable to find offer for slot: " + slot + " as it is no longer in the RotatingMap of offers, " +
+                   " topology " + topologyId + " will no longer be scheduled on this slot");
         }
-        double workerCpu = MesosCommon.topologyWorkerCpu(_conf, details);
-        double workerMem = MesosCommon.topologyWorkerMem(_conf, details);
-        double executorCpu = MesosCommon.executorCpu(_conf);
-        double executorMem = MesosCommon.executorMem(_conf);
+
+
+        TaskID taskId = TaskID.newBuilder()
+                              .setValue(MesosCommon.taskId(slot.getNodeId(), slot.getPort()))
+                              .build();
+
+        if (!subtractedExecutorResources) {
+          workerCpu += executorCpu;
+          workerMem += executorMem;
+        }
 
         Map executorData = new HashMap();
         executorData.put(MesosCommon.SUPERVISOR_ID, MesosCommon.supervisorId(slot.getNodeId(), details.getId()));
         executorData.put(MesosCommon.ASSIGNMENT_ID, workerPrefix + slot.getNodeId());
 
-        Offer.Builder newBuilder = Offer.newBuilder();
-        newBuilder.mergeFrom(offer);
-        newBuilder.clearResources();
-
-        Offer.Builder existingBuilder = Offer.newBuilder();
-        existingBuilder.mergeFrom(offer);
-        existingBuilder.clearResources();
-        String extraConfig = "";
-
-        List<Resource> offerResources = new ArrayList<>();
-        offerResources.addAll(offer.getResourcesList());
-        // Prefer reserved resources?
-        if (_preferReservedResources) {
-          Collections.sort(offerResources, new ResourceRoleComparator());
-        }
-
-        List<Resource> executorCpuResources = getResourcesScalar(offerResources, executorCpu, "cpus");
-        List<Resource> executorMemResources = getResourcesScalar(offerResources, executorMem, "mem");
-        List<Resource> executorPortsResources = null;
         if (!subtractedExecutorResources) {
-          offerResources = subtractResourcesScalar(offerResources, executorCpu, "cpus");
-          offerResources = subtractResourcesScalar(offerResources, executorMem, "mem");
+          workerCpu -= executorCpu;
+          workerMem -= executorMem;
           subtractedExecutorResources = true;
         }
-        List<Resource> workerCpuResources = getResourcesScalar(offerResources, workerCpu, "cpus");
-        offerResources = subtractResourcesScalar(offerResources, workerCpu, "cpus");
-        List<Resource> workerMemResources = getResourcesScalar(offerResources, workerMem, "mem");
-        offerResources = subtractResourcesScalar(offerResources, workerMem, "mem");
-        List<Resource> workerPortsResources = getResourcesRange(offerResources, slot.getPort(), "ports");
-        offerResources = subtractResourcesRange(offerResources, slot.getPort(), "ports");
 
-        // Find port for the logviewer
-        if (!subtractedExecutorResources && MesosCommon.startLogViewer(_conf)) {
-          List<Integer> portList = new ArrayList<>();
-          collectPorts(offerResources, portList, 1);
-          int port = Optional.fromNullable((Number) _conf.get(Config.LOGVIEWER_PORT)).or(8000).intValue();
-          executorPortsResources = getResourcesRange(offerResources, port, "ports");
-          if (!executorPortsResources.isEmpty()) {
-            // Was the port available?
-            extraConfig = " -c " + MesosCommon.AUTO_START_LOGVIEWER_CONF + "=true";
-            offerResources = subtractResourcesRange(offerResources, port, "ports");
-          }
-        }
-        Offer remainingOffer = existingBuilder.addAllResources(offerResources).build();
-
-        // Update the remaining offer list
-        offers.put(id, remainingOffer);
-
-        String configUri;
-        try {
-          configUri = new URL(_configUrl.toURL(),
-              _configUrl.getPath() + "/storm.yaml").toString();
-        } catch (MalformedURLException e) {
-          throw new RuntimeException(e);
-        }
-
-        String delimiter = MesosCommon.getMesosComponentNameDelimiter(_conf, details);
-        String topologyAndNodeId = details.getId() + delimiter + slot.getNodeId();
-        String executorName = "storm-supervisor" + delimiter + topologyAndNodeId;
-        String taskName = "storm-worker" + delimiter + topologyAndNodeId + ":" + slot.getPort();
+        String topologyAndNodeId = details.getId() + " | " + slot.getNodeId();
+        String executorName = "storm-supervisor | " + topologyAndNodeId;
+        String taskName = "storm-worker | " + topologyAndNodeId + ":" + slot.getPort();
         String executorDataStr = JSONValue.toJSONString(executorData);
-        ExecutorInfo.Builder executorInfoBuilder = ExecutorInfo.newBuilder();
-        executorInfoBuilder
-            .setName(executorName)
-            .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
-            .setData(ByteString.copyFromUtf8(executorDataStr))
-            .addAllResources(executorCpuResources)
-            .addAllResources(executorMemResources);
-        if (executorPortsResources != null) {
-          executorInfoBuilder.addAllResources(executorPortsResources);
+
+        // The fact that we are here implies that the resources are available for the worker in the host.
+        // So we dont have to check if the resources are actually available before proceding.
+        if (executorCpu > offerResources.getCpu() || executorMem > offerResources.getMem()) {
+          LOG.error(String.format("Unable to launch worker %s. Required executorCpu: %d, Required executorMem: %d. Available OfferResources : %s", offerResources.getHostName(), executorCpu, executorMem, offerResources));
+          continue;
         }
-        ICommandLineShim commandLineShim = CommandLineShimFactory.makeCommandLineShim(_container.isPresent(), extraConfig);
-        if (_container.isPresent()) {
-          executorInfoBuilder
-              .setCommand(CommandInfo.newBuilder()
-                  .addUris(URI.newBuilder().setValue(configUri))
-                  .setValue(commandLineShim.getCommandLine()))
-              .setContainer(
-                  ContainerInfo.newBuilder()
-                      .setType(ContainerInfo.Type.DOCKER)
-                      .setDocker(
-                          ContainerInfo.DockerInfo.newBuilder()
-                              .setImage(_container.get())
-                              .setNetwork(ContainerInfo.DockerInfo.Network.HOST)
-                              .setForcePullImage(true)
-                              .build()
-                      )
-                      .build()
-            );
-        } else {
-          executorInfoBuilder
-              .setCommand(CommandInfo.newBuilder()
-                  .addUris(URI.newBuilder().setValue((String) _conf.get(CONF_EXECUTOR_URI)))
-                  .addUris(URI.newBuilder().setValue(configUri))
-                  .setValue(commandLineShim.getCommandLine()));
+        List<Resource> executorCpuResources = offerResources.getResourcesListScalar(executorCpu, "cpu", MesosCommon.getRole(_conf));
+        List<Resource> executorMemResources = offerResources.getResourcesListScalar(executorMem, "mem", MesosCommon.getRole(_conf));
+        List<Resource> executorPortResources = new ArrayList<>();
+
+        String extraConfig = "";
+        if (MesosCommon.autoStartLogViewer(_conf)) {
+          long port = Optional.fromNullable((Number) _conf.get(Config.LOGVIEWER_PORT)).or(8000).intValue();;
+          List<Resource> logviewerPortResources = offerResources.getResourcesRange(port, "ports");
+          if (logviewerPortResources != null) {
+            extraConfig = getLogViewerConfig();
+            executorPortResources.addAll(logviewerPortResources);
+          }
+          LOG.error("Unable to launch logviewer on worker {}:{}. Port could not be found. Available OfferResources : {}", offerResources.getHostName(), port, offerResources);
         }
 
-        LOG.info("Launching task with Mesos Executor data: < {} >", executorDataStr);
+        ExecutorInfo.Builder executorInfoBuilder = getExecutorInfoBuilder(details, executorDataStr, executorName, executorCpuResources, executorMemResources, executorPortResources, extraConfig);
+
         TaskInfo task = TaskInfo.newBuilder()
-            .setName(taskName)
-            .setTaskId(taskId)
-            .setSlaveId(offer.getSlaveId())
-            .setExecutor(executorInfoBuilder.build())
-            .addAllResources(workerCpuResources)
-            .addAllResources(workerMemResources)
-            .addAllResources(workerPortsResources)
-            .build();
+                                .setTaskId(taskId)
+                                .setName(taskName)
+                                .setSlaveId(offerResources.getSlaveId())
+                                .setExecutor(executorInfoBuilder.build())
+                                .addAllResources(offerResources.getResourcesListScalar(workerCpu, "cpus", MesosCommon.getRole(_conf)))
+                                .addAllResources(offerResources.getResourcesListScalar(workerMem, "mem", MesosCommon.getRole(_conf)))
+                                .addAllResources(offerResources.getResourcesRange("ports"))
+                                .build();
 
-        Offer newOffer = offer.toBuilder()
-            .addAllResources(task.getResourcesList()).build();
+        List<TaskInfo> taskInfoList = tasksToLaunchPerNode.get(slot.getNodeId());
+        if (taskInfoList == null) {
+          taskInfoList = new ArrayList<>();
+          tasksToLaunchPerNode.put(slot.getNodeId(), taskInfoList);
+        }
+        taskInfoList.add(task);
+      }
+    }
 
-        LOG.debug("Launching task: {}", task.toString());
+    return tasksToLaunchPerNode;
+  }
 
-        toLaunch.get(id).add(new LaunchTask(task, newOffer));
+  @Override
+  public void assignSlots(Topologies topologies, Map<String, Collection<WorkerSlot>> slots) {
+    synchronized (_offersLock) {
+      if (slots.size() == 0) {
+        LOG.info("assignSlots: no slots passed in, nothing to do");
+        return;
       }
 
-      if (usingExistingOffer) {
-        _driver.killTask(taskId);
+      Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(_conf, _offers);
+      Map<String, List<TaskInfo>> tasksToLaunchPerNode = getTasksToLaunch(topologies, slots, offerResourcesPerNode);
+
+      for (String node : tasksToLaunchPerNode.keySet()) {
+        List<OfferID> offerIDList = offerResourcesPerNode.get(node).getOfferIds();
+        List<TaskInfo> taskInfoList = tasksToLaunchPerNode.get(node);
+
+        LOG.info("Using offerIDs: " + offerIDListToString(offerIDList) + " on host: " + node + " to launch tasks: " + taskInfoListToString(taskInfoList));
+
+        _driver.launchTasks(offerIDList, taskInfoList);
+        for (OfferID offerID: offerIDList) {
+          _offers.remove(offerID);
+        }
       }
     }
   }
 
   private FrameworkInfo.Builder createFrameworkBuilder() throws IOException {
     Number failoverTimeout = Optional.fromNullable((Number) _conf.get(CONF_MASTER_FAILOVER_TIMEOUT_SECS)).or(24 * 7 * 3600);
-    String role = Optional.fromNullable((String) _conf.get(CONF_MESOS_ROLE)).or("*");
+    String role = MesosCommon.getRole(_conf);
     Boolean checkpoint = Optional.fromNullable((Boolean) _conf.get(CONF_MESOS_CHECKPOINT)).or(false);
     String frameworkName = Optional.fromNullable((String) _conf.get(CONF_MESOS_FRAMEWORK_NAME)).or("Storm!!!");
 
