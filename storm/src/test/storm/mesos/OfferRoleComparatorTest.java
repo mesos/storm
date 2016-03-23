@@ -26,7 +26,6 @@ import org.apache.mesos.Protos.Value;
 import org.junit.Test;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -34,30 +33,12 @@ import static org.junit.Assert.assertEquals;
 
 public class OfferRoleComparatorTest {
 
-  public Offer buildOffer() {
-    List <Resource> resourceList = Arrays.asList(
-                Resource.newBuilder().setRole("*").setName("cpus").setType(Value.Type.SCALAR).setScalar(Value.Scalar.newBuilder().setValue(1).build()).build(),
-                Resource.newBuilder().setRole("*").setName("mem").setType(Value.Type.SCALAR).setScalar(Value.Scalar.newBuilder().setValue(1).build()).build(),
-                Resource.newBuilder().setRole("role").setName("cpus").setType(Value.Type.SCALAR).setScalar(Value.Scalar.newBuilder().setValue(1).build()).build(),
-                Resource.newBuilder().setRole("role").setName("mem").setType(Value.Type.SCALAR).setScalar(Value.Scalar.newBuilder().setValue(1).build()).build(),
-                Resource.newBuilder().setRole("otherRole").setName("cpus").setType(Value.Type.SCALAR).setScalar(Value.Scalar.newBuilder().setValue(1).build()).build(),
-                Resource.newBuilder().setRole("otherRole").setName("mem").setType(Value.Type.SCALAR).setScalar(Value.Scalar.newBuilder().setValue(1).build()).build()
-            );
-    Collections.shuffle(resourceList);
 
-    return Offer.newBuilder()
-        .setId(OfferID.newBuilder().setValue("derp").build())
-        .setFrameworkId(FrameworkID.newBuilder().setValue("derp").build())
-        .setSlaveId(SlaveID.newBuilder().setValue("derp").build())
-        .setHostname("derp")
-        .addAllResources(resourceList)
-        .build();
-  }
 
   @Test
   public void testCompare() throws Exception {
     List<Resource> offerResources = new ArrayList<>();
-    Offer offer = buildOffer();
+    Offer offer = TestUtils.buildOffer();
     offerResources.addAll(offer.getResourcesList());
     Collections.sort(offerResources, new ResourceRoleComparator());
 

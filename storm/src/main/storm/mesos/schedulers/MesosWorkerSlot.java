@@ -15,20 +15,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package storm.mesos;
+package storm.mesos.schedulers;
 
-import org.apache.commons.lang3.builder.ToStringBuilder;
+import backtype.storm.scheduler.WorkerSlot;
 
-import java.util.ArrayList;
-import java.util.List;
+public class MesosWorkerSlot extends WorkerSlot {
+  private String topologyId;
 
-public class OfferResources {
-  int cpuSlots = 0;
-  int memSlots = 0;
-  List<Integer> ports = new ArrayList<>();
+  public MesosWorkerSlot(String nodeId, Number port, String topologyId) {
+    super(nodeId, port);
+    this.topologyId = topologyId;
+  }
 
-  @Override
-  public String toString() {
-    return ToStringBuilder.reflectionToString(this);
+  public String getTopologyId() {
+    return this.topologyId;
   }
 }

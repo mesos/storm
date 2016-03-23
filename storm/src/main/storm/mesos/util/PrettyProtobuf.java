@@ -15,7 +15,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package storm.mesos;
+package storm.mesos.util;
 
 import com.google.common.base.Function;
 import com.google.common.collect.Lists;
@@ -78,7 +78,7 @@ public class PrettyProtobuf {
 
   /**
    * Pretty-print mesos protobuf TaskInfo.
-   *
+   * <p/>
    * XXX(erikdw): not including command, container (+data), nor health_check.
    */
   public static String taskInfoToString(TaskInfo task) {
@@ -92,7 +92,7 @@ public class PrettyProtobuf {
 
   /**
    * Pretty-print mesos protobuf Offer.
-   *
+   * <p/>
    * XXX(erikdw): not including slave_id, attributes, executor_ids, nor framework_id.
    */
   public static String offerToString(Offer offer) {
@@ -121,17 +121,17 @@ public class PrettyProtobuf {
 
   /**
    * Pretty-print the values in the Offer map used in MesosNimbus.
-   *
+   * <p/>
    * Callers must ensure they have locked the Map first, else they could
    * have inconsistent output since the _offers map is touched from both
    * mesos-driven events and storm-driven calls.
-   *
-   * TODO(erikdw): figure out a design better that removes the need
+   * <p/>
+   * TODO:(erikdw): figure out a design better that removes the need
    * for external callers to lock before calling this method.
    */
   public static String offerMapToString(RotatingMap<OfferID, Offer> offers) {
     List<String> offersAsStrings = Lists.transform(new ArrayList<Offer>(offers.values()),
-        offerToStringTransform);
+                                                   offerToStringTransform);
     return "[\n" + StringUtils.join(offersAsStrings, ",\n") + "]";
   }
 
@@ -230,5 +230,4 @@ public class PrettyProtobuf {
     }
     return map;
   }
-
 }
