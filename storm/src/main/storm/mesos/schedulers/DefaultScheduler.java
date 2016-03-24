@@ -24,8 +24,9 @@ import backtype.storm.scheduler.SupervisorDetails;
 import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
-import org.apache.log4j.Logger;
 import org.apache.mesos.Protos;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.mesos.MesosNimbus;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
@@ -44,7 +45,7 @@ import java.util.Set;
  *  Default Scheduler used by mesos-storm framework.
  */
 public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
-  private final Logger log = Logger.getLogger(MesosNimbus.class);
+  private final Logger log = LoggerFactory.getLogger(MesosNimbus.class);
   private Map mesosStormConf;
   private final Map<String, MesosWorkerSlot> mesosWorkerSlotMap = new HashMap<>();
 
@@ -79,7 +80,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
       return new ArrayList<>();
     }
 
-    log.info("Topologies that need assignments: " + topologiesMissingAssignments.toString());
+    log.info("Topologies that need assignments: {}", topologiesMissingAssignments.toString());
 
     // Decline those offers that cannot be used for any of the topologies that need assignments.
     for (Protos.Offer offer : offers.newestValues()) {
@@ -93,7 +94,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
         }
       }
       if (!isOfferUseful) {
-        log.info("Declining Offer " + offer.getId().getValue() + " because it does not fit any of the topologies that need assignments");
+        log.info("Declining Offer {} because it does not fit any of the topologies that need assignments", offer.getId().getValue());
         offers.clearKey(offer.getId());
       }
     }
@@ -109,7 +110,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
       double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
       double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
 
-      log.info("Trying to find " + slotsNeeded + " slots for " + topologyDetails.getId());
+      log.info("Trying to find {} slots for {}", slotsNeeded, topologyDetails.getId());
       if (slotsNeeded == 0) {
         continue;
       }
@@ -133,9 +134,8 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
           for (OfferResources resources : offerResourcesListPerNode.get(currentNode)) {
             boolean isFit = SchedulerUtils.isFit(mesosStormConf, resources, topologyDetails, supervisorExists);
             if (isFit) {
-              log.info(resources.toString() + " is a fit for " +
-                       topologyDetails.getId() + " requestedWorkerCpu: " + requestedWorkerCpu + " requestedWorkerMem: " +
-                       requestedWorkerMem);
+              log.info("{} is a fit for {} requestedWorkerCpu: {} requestedWorkerMem: {}", resources.toString(),
+                       topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMem);
               nodesWithExistingSupervisors.add(currentNode);
               MesosWorkerSlot mesosWorkerSlot = SchedulerUtils.createWorkerSlotFromOfferResources(mesosStormConf, resources, topologyDetails, supervisorExists);
               if (mesosWorkerSlot == null) {
@@ -149,18 +149,19 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
               slotsNeeded--;
               slotFound = true;
             } else {
-              log.info(resources.toString() + " is not a fit for " +
-                       topologyDetails.getId() + " requestedWorkerCpu: " + requestedWorkerCpu + " requestedWorkerMem: " + requestedWorkerMem);
+              log.info("{} is not a fit for {} requestedWorkerCpu: {} requestedWorkerMem: {}",
+                       resources.toString(), topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMem);
             }
           }
         }
       } while (slotFound == true && slotsNeeded > 0);
+      log.info("Number of available slots for {} : {}", topologyDetails.getId(), allSlots.size());
     }
 
-    log.info("Number of available slots: " + allSlots.size());
+    log.info("Number of available slots: {}", allSlots.size());
     if (log.isDebugEnabled()) {
       for (WorkerSlot slot : allSlots) {
-        log.debug("available slot: " + slot);
+        log.debug("available slot: {}", slot);
       }
     }
     return allSlots;
@@ -234,7 +235,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
       int countSlotsAssigned = cluster.getAssignedNumWorkers(topologyDetails);
 
       if (mesosWorkerSlots.size() == 0) {
-        log.warn("No slots found for topology " + topologyId + " while scheduling");
+        log.warn("No slots found for topology {} while scheduling", topologyId);
         continue;
       }
 

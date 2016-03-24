@@ -19,8 +19,9 @@ package storm.mesos.schedulers;
 
 import backtype.storm.scheduler.SupervisorDetails;
 import backtype.storm.scheduler.TopologyDetails;
-import org.apache.log4j.Logger;
 import org.apache.mesos.Protos;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
 
@@ -32,7 +33,7 @@ import java.util.Map;
 
 public class SchedulerUtils {
 
-  private static final Logger log = Logger.getLogger(SchedulerUtils.class);
+  private static final Logger log = LoggerFactory.getLogger(SchedulerUtils.class);
 
   public static boolean isFit(Map mesosStormConf, OfferResources offerResources, TopologyDetails topologyDetails, boolean supervisorExists) {
     double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
@@ -87,7 +88,7 @@ public class SchedulerUtils {
         offerResourcesListPerNode.put(hostName, new ArrayList<OfferResources>());
       }
       offerResourcesListPerNode.get(hostName).add(offerResources);
-      log.info("Available resources at " + hostName + ": " + offerResources.toString());
+      log.info("Available resources at {}: {}", hostName, offerResources.toString());
     }
     return offerResourcesListPerNode;
   }
@@ -101,21 +102,21 @@ public class SchedulerUtils {
     requestedWorkerMem += supervisorExists ? 0 : MesosCommon.executorMem(mesosStormConf);
 
     if (requestedWorkerCpu > offerResources.getCpu()) {
-      log.warn("Refusing to create worker slot. requestedWorkerCpu: " + requestedWorkerCpu + " but " +
-               "OfferedCpu: " + offerResources.getCpu() + " at node: " + offerResources.getHostName());
+      log.warn("Refusing to create worker slot. requestedWorkerCpu: {} but OfferedCpu: {} at node: {}",
+               requestedWorkerCpu, offerResources.getCpu(), offerResources.getHostName());
       return null;
     }
 
     if (requestedWorkerMem > offerResources.getMem()) {
-      log.warn("Refusing to create worker slot. requestedWorkerMem: " + requestedWorkerMem + " but " +
-               "OfferedMem: " + offerResources.getMem() + " at node: " + offerResources.getHostName());
+      log.warn("Refusing to create worker slot. requestedWorkerMem: {} but OfferedMem: {} at node: {}",
+               requestedWorkerMem, offerResources.getMem(), offerResources.getHostName());
       return null;
     }
 
     long port = offerResources.getPort();
 
     if (port == -1) {
-      log.warn("Refusing to create worker slot. There are no ports available with offer " + offerResources.toString());
+      log.warn("Refusing to create worker slot. There are no ports available with offer {}", offerResources.toString());
       return null;
     }
 

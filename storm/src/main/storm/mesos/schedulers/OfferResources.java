@@ -18,12 +18,15 @@
 package storm.mesos.schedulers;
 
 import com.google.common.base.Joiner;
+import org.slf4j.LoggerFactory;
+import org.slf4j.Logger;
 import org.apache.mesos.Protos;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class OfferResources {
+  private final Logger log = LoggerFactory.getLogger(OfferResources.class);
 
   private class PortRange {
     public long begin;
