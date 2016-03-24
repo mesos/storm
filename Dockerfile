@@ -21,7 +21,7 @@ ADD . /work
 WORKDIR /work
 
 RUN apt-get update && \
-  apt-get install -y openjdk-7-jdk maven wget && \
+  apt-get install -y openjdk-7-jdk maven curl && \
   ./bin/build-release.sh main && \
   mkdir -p /opt/storm && \
   tar xf storm-mesos-*.tgz -C /opt/storm --strip=1 && \

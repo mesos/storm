@@ -57,9 +57,9 @@ USAGE
 function downloadStormRelease {
   if [ ! -f apache-storm-${STORM_RELEASE}.tar.gz ]; then
     if [ -z ${STORM_URL} ]; then
-      wget --progress=dot:mega ${MIRROR}/apache/storm/apache-storm-${STORM_RELEASE}/apache-storm-${STORM_RELEASE}.tar.gz
+      curl -L -O ${MIRROR}/apache/storm/apache-storm-${STORM_RELEASE}/apache-storm-${STORM_RELEASE}.tar.gz
     else
-      wget --progress=dot:mega ${STORM_URL}
+      curl -L -O ${STORM_URL}
     fi
   fi
 }
