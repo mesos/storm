@@ -17,7 +17,6 @@
  */
 package storm.mesos;
 
-
 import backtype.storm.scheduler.ISupervisor;
 import backtype.storm.utils.Utils;
 import clojure.lang.PersistentVector;
@@ -51,13 +50,16 @@ import java.util.concurrent.atomic.AtomicReference;
 public class MesosSupervisor implements ISupervisor {
   public static final Logger LOG = LoggerFactory.getLogger(MesosSupervisor.class);
 
-  volatile String _id = null;
+  volatile String _executorId = null;
+  volatile String _supervisorId = null;
   volatile String _assignmentId = null;
   volatile ExecutorDriver _driver;
   StormExecutor _executor;
-  ILocalStateShim _state;
   Map _conf;
-  AtomicReference<Set<Integer>> _myassigned = new AtomicReference<Set<Integer>>(new HashSet<Integer>());
+  // Store state on port assignments arriving from MesosNimbus as task-launching requests.
+  private static final TaskAssignments _taskAssignments = TaskAssignments.getInstance();
+  // What is the storm-core supervisor's view of the assigned ports?
+  AtomicReference<Set<Integer>> _supervisorViewOfAssignedPorts = new AtomicReference<Set<Integer>>(new HashSet<Integer>());
 
   public static void main(String[] args) {
     backtype.storm.daemon.supervisor.launch(new MesosSupervisor());
@@ -66,16 +68,11 @@ public class MesosSupervisor implements ISupervisor {
   @Override
   public void assigned(Collection<Integer> ports) {
     if (ports == null) ports = new HashSet<>();
-    _myassigned.set(new HashSet<>(ports));
+    _supervisorViewOfAssignedPorts.set(new HashSet<>(ports));
   }
 
   @Override
   public void prepare(Map conf, String localDir) {
-    try {
-      _state = new LocalStateShim(localDir);
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
     _executor = new StormExecutor();
     _driver = new MesosExecutorDriver(_executor);
     _driver.start();
@@ -99,25 +96,28 @@ public class MesosSupervisor implements ISupervisor {
     suicide.start();
   }
 
+  /**
+   * Called by storm-core supervisor to determine if the port is assigned to this
+   * supervisor, and thus whether a corresponding worker process should be
+   * killed or started.
+   */
   @Override
   public boolean confirmAssigned(int port) {
-    String val = _state.get(Integer.toString(port));
-    return val != null;
+    return _taskAssignments.confirmAssigned(port);
   }
 
   @Override
   public Object getMetadata() {
-    Object[] ports = _state.snapshot().keySet().toArray();
-    Integer[] p = new Integer[ports.length];
-    for (int i = 0; i < ports.length; i++) {
-      p[i] = Integer.parseInt((String) ports[i]);
+    Set<Integer> ports = _taskAssignments.getAssignedPorts();
+    if (ports == null) {
+      return null;
     }
-    return PersistentVector.create(p);
+    return PersistentVector.create(ports);
   }
 
   @Override
   public String getSupervisorId() {
-    return _id;
+    return _supervisorId;
   }
 
   @Override
@@ -127,10 +127,17 @@ public class MesosSupervisor implements ISupervisor {
 
   @Override
   public void killedWorker(int port) {
-    _state.remove(Integer.toString(port));
+    LOG.info("killedWorker: executor {} removing port {} assignment and sending " +
+        "TASK_FINISHED update to Mesos", _executorId, port);
+    TaskID taskId = _taskAssignments.deregister(port);
+    if (taskId == null) {
+      LOG.error("killedWorker: Executor {} failed to find TaskID for port {}, so not " +
+          "issuing TaskStatus update to Mesos for this dead task.", _executorId, port);
+      return;
+    }
     TaskStatus status = TaskStatus.newBuilder()
         .setState(TaskState.TASK_FINISHED)
-        .setTaskId(TaskID.newBuilder().setValue(MesosCommon.taskId(_assignmentId, port)))
+        .setTaskId(taskId)
         .build();
     _driver.sendStatusUpdate(status);
   }
@@ -150,9 +157,10 @@ public class MesosSupervisor implements ISupervisor {
     public void registered(ExecutorDriver driver, ExecutorInfo executorInfo, FrameworkInfo frameworkInfo, SlaveInfo slaveInfo) {
       LOG.info("Received executor data <{}>", executorInfo.getData().toStringUtf8());
       Map ids = (Map) JSONValue.parse(executorInfo.getData().toStringUtf8());
-      _id = (String) ids.get(MesosCommon.SUPERVISOR_ID);
+      _executorId = executorInfo.getExecutorId().getValue();
+      _supervisorId = (String) ids.get(MesosCommon.SUPERVISOR_ID);
       _assignmentId = (String) ids.get(MesosCommon.ASSIGNMENT_ID);
-      LOG.info("Registered supervisor with Mesos: {}, {} ", _id, _assignmentId);
+      LOG.info("Registered supervisor with Mesos: {}, {} ", _supervisorId, _assignmentId);
 
       // Completed registration, let anything waiting for us to do so continue
       _registeredLatch.countDown();
@@ -161,10 +169,26 @@ public class MesosSupervisor implements ISupervisor {
 
     @Override
     public void launchTask(ExecutorDriver driver, TaskInfo task) {
-      int port = MesosCommon.portFromTaskId(task.getTaskId().getValue());
-      LOG.info("Received task assignment for port {}", port);
-      _state.put(Integer.toString(port), Boolean.TRUE.toString());
-
+      try {
+        int port = _taskAssignments.register(task.getTaskId());
+        LOG.info("Executor {} received task assignment for port {}. Mesos TaskID: {}",
+            _executorId, port, task.getTaskId().getValue());
+      } catch (IllegalArgumentException e) {
+        String msg =
+            String.format("launchTask: failed to register task. " +
+                          "Exception: %s Halting supervisor process.",
+                          e.getMessage());
+        LOG.error(msg);
+        TaskStatus status = TaskStatus.newBuilder()
+            .setState(TaskState.TASK_FAILED)
+            .setTaskId(task.getTaskId())
+            .setMessage(msg)
+            .build();
+        driver.sendStatusUpdate(status);
+        Runtime.getRuntime().halt(1);
+      }
+      LOG.info("Received task assignment for TaskID: {} ",
+          task.getTaskId().getValue());
       TaskStatus status = TaskStatus.newBuilder()
           .setState(TaskState.TASK_RUNNING)
           .setTaskId(task.getTaskId())
@@ -174,6 +198,8 @@ public class MesosSupervisor implements ISupervisor {
 
     @Override
     public void killTask(ExecutorDriver driver, TaskID id) {
+      LOG.warn("killTask not implemented in executor {}, so " +
+          "cowardly refusing to kill task {}", _executorId, id.getValue());
     }
 
     @Override
@@ -182,6 +208,8 @@ public class MesosSupervisor implements ISupervisor {
 
     @Override
     public void shutdown(ExecutorDriver driver) {
+      LOG.warn("shutdown not implemented in executor {}, so " +
+          "cowardly refusing to kill tasks", _executorId);
     }
 
     @Override
@@ -192,10 +220,12 @@ public class MesosSupervisor implements ISupervisor {
 
     @Override
     public void reregistered(ExecutorDriver driver, SlaveInfo slaveInfo) {
+      LOG.info("executor has reregistered with the mesos-slave");
     }
 
     @Override
     public void disconnected(ExecutorDriver driver) {
+      LOG.info("executor has disconnected from the mesos-slave");
     }
 
   }
@@ -213,7 +243,7 @@ public class MesosSupervisor implements ISupervisor {
       try {
         while (true) {
           long now = System.currentTimeMillis();
-          if (!_myassigned.get().isEmpty()) {
+          if (!_supervisorViewOfAssignedPorts.get().isEmpty()) {
             _lastTime = now;
           }
           if ((now - _lastTime) > 1000L * _timeoutSecs) {
