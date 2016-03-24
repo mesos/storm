@@ -21,6 +21,8 @@ fi
 
 MESOS_RELEASE=${MESOS_RELEASE:-`grep -1 -A 0 -B 0 '<mesos.default.version>' pom.xml | head -n 1 | awk '{print $1}' | sed -e 's/.*<mesos.default.version>//' | sed -e 's/<\/mesos.default.version>.*//'`}
 
+STORM_URL=${STORM_URL:-''}
+
 MIRROR=${MIRROR:-"http://www.gtlib.gatech.edu/pub"}
 
 function help {
@@ -40,19 +42,25 @@ Usage: bin/build-release.sh [<storm.tar.gz>]
                               bin/build-release.sh.
 
   ENV
-    MIRROR        Specify Apache Storm Mirror to download from
-                    Default: ${MIRROR}
-    STORM_RELEASE       The targeted release version of Storm
-                    Default: ${STORM_RELEASE}
-    MESOS_RELEASE       The targeted release version of MESOS
-                    Default: ${MESOS_RELEASE}
+    MIRROR          Specify Apache Storm Mirror to download from
+                      Default: ${MIRROR}
+    STORM_RELEASE   The targeted release version of Storm
+                      Default: ${STORM_RELEASE}
+    MESOS_RELEASE   The targeted release version of MESOS
+                      Default: ${MESOS_RELEASE}
+    STORM_URL       Override the URL for downloading the storm binary
+                      NOTE: ensure version matches with STORM_RELEASE
 
 USAGE
 }; function --help { help ;}; function -h { help ;}
 
 function downloadStormRelease {
   if [ ! -f apache-storm-${STORM_RELEASE}.tar.gz ]; then
-      wget --progress=dot:mega ${MIRROR}/apache/storm/apache-storm-${STORM_RELEASE}/apache-storm-${STORM_RELEASE}.tar.gz
+    if [ -z ${STORM_URL} ]; then
+      curl -L -O ${MIRROR}/apache/storm/apache-storm-${STORM_RELEASE}/apache-storm-${STORM_RELEASE}.tar.gz
+    else
+      curl -L -O ${STORM_URL}
+    fi
   fi
 }
 
@@ -61,6 +69,7 @@ function clean {
   _rm lib/ classes/
   _rm target
   _rm *mesos*.tgz
+  _rm *storm*tar.gz
 }
 
 function mvnPackage {
@@ -113,6 +122,7 @@ function dockerImage {(
        --build-arg MESOS_RELEASE=$MESOS_RELEASE \
        --build-arg STORM_RELEASE=$STORM_RELEASE \
        --build-arg MIRROR=$MIRROR \
+       --build-arg STORM_URL=$STORM_URL \
         -t mesos/storm:git-`git rev-parse --short HEAD` ."
   echo $cmd
   $cmd
