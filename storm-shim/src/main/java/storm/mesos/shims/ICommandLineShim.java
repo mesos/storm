@@ -22,6 +22,6 @@ package storm.mesos.shims;
  */
 public interface ICommandLineShim {
 
-  public String getCommandLine();
+  public String getCommandLine(String topologyId);
 
 }
