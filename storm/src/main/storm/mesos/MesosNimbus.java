@@ -156,7 +156,8 @@ public class MesosNimbus implements INimbus {
 
   @Override
   public IScheduler getForcedScheduler() {
-    return null;
+    // TODO: Make it configurable. We should be able to specify the scheduler to use in the storm.yaml
+    return (IScheduler) _mesosStormScheduler;
   }
 
   @Override
