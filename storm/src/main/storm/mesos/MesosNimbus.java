@@ -727,7 +727,7 @@ public class MesosNimbus implements INimbus {
           executorInfoBuilder
               .setCommand(CommandInfo.newBuilder()
                   .addUris(URI.newBuilder().setValue(configUri))
-                  .setValue(commandLineShim.getCommandLine()))
+                  .setValue(commandLineShim.getCommandLine(details.getId())))
               .setContainer(
                   ContainerInfo.newBuilder()
                       .setType(ContainerInfo.Type.DOCKER)
@@ -745,7 +745,7 @@ public class MesosNimbus implements INimbus {
               .setCommand(CommandInfo.newBuilder()
                   .addUris(URI.newBuilder().setValue((String) _conf.get(CONF_EXECUTOR_URI)))
                   .addUris(URI.newBuilder().setValue(configUri))
-                  .setValue(commandLineShim.getCommandLine()));
+                  .setValue(commandLineShim.getCommandLine(details.getId())));
         }
 
         LOG.info("Launching task with Mesos Executor data: < {} >", executorDataStr);

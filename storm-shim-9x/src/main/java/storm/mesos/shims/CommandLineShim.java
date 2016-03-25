@@ -24,9 +24,13 @@ public class CommandLineShim implements ICommandLineShim {
     this.extraConfig = extraConfig;
   }
 
-  public String getCommandLine() {
-    return "cp storm.yaml storm-mesos*/conf && cd storm-mesos* && python bin/storm " +
-        "supervisor storm.mesos.MesosSupervisor" + extraConfig;
+  public String getCommandLine(String topologyId) {
+    return String.format(
+        "export STORM_SUPERVISOR_LOG_FILE=%s-supervisor.log" +
+        " && cp storm.yaml storm-mesos*/conf" +
+        " && cd storm-mesos*" +
+        " && python bin/storm supervisor storm.mesos.MesosSupervisor%s",
+        topologyId, extraConfig);
   }
 
 }
