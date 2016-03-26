@@ -31,13 +31,19 @@ import java.util.Map;
 
 public class LogViewerController {
   private static final Logger LOG = LoggerFactory.getLogger(LogViewerController.class);
+  private static final String STORM_LOG_DIR_CONF = "storm.log.dir";
   protected Process process;
   protected SocketUrlDetection urlDetector;
   protected Integer port;
+  protected String logdir;
 
   public LogViewerController(Map conf) {
     port = Optional.fromNullable((Number) conf.get(Config.LOGVIEWER_PORT)).or(8000).intValue();
     setUrlDetector(new SocketUrlDetection(port));
+    logdir = System.getenv("MESOS_SANDBOX") + "/logs";
+    if (conf.containsKey(STORM_LOG_DIR_CONF)) {
+      logdir = (String) conf.get(STORM_LOG_DIR_CONF);
+    }
   }
 
   /**
@@ -96,7 +102,7 @@ public class LogViewerController {
         Paths.get(System.getProperty("user.dir"), "/bin/storm").toString(),
         "logviewer",
         "-c",
-        "storm.log.dir=" + System.getenv("MESOS_SANDBOX") + "/logs",
+        "storm.log.dir=" + logdir,
         "-c",
         Config.LOGVIEWER_PORT + "=" + port
     );
