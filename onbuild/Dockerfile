@@ -5,27 +5,27 @@ FROM ubuntu:14.04
 MAINTAINER Salimane Adjao Moustapha <me@salimane.com>
 
 # set JAVA_HOME depending if JAVA_PRODUCT_VERSION is set
-ARG JAVA_PRODUCT_VERSION=''
-ENV TARGET_JAVA_HOME ${JAVA_PRODUCT_VERSION:+/usr/lib/jvm/java-$JAVA_PRODUCT_VERSION-openjdk-amd64}
-ENV JAVA_HOME ${TARGET_JAVA_HOME:-/usr/lib/jvm/java-7-openjdk-amd64}
-ENV JAVA_PRODUCT_VERSION ${JAVA_PRODUCT_VERSION:-7}
+ONBUILD ARG JAVA_PRODUCT_VERSION=''
+ONBUILD ENV TARGET_JAVA_HOME ${JAVA_PRODUCT_VERSION:+/usr/lib/jvm/java-$JAVA_PRODUCT_VERSION-openjdk-amd64}
+ONBUILD ENV JAVA_HOME ${TARGET_JAVA_HOME:-/usr/lib/jvm/java-7-openjdk-amd64}
+ONBUILD ENV JAVA_PRODUCT_VERSION ${JAVA_PRODUCT_VERSION:-7}
 
 # Add mesosphere
 # install mesos version, build arg, MESOS_RELEASE with a default value
-ARG MESOS_RELEASE=0.28.0
-RUN DISTRO=$(lsb_release -is | tr "[:upper:]" "[:lower:]") && \
+ONBUILD ARG MESOS_RELEASE=0.28.0
+ONBUILD RUN DISTRO=$(lsb_release -is | tr "[:upper:]" "[:lower:]") && \
 	CODENAME=$(lsb_release -cs) && \
 	echo "deb http://repos.mesosphere.com/${DISTRO} ${CODENAME} main" > /etc/apt/sources.list.d/mesosphere.list && \
 	apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF && \
 	apt-get -y update && \
 	apt-get -y install mesos=`apt-cache madison mesos | grep " ${MESOS_RELEASE}" | head -1 | awk '{print $3}'` && \
-	apt-get clean
+	apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # set build arg STORM_RELEASE, MIRROR with defaults values
-ARG STORM_RELEASE=0.10.0
-ARG MIRROR=''
-ARG STORM_URL=''
-ARG RELEASE=''
+ONBUILD ARG STORM_RELEASE=0.10.0
+ONBUILD ARG MIRROR=''
+ONBUILD ARG STORM_URL=''
+ONBUILD ARG RELEASE=''
 
 # set runtime environment variables
 ENV MESOS_RELEASE ${MESOS_RELEASE:-0.28.0}
@@ -37,7 +37,7 @@ ENV MESOS_NATIVE_JAVA_LIBRARY ${MESOS_NATIVE_JAVA_LIBRARY:-/usr/lib/libmesos.so}
 COPY . /tmp
 
 # storm-mesos package building if file storm-mesos*.tgz not found
-RUN cd /tmp && \
+ONBUILD RUN cd /tmp && \
 	RELEASE=`grep -1 -A 0 -B 0 '<version>' pom.xml | head -n 1 | awk '{print $1}' | sed -e 's/.*<version>//' | sed -e 's/<\/version>.*//'` && \
 	([ -f storm-mesos-${RELEASE}-storm${STORM_RELEASE}-mesos${MESOS_RELEASE}.tgz ] || \
 		(apt-get -y install software-properties-common && \
