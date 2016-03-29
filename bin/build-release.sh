@@ -25,6 +25,10 @@ STORM_URL=${STORM_URL:-''}
 
 MIRROR=${MIRROR:-"http://www.gtlib.gatech.edu/pub"}
 
+DOCKER_REPO=${DOCKER_REPO:-"mesos"}
+
+JAVA_PRODUCT_VERSION=${JAVA_PRODUCT_VERSION:-`java -version 2>&1 | awk '/version/{print $NF}' | sed -E 's|[0-9].([0-9]).[0-9]_[0-9]+|\1|' | sed -e 's/^"//'  -e 's/"$//'`}
+
 function help {
   cat <<USAGE
 Usage: bin/build-release.sh [<storm.tar.gz>]
@@ -118,12 +122,14 @@ function package {(
 )}
 
 function dockerImage {(
-  cmd="docker build \
-       --build-arg MESOS_RELEASE=$MESOS_RELEASE \
-       --build-arg STORM_RELEASE=$STORM_RELEASE \
-       --build-arg MIRROR=$MIRROR \
-       --build-arg STORM_URL=$STORM_URL \
-        -t mesos/storm:git-`git rev-parse --short HEAD` ."
+  cmd="make images \
+      STORM_RELEASE=$STORM_RELEASE \
+      MESOS_RELEASE=$MESOS_RELEASE \
+      RELEASE=$RELEASE \
+      MIRROR=$MIRROR \
+      STORM_URL=$STORM_URL \
+      JAVA_PRODUCT_VERSION=$JAVA_PRODUCT_VERSION \
+      DOCKER_REPO=$DOCKER_REPO"
   echo $cmd
   $cmd
 )}
