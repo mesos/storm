@@ -39,6 +39,7 @@ public class MesosCommon {
   public static final String WORKER_NAME_PREFIX = "topology.mesos.worker.prefix";
   public static final String WORKER_NAME_PREFIX_DELIMITER = "topology.mesos.worker.prefix.delimiter";
   public static final String MESOS_COMPONENT_NAME_DELIMITER = "topology.mesos.component.name.delimiter";
+  public static final String STORM_LOG_DIR_CONF = "storm.log.dir";
 
   public static final double DEFAULT_WORKER_CPU = 1;
   public static final double DEFAULT_WORKER_MEM_MB = 1000;
@@ -50,6 +51,14 @@ public class MesosCommon {
   public static final String ASSIGNMENT_ID = "assignmentid";
   public static final String DEFAULT_WORKER_NAME_PREFIX_DELIMITER = "_";
   public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = " | ";
+
+  public static String getStormLogDir(Map conf) {
+    if (conf.containsKey(STORM_LOG_DIR_CONF)) {
+      return (String) conf.get(STORM_LOG_DIR_CONF);
+    } else {
+      return System.getenv("MESOS_SANDBOX") + "/logs";
+    }
+  }
 
   public static String hostFromAssignmentId(String assignmentId, String delimiter) {
     final int last = assignmentId.lastIndexOf(delimiter);
