@@ -141,7 +141,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
               if (mesosWorkerSlot == null) {
                 continue;
               }
-              String slotId = mesosWorkerSlot.getNodeId() + ":" + mesosWorkerSlot.getPort();
+              String slotId = String.format("%s:%s", mesosWorkerSlot.getNodeId(), mesosWorkerSlot.getPort());
               mesosWorkerSlotMap.put(slotId, mesosWorkerSlot);
               // Place this offer in the first bucket of the RotatingMap so that it is less likely to get rotated out
               offers.put(resources.getOfferId(), resources.getOffer());
@@ -176,8 +176,9 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
         log.warn("Unexpected: Node id is null for worker slot while scheduling");
         continue;
       }
-      MesosWorkerSlot mesosWorkerSlot = mesosWorkerSlotMap.get(workerSlot.getNodeId() +
-                                                               ":" + String.valueOf(workerSlot.getPort()));
+      MesosWorkerSlot mesosWorkerSlot = mesosWorkerSlotMap.get(String.format("%s:%d",
+                                                                             workerSlot.getNodeId(),
+                                                                             workerSlot.getPort()));
 
       String topologyId = mesosWorkerSlot.getTopologyId();
       if (perTopologySlotList.get(topologyId) == null) {

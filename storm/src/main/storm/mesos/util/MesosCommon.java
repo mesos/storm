@@ -61,7 +61,7 @@ public class MesosCommon {
   public static String getWorkerPrefix(Map conf, TopologyDetails info) {
     Map topologyConf = getFullTopologyConfig(conf, info);
     String prefix = Optional.fromNullable((String) topologyConf.get(WORKER_NAME_PREFIX)).or("");
-    return prefix + info.getName() + getWorkerPrefixDelimiter(conf);
+    return String.format("%s%s%s", prefix, info.getName(), getWorkerPrefixDelimiter(conf));
   }
 
   public static String getWorkerPrefixDelimiter(Map conf) {
@@ -83,11 +83,11 @@ public class MesosCommon {
   }
 
   public static String taskId(String nodeid, int port) {
-    return nodeid + "-" + port + "-" + timestampMillis();
+    return String.format("%s-%d-%s", nodeid, port, timestampMillis());
   }
 
   public static String supervisorId(String nodeid, String topologyId) {
-    return nodeid + "-" + topologyId;
+    return String.format("%s-%s", nodeid, topologyId);
   }
 
   public static boolean startLogViewer(Map conf) {

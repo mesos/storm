@@ -108,7 +108,7 @@ public class PrettyProtobuf {
    */
   public static String offerListToString(List<Offer> offers) {
     List<String> offersAsStrings = Lists.transform(offers, offerToStringTransform);
-    return "[\n" + StringUtils.join(offersAsStrings, ",\n") + "]";
+    return String.format("[\n%s]", StringUtils.join(offersAsStrings, ",\n"));
   }
 
   /**
@@ -116,7 +116,7 @@ public class PrettyProtobuf {
    */
   public static String taskInfoListToString(List<TaskInfo> tasks) {
     List<String> tasksAsStrings = Lists.transform(tasks, taskInfoToStringTransform);
-    return "[\n" + StringUtils.join(tasksAsStrings, ",\n") + "]";
+    return String.format("[\n%s]", StringUtils.join(tasksAsStrings, ",\n"));
   }
 
   /**
@@ -132,7 +132,7 @@ public class PrettyProtobuf {
   public static String offerMapToString(RotatingMap<OfferID, Offer> offers) {
     List<String> offersAsStrings = Lists.transform(new ArrayList<Offer>(offers.values()),
                                                    offerToStringTransform);
-    return "[\n" + StringUtils.join(offersAsStrings, ",\n") + "]";
+    return String.format("[\n%s]", StringUtils.join(offersAsStrings, ",\n"));
   }
 
   /**
@@ -179,7 +179,7 @@ public class PrettyProtobuf {
     if (range.getBegin() == range.getEnd()) {
       return beginStr;
     } else {
-      return beginStr + "-" + endStr;
+      return String.format("%s-%s", beginStr, endStr);
     }
   }
 
@@ -188,14 +188,14 @@ public class PrettyProtobuf {
    */
   private static String rangesToString(Ranges ranges) {
     List<String> rangesAsStrings = Lists.transform(ranges.getRangeList(), rangeToStringTransform);
-    return "[" + StringUtils.join(rangesAsStrings, ",") + "]";
+    return String.format("[%s]", StringUtils.join(rangesAsStrings, ","));
   }
 
   /**
    * Pretty-print mesos protobuf Set.
    */
   private static String setToString(Set set) {
-    return "[" + StringUtils.join(set.getItemList(), ",") + "]";
+    return String.format("[%s]", StringUtils.join(set.getItemList(), ","));
   }
 
   /**
@@ -207,7 +207,7 @@ public class PrettyProtobuf {
       String name;
       String value = "";
       if (r.hasRole()) {
-        name = r.getName() + "(" + r.getRole() + ")";
+        name = String.format("%s(%s)", r.getName(), r.getRole());
       } else {
         name = r.getName();
       }
@@ -223,7 +223,7 @@ public class PrettyProtobuf {
           break;
         default:
           // If hit, then a new Resource Type needs to be handled here.
-          value = "Unrecognized Resource Type: `" + r.getType() + "'";
+          value = String.format("Unrecognized Resource Type: `%s'", r.getType());
           break;
       }
       map.put(name, value);

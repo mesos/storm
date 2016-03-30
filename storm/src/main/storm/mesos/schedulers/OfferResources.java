@@ -143,14 +143,14 @@ public class OfferResources {
 
     for (int i = 0; i < portRanges.size(); i++) {
       if (portRanges.get(i).begin == portRanges.get(i).end) {
-        portRangeStrings.add(String.valueOf(portRanges.get(i).begin));
+        portRangeStrings.add(String.format("%d", portRanges.get(i).begin));
       } else {
-        portRangeStrings.add(String.valueOf(portRanges.get(i).begin) + "-" + String.valueOf(portRanges.get(i).end));
+        portRangeStrings.add(String.format("%d-%d", portRanges.get(i).begin, portRanges.get(i).end));
       }
     }
-    return "OfferResources with offerId: " + getOfferId().getValue().toString().trim() + " from host: " + getHostName() + " mem: " + String.valueOf(mem) +
-           " cpu: " + String.valueOf(cpu) +
-           " portRanges: [" + Joiner.on(",").join(portRangeStrings) + "]";
+    // TODO(erikdw): limit float's resolution?
+    return String.format("OfferResources with offerId: %s from host: %s mem: %f cpu: %f portRanges: [%s]",
+                         getOfferId().getValue(), getHostName(), mem, cpu, Joiner.on(",").join(portRangeStrings));
   }
 }
 
