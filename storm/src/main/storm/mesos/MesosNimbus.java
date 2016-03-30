@@ -690,7 +690,7 @@ public class MesosNimbus implements INimbus {
           executorPortsResources = getResourcesRange(offerResources, port, "ports");
           if (!executorPortsResources.isEmpty()) {
             // Was the port available?
-            extraConfig = " -c " + MesosCommon.AUTO_START_LOGVIEWER_CONF + "=true";
+            extraConfig = String.format(" -c %s=true", MesosCommon.AUTO_START_LOGVIEWER_CONF);
             offerResources = subtractResourcesRange(offerResources, port, "ports");
           }
         }
@@ -701,16 +701,15 @@ public class MesosNimbus implements INimbus {
 
         String configUri;
         try {
-          configUri = new URL(_configUrl.toURL(),
-              _configUrl.getPath() + "/storm.yaml").toString();
+          configUri = new URL(_configUrl.toURL(), _configUrl.getPath() + "/storm.yaml").toString();
         } catch (MalformedURLException e) {
           throw new RuntimeException(e);
         }
 
         String delimiter = MesosCommon.getMesosComponentNameDelimiter(_conf, details);
-        String topologyAndNodeId = details.getId() + delimiter + slot.getNodeId();
-        String executorName = "storm-supervisor" + delimiter + topologyAndNodeId;
-        String taskName = "storm-worker" + delimiter + topologyAndNodeId + ":" + slot.getPort();
+        String topologyAndNodeId = String.format("%s%s%s", details.getId(), delimiter, slot.getNodeId());
+        String executorName = String.format("storm-supervisor%s%s", delimiter, topologyAndNodeId);
+        String taskName = String.format("storm-worker%s%s:%d", delimiter, topologyAndNodeId, slot.getPort());
         String executorDataStr = JSONValue.toJSONString(executorData);
         ExecutorInfo.Builder executorInfoBuilder = ExecutorInfo.newBuilder();
         executorInfoBuilder

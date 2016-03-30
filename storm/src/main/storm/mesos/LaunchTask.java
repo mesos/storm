@@ -41,6 +41,6 @@ class LaunchTask {
 
   @Override
   public String toString() {
-    return "Offer: " + offerToString(offer) + " TaskInfo: " + taskInfoToString(task);
+    return String.format("Offer: %s TaskInfo: %s", offerToString(offer), taskInfoToString(task));
   }
 }

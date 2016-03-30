@@ -83,9 +83,11 @@ public enum TaskAssignments {
     int port = MesosCommon.portFromTaskId(taskId.getValue());
     AssignmentInfo existingAssignment = portAssignments.get(port);
     if (existingAssignment != null) {
-      throw new IllegalArgumentException("Refusing to register task " + taskId.getValue() +
-                        " because its port " + port + " is already registered for task " +
-                        existingAssignment.taskId.getValue());
+      throw new IllegalArgumentException(
+                    String.format("Refusing to register task %s because its port " +
+                                  "%d is already registered for task %s",
+                                  taskId.getValue(), port,
+                                  existingAssignment.taskId.getValue()));
     }
     portAssignments.put(port, new AssignmentInfo(taskId, TaskState.ACTIVE));
     return port;
