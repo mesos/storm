@@ -23,9 +23,9 @@ public final class CommandLineShimFactory {
 
   }
 
-  public static ICommandLineShim makeCommandLineShim(boolean docker, String extraConfig) {
+  public static ICommandLineShim makeCommandLineShim(boolean docker, Map stormConf, String extraConfig) {
     if (docker) {
-      return new DockerCommandLineShim(extraConfig);
+      return new DockerCommandLineShim(stormConf, extraConfig);
     } else {
       return new CommandLineShim(extraConfig);
     }

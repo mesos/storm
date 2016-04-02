@@ -40,7 +40,7 @@ public class LogViewerController {
   public LogViewerController(Map conf) {
     port = Optional.fromNullable((Number) conf.get(Config.LOGVIEWER_PORT)).or(8000).intValue();
     setUrlDetector(new SocketUrlDetection(port));
-    logDir = MesosCommon.getStormLogDir(conf);
+    logDir = MesosCommon.getStormLogDir(conf, System.getenv("MESOS_SANDBOX") + "/logs");
   }
 
   /**

@@ -52,11 +52,11 @@ public class MesosCommon {
   public static final String DEFAULT_WORKER_NAME_PREFIX_DELIMITER = "_";
   public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = " | ";
 
-  public static String getStormLogDir(Map conf) {
+  public static String getStormLogDir(Map conf, String defaultLogDir) {
     if (conf.containsKey(STORM_LOG_DIR_CONF)) {
       return (String) conf.get(STORM_LOG_DIR_CONF);
     } else {
-      return System.getenv("MESOS_SANDBOX") + "/logs";
+      return defaultLogDir;
     }
   }
 
