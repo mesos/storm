@@ -40,8 +40,10 @@ import storm.mesos.shims.LocalStateShim;
 import storm.mesos.util.MesosCommon;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -108,7 +110,20 @@ public class MesosSupervisor implements ISupervisor {
 
   @Override
   public Object getMetadata() {
-    Set<Integer> ports = _taskAssignments.getAssignedPorts();
+    /*
+     * Convert obtained Set into a List for 2 reasons:
+     *  (1) Ensure returned object is serializable as required by storm's serialization
+     *      of the SupervisorInfo while heartbeating.
+     *      Previous to this change we were returning a ConcurrentHashMap$KeySetView,
+     *      which is not necessarily serializable:
+     *         http://bugs.java.com/bugdatabase/view_bug.do?bug_id=4756277
+     *  (2) Ensure we properly instantiate the PersistentVector with all ports.
+     *      If given a Set the PersistentVector.create() method will simply wrap the passed
+     *      Set as a single element in the new vector. Whereas if you pass a java.util.List
+     *      or clojure.lang.ISeq, then you get a true vector composed of the elements of the
+     *      List or ISeq you passed.
+     */
+    List ports = new ArrayList(_taskAssignments.getAssignedPorts());
     if (ports == null) {
       return null;
     }
