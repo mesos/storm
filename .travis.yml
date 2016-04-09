@@ -2,4 +2,30 @@ language: java
 sudo: false
 cache:
   directories:
-      - $HOME/.m2/repository
+    - "$HOME/.m2/repository"
+
+install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true
+script:
+  - jdk_switcher use oraclejdk8
+  - mvn test
+  - jdk_switcher use oraclejdk7
+  - mvn test
+  - bin/build-release.sh
+
+matrix:
+  fast_finish: true
+  include:
+    - env: STORM_RELEASE="0.10.0" MESOS_RELEASE="0.28.0"
+    - env: STORM_RELEASE="0.10.0" MESOS_RELEASE="0.27.2"
+    - env: STORM_RELEASE="0.9.6" MESOS_RELEASE="0.28.0"
+    - env: STORM_RELEASE="0.9.6" MESOS_RELEASE="0.27.2"
+
+# Deploy archives to GitHub release tags
+deploy:
+  provider: releases
+  api_key:
+    secure: DMwskItRMoVMpmYt3trBy4WlQN37ZnT28p1jYhP6xQOD1CfgZC+ggGiWr+aobfD89ZvztGdRPXyBCorsErqXEPLIA/dSAfJaOr20o6KzyFz284vw08dLwIvjev/eRYuT5BuRVCyFkt4MkTQEEGJdBE1Fb0nc8xdaylDR6CqthyI/qEE1dx4/yFoyBTBHQOBI3EynOG+h3D6XKQCfheNyX3i63St2wyI0hfTnanGNpsdxwgO5H4SW7p48/f+z4kjIt9IxHL7Lr8b56WbKvo97OqXzn+OFiCO8m/DtDD+HTUqjwDQA5oYvMx9bBHmZEyz/HgTnNsgH0RqTfo97AqezV37LSzJyWupF6Nk5N3k+UJu5ck/EvaiOBjDsye9sM1O6W5XICUfgNKHHvx6Ow5nVBY7gyrcCsJ+w65sda6Ij731GxmWEv2u9rfpq0/mNRvPwf/wFS9JN7SwNzsJPTYswsNyJoH7o/SVH7CiRavUTyCJJvelSimY9GwOWBCVNQIR8cioOncqH1mp1oxbSAVutcoppUt/jDNrxQwFM+XeI8AifK/CwoujSR6e3QKCPyRh3t5QICHwDcAh5qKDNGrLKEjTejCX+MdDKro+qzh4w7/T8jcZEKS+TpPC3cnFiT5N4joJ0EQ7oENRLpTR2JA4K38EPMSluma2dzveTXdz74QE=
+  file: "storm-mesos-$(grep -1 -A 0 -B 0 '<version>' pom.xml | head -n 1 | awk '{print $1}' | sed -e 's/.*<version>//' | sed -e 's|</version>.*||')-storm$STORM_RELEASE-mesos$MESOS_RELEASE.tgz"
+  skip_cleanup: true
+  on:
+    tags: true
