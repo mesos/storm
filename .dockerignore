@@ -1,0 +1,12 @@
+!storm-mesos-*.tgz
+.idea
+.vimrc
+*.swp
+_release
+build
+target
+*.iml
+*.zip
+*.tgz
+*.tar.gz
+dependency-reduced-pom.xml

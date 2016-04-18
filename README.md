@@ -58,11 +58,36 @@ bin/build-release.sh downloadStormRelease
 * `dockerImage`
 
   Builds a Docker image from the current code.
-  * Notably, the mesos/storm repo on Github also has a hook that auomatically builds a [new Docker image on Dockerhub](https://hub.docker.com/r/mesosphere/storm/) upon every commit.
 
 * `help`
 
   Prints out usage information about the build-release.sh script.
+
+## Docker images Building
+
+In order to build the storm-mesos docker image, or a docker image ready to be used as ``mesos.container.docker.image`` in your storm configuration, run the following:
+
+```shell
+make help
+make images STORM_RELEASE=0.X.X MESOS_RELEASE=0.Y.Y DOCKER_REPO=mesos
+```
+
+Where 0.X.X and 0.Y.Y are the respective versions of Storm and Mesos you wish to build against.  This will build a docker image containing a Mesos executor package. The resulting docker images are the following:
+
+```
+± docker images
+REPOSITORY                TAG                                    IMAGE ID            CREATED 
+mesos/storm-mesos         0.1.0-0.X.X-0.Y.Y-jdk7                 11989e7bfa17        44 minutes ago
+mesos/storm-mesos         0.1.0-0.X.X-0.Y.Y-jdk7-onbuild         e7eb52b3eb9f        44 minutes ago
+```
+
+In order to use JDK 8 while building the docker image, run the following:
+
+```shell
+make images STORM_RELEASE=0.X.X MESOS_RELEASE=0.Y.Y DOCKER_REPO=mesos JAVA_PRODUCT_VERSION=8
+```
+
+A custom image could be built from the onbuild tagged docker image. It is based on the dockerfile ``onbuild/Dockerfile``
 
 # Running Storm on Mesos
 Along with the Mesos master and Mesos cluster, you'll need to run the Storm master as well. Launch Nimbus with this command:
