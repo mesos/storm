@@ -89,6 +89,8 @@ make images STORM_RELEASE=0.X.X MESOS_RELEASE=0.Y.Y DOCKER_REPO=mesos JAVA_PRODU
 
 A custom image could be built from the onbuild tagged docker image. It is based on the dockerfile ``onbuild/Dockerfile``
 
+Images are also published to Docker Hub under the image `mesosphere/storm-mesos` at <https://hub.docker.com/r/mesosphere/storm-mesos/>.
+
 # Running Storm on Mesos
 Along with the Mesos master and Mesos cluster, you'll need to run the Storm master as well. Launch Nimbus with this command:
 
