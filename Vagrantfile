@@ -6,9 +6,31 @@ VAGRANTFILE_API_VERSION = "2"
 $provision_script = <<SCRIPT
 
 function install_package {
+  # TODO: check if package is already installed and skip installation if so.
+  #
+  # Pseudo code:
+  # if (${name_of_package} does not contain '=') {
+  #   if (`dpkg -s ${name_of_package}` != 0)
+  #     install ${name_of_package}
+  #   } else {
+  #     echo "${name_of_package} is already installed"
+  #   }
+  # } else {
+  #   if (! `dpkg -s ${name_of_package}.split('=')[0]`) {
+  #     install ${name_of_package}
+  #   } else {
+  #     if (! `dpkg -s | grep ${name_of_package}.split('=')[1]`) {
+  #       install ${name_of_package}
+  #     }
+  #   }
+  # }
+  #
+  # That's a mouthful. Should see if we can invoke a ruby script. Probably easy to do with -e, but would
+  # be cleaner if a separate file could be invoked.
+
   name_of_package=$1
-  echo "Installing ${name_of_package}"
-  apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install ${name_of_package}
+  echo "${PREFIX} Installing ${name_of_package}..."
+  apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y --force-yes install ${name_of_package}
 }
 
 PREFIX="PROVISIONER:"
@@ -17,39 +39,38 @@ set -e
 
 echo "${PREFIX} Installing pre-reqs..."
 
-# For installing Java 8
-add-apt-repository ppa:webupd8team/java
-
 # For Mesos
 apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF
 DISTRO=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
 CODENAME=$(lsb_release -cs)
 echo "deb http://repos.mesosphere.io/${DISTRO} ${CODENAME} main" | sudo tee /etc/apt/sources.list.d/mesosphere.list
 
+# Update available packages
 apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y update
-echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
 
-echo "Installing oracle-java8-installer..."
-install_package "oracle-java8-installer"
-echo "Installing oracle-java8-set-default..."
-apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install oracle-java8-set-default
-echo "Installing libcurl3..."
-apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install libcurl3
-echo "Installing zookeeperd..."
-apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install zookeeperd
-echo "Installing aria2..."
-apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install aria2
+# Ensure we have java 8
+java_version=$(java -version 2>&1 | awk -F '"' '/version/ {print $2}')
+if [[ ! "$java_version" > "1.8" ]]; then
+  # For installing Java 8
+  add-apt-repository ppa:webupd8team/java
 
-echo "${PREFIX}Installing mesos ..."
-apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install mesos=0.25.0-0.2.70.ubuntu1404
-echo "Done"
+  echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
 
-ln -sf /usr/lib/jvm/java-8-oracle/jre/lib/amd64/server/libjvm.so /usr/lib/libjvm.so
+  install_package "oracle-java8-installer"
+  install_package "oracle-java8-set-default"
+  ln -sf /usr/lib/jvm/java-8-oracle/jre/lib/amd64/server/libjvm.so /usr/lib/libjvm.so
+fi
 
-echo "${PREFIX}Successfully provisioned machine for storm development"
+install_package "libcurl3"
+install_package "zookeeperd"
+install_package "aria2"
+install_package "mesos=0.25.0-0.2.70.ubuntu1404"
+
+echo "${PREFIX} Done installing packages"
+echo "${PREFIX} Successfully provisioned machine for storm development"
 
 # Install docker
-apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y install docker.io
+install_package "docker.io"
 
 SCRIPT
 
