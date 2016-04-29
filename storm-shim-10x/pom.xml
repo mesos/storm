@@ -18,7 +18,7 @@
   <parent>
     <artifactId>storm-parent</artifactId>
     <groupId>org.apache.mesos</groupId>
-    <version>0.1.2-SNAPSHOT</version>
+    <version>0.1.2</version>
   </parent>
 
   <properties>

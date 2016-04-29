@@ -1,5 +1,5 @@
 #
-# Makefile for building storm-mesos docker images
+# Makefile for building storm docker images
 #
 # make help
 #
@@ -54,12 +54,12 @@ images: check-version
        	--build-arg JAVA_PRODUCT_VERSION=$(JAVA_PRODUCT_VERSION) \
        	--build-arg MIRROR=$(MIRROR) \
        	--build-arg STORM_URL=$(STORM_URL) \
-		-t $(DOCKER_REPO)/storm-mesos:$(RELEASE)-$(STORM_RELEASE)-$(MESOS_RELEASE)-jdk$(JAVA_PRODUCT_VERSION) .
+		-t $(DOCKER_REPO)/storm:$(RELEASE)-$(STORM_RELEASE)-$(MESOS_RELEASE)-jdk$(JAVA_PRODUCT_VERSION) .
 	docker build \
 		--rm \
 		-f onbuild/Dockerfile \
-		-t $(DOCKER_REPO)/storm-mesos:$(RELEASE)-$(STORM_RELEASE)-$(MESOS_RELEASE)-jdk$(JAVA_PRODUCT_VERSION)-onbuild .
+		-t $(DOCKER_REPO)/storm:$(RELEASE)-$(STORM_RELEASE)-$(MESOS_RELEASE)-jdk$(JAVA_PRODUCT_VERSION)-onbuild .
 
 push: check-version
-	docker push $(DOCKER_REPO)/storm-mesos:$(RELEASE)-$(STORM_RELEASE)-$(MESOS_RELEASE)-jdk$(JAVA_PRODUCT_VERSION)
-	docker push $(DOCKER_REPO)/storm-mesos:$(RELEASE)-$(STORM_RELEASE)-$(MESOS_RELEASE)-jdk$(JAVA_PRODUCT_VERSION)-onbuild
+	docker push $(DOCKER_REPO)/storm:$(RELEASE)-$(STORM_RELEASE)-$(MESOS_RELEASE)-jdk$(JAVA_PRODUCT_VERSION)
+	docker push $(DOCKER_REPO)/storm:$(RELEASE)-$(STORM_RELEASE)-$(MESOS_RELEASE)-jdk$(JAVA_PRODUCT_VERSION)-onbuild
