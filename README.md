@@ -77,8 +77,8 @@ Where 0.X.X and 0.Y.Y are the respective versions of Storm and Mesos you wish to
 ```
 ± docker images
 REPOSITORY                TAG                                    IMAGE ID            CREATED 
-mesos/storm-mesos         0.1.0-0.X.X-0.Y.Y-jdk7                 11989e7bfa17        44 minutes ago
-mesos/storm-mesos         0.1.0-0.X.X-0.Y.Y-jdk7-onbuild         e7eb52b3eb9f        44 minutes ago
+mesos/storm               0.1.0-0.X.X-0.Y.Y-jdk7                 11989e7bfa17        44 minutes ago
+mesos/storm               0.1.0-0.X.X-0.Y.Y-jdk7-onbuild         e7eb52b3eb9f        44 minutes ago
 ```
 
 In order to use JDK 8 while building the docker image, run the following:
@@ -89,7 +89,7 @@ make images STORM_RELEASE=0.X.X MESOS_RELEASE=0.Y.Y DOCKER_REPO=mesos JAVA_PRODU
 
 A custom image could be built from the onbuild tagged docker image. It is based on the dockerfile ``onbuild/Dockerfile``
 
-Images are also published to Docker Hub under the image `mesosphere/storm-mesos` at <https://hub.docker.com/r/mesosphere/storm-mesos/>.
+Images are also published to Docker Hub under the image `mesos/storm` at <https://hub.docker.com/r/mesos/storm/>.
 
 # Running Storm on Mesos
 Along with the Mesos master and Mesos cluster, you'll need to run the Storm master as well. Launch Nimbus with this command:
@@ -186,7 +186,7 @@ You can run this from Marathon, using the example app JSON below:
   "container": {
     "type": "DOCKER",
     "docker": {
-      "image": "mesosphere/storm-mesos",
+      "image": "mesos/storm",
       "network": "HOST",
       "forcePullImage":true
     }
@@ -219,5 +219,5 @@ If you'd like to run the example above _without_ Marathon, you can do so by spec
 MESOS_SANDBOX path, and running the container. For example:
 
 ```
-$ docker run -i --net=host -e PORT0=10000 -e PORT1=10001 -e MESOS_SANDBOX=/var/log/storm -t mesosphere/storm-mesos ./bin/run-with-marathon.sh
+$ docker run -i --net=host -e PORT0=10000 -e PORT1=10001 -e MESOS_SANDBOX=/var/log/storm -t mesos/storm ./bin/run-with-marathon.sh
 ```
