@@ -120,7 +120,7 @@ public class MesosNimbus implements INimbus {
   Optional<Integer> _localFileServerPort;
   private RotatingMap<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
-  private Map<TaskID, Offer> _usedOffers;
+  private Map<TaskID, Offer> taskIDtoOfferMap;
   private ScheduledExecutorService timerScheduler =
       Executors.newScheduledThreadPool(1);
   private IMesosStormScheduler _mesosStormScheduler = null;
@@ -242,7 +242,7 @@ public class MesosNimbus implements INimbus {
 
     Number lruCacheSize = Optional.fromNullable((Number) _conf.get(CONF_MESOS_OFFER_LRU_CACHE_SIZE)).or(1000);
     final int intLruCacheSize = lruCacheSize.intValue();
-    _usedOffers = Collections.synchronizedMap(new LinkedHashMap<Protos.TaskID, Protos.Offer>(intLruCacheSize + 1, .75F, true) {
+    taskIDtoOfferMap = Collections.synchronizedMap(new LinkedHashMap<Protos.TaskID, Protos.Offer>(intLruCacheSize + 1, .75F, true) {
       // This method is called just after a new entry has been added
       public boolean removeEldestEntry(Map.Entry eldest) {
         return size() > intLruCacheSize;
@@ -304,7 +304,7 @@ public class MesosNimbus implements INimbus {
     timerScheduler.schedule(new Runnable() {
       @Override
       public void run() {
-        _usedOffers.remove(taskId);
+        taskIDtoOfferMap.remove(taskId);
       }
     }, MesosCommon.getSuicideTimeout(_conf), TimeUnit.SECONDS);
   }
@@ -557,13 +557,21 @@ public class MesosNimbus implements INimbus {
     return resources;
   }
 
+  /**
+   *  This method is invoked after IScheduler.schedule assigns the worker slots to the topologies that need assignments
+   *
+   *  @param topologies                             - Information about all topologies
+   *  @param slotsForTopologiesNeedingAssignments   - A key value pair of topology name and collection of worker slots that are assigned to the topology
+   */
   @Override
-  public void assignSlots(Topologies topologies, Map<String, Collection<WorkerSlot>> slots) {
-    if (slots.size() == 0) {
+  public void assignSlots(Topologies topologies, Map<String, Collection<WorkerSlot>> slotsForTopologiesNeedingAssignments) {
+    if (slotsForTopologiesNeedingAssignments.size() == 0) {
       LOG.debug("assignSlots: no slots passed in, nothing to do");
       return;
     }
-    for (Map.Entry<String, Collection<WorkerSlot>> topologyToSlots : slots.entrySet()) {
+
+    // This is purely to print the debug information. Otherwise, the following for loop is unnecessry.
+    for (Map.Entry<String, Collection<WorkerSlot>> topologyToSlots : slotsForTopologiesNeedingAssignments.entrySet()) {
       String topologyId = topologyToSlots.getKey();
       for (WorkerSlot slot : topologyToSlots.getValue()) {
         TopologyDetails details = topologies.getById(topologyId);
@@ -571,25 +579,41 @@ public class MesosNimbus implements INimbus {
                   topologyId, slot, MesosCommon.topologyWorkerCpu(_conf, details), MesosCommon.topologyWorkerMem(_conf, details));
       }
     }
+
     synchronized (_offersLock) {
-      computeLaunchList(topologies, slots);
+      computeLaunchList(topologies, slotsForTopologiesNeedingAssignments);
     }
   }
 
-  protected void computeLaunchList(Topologies topologies, Map<String, Collection<WorkerSlot>> slots) {
+  /**
+   *  @param topologies                             - Information about all submitted topologies
+   *  @param slotsForTopologiesNeedingAssignments   - A key value pair of topology name and collection of worker slotsForTopologiesNeedingAssignments that are assigned to the topology
+   */
+  protected void computeLaunchList(Topologies topologies, Map<String, Collection<WorkerSlot>> slotsForTopologiesNeedingAssignments) {
     Map<OfferID, List<LaunchTask>> toLaunch = new HashMap<>();
-    for (String topologyId : slots.keySet()) {
-      Map<OfferID, List<WorkerSlot>> slotList = new HashMap<>();
-      for (WorkerSlot slot : slots.get(topologyId)) {
+    // For every topology that needs assignment
+    for (String topologyId : slotsForTopologiesNeedingAssignments.keySet()) {
+      // Get a list of worker slots assigned
+      Map<OfferID, List<WorkerSlot>> offerIDtoWorkerSlotMap = new HashMap<>();
+      // For every slot that need to be launched, find offer for the slot
+      for (WorkerSlot slot : slotsForTopologiesNeedingAssignments.get(topologyId)) {
         OfferID id = findOffer(slot);
-        if (!slotList.containsKey(id)) {
-          slotList.put(id, new ArrayList<WorkerSlot>());
+        if (!offerIDtoWorkerSlotMap.containsKey(id)) {
+          offerIDtoWorkerSlotMap.put(id, new ArrayList<WorkerSlot>());
         }
-        slotList.get(id).add(slot);
+        /*
+         * Find offer could return "null" or an OfferID
+         * If a port that is specified in the workerSlot if found, findOffer returns the OfferID associated with the port
+         * If a port is not found, findOffer returns null
+         */
+        offerIDtoWorkerSlotMap.get(id).add(slot);
       }
 
-      for (OfferID id : slotList.keySet()) {
-        computeResourcesForSlot(_offers, topologies, toLaunch, topologyId, slotList, id);
+      // At this point, we have a map of OfferID and WorkerSlot in the form of offerIDtoWorkerSlotMap
+      // Note that at this point, we only know that the ports are available on the node. We still have to
+      // find OfferID with enough cpu and memory in-order to launch the workers
+      for (OfferID id : offerIDtoWorkerSlotMap.keySet()) {
+        computeResourcesForSlot(_offers, topologies, toLaunch, topologyId, offerIDtoWorkerSlotMap, id);
       }
     }
 
@@ -600,7 +624,7 @@ public class MesosNimbus implements INimbus {
       LOG.info("Launching tasks for offerId: {} : {}", id.getValue(), launchTaskListToString(tasks));
       for (LaunchTask t : tasks) {
         launchList.add(t.getTask());
-        _usedOffers.put(t.getTask().getTaskId(), t.getOffer());
+        taskIDtoOfferMap.put(t.getTask().getTaskId(), t.getOffer());
       }
 
       List<OfferID> launchOffer = new ArrayList<>();
@@ -610,17 +634,32 @@ public class MesosNimbus implements INimbus {
     }
   }
 
+  /**
+   *  Considering the way this method is invoked - computeResourcesForSlot(_offers, topologies, toLaunch, topologyId, offerIDtoWorkerSlotMap, id) -
+   *  following params can be removed/refactored.
+   *    1) offers - Method could just use the _offers private variable directly.
+   *    2) toLaunch - This should be a return value
+   *    3) offerId/offerIDtoWorkerSlotMap - Passing both of these params is redundant
+   * @param offers                     -  All available offers.
+   * @param topologies                 -  Information about all submitted topologies
+   * @param toLaunch                   -  A map of offerID and list of tasks that needs to be launched using the OfferID
+   * @param topologyId                 -  TopologyId for which we are computing resources
+   * @param offerIDtoWorkerSlotMap     -  Map of OfferID that contains ports for the list of workerSlots
+   * @param offerId                    -  One of the keys in offerIDtoWorkerSlotMap
+   */
   protected void computeResourcesForSlot(final RotatingMap<OfferID, Offer> offers,
                                          Topologies topologies,
                                          Map<OfferID, List<LaunchTask>> toLaunch,
                                          String topologyId,
-                                         Map<OfferID, List<WorkerSlot>> slotList,
-                                         OfferID id) {
-    Offer offer = offers.get(id);
-    List<WorkerSlot> workerSlots = slotList.get(id);
+                                         Map<OfferID, List<WorkerSlot>> offerIDtoWorkerSlotMap,
+                                         OfferID offerId) {
+    Offer offer = offers.get(offerId);
+    List<WorkerSlot> workerSlots = offerIDtoWorkerSlotMap.get(offerId);
     boolean usingExistingOffer = false;
     boolean subtractedExecutorResources = false;
 
+    // For each worker slot corresponding to the offerId
+    // Note: the slot could belong to same topology
     for (WorkerSlot slot : workerSlots) {
       TopologyDetails details = topologies.getById(topologyId);
       String workerPrefix = "";
@@ -631,16 +670,36 @@ public class MesosNimbus implements INimbus {
           .setValue(MesosCommon.taskId(workerPrefix + slot.getNodeId(), slot.getPort()))
           .build();
 
-      if ((id == null || offer == null) && _usedOffers.containsKey(taskId)) {
-        offer = _usedOffers.get(taskId);
+      // taskIDtoOfferMap is unnecessary
+      //    1. OfferID is usable only once - That is if we ask mesos to launch task(s) on an offerID,
+      //       mesos returns remnants as a different offer with a completely different offerID
+      //    2. If MesosNimbus is restarted, all this information is lost.
+      //    3. By not clearing taskIDtoOfferMap at the end of this method, we are only wasting memory
+      // Following if condition to check taskIDtoOfferMap is un-necessary
+      //    1. This function is invoked only once per slot.
+      //    2. If the function is invoked across second time for the same slot, then its either because the task
+      //       was finished/killed. Either way, the old offerId we used to launch the worker is invalid
+      if ((offerId == null || offer == null) && taskIDtoOfferMap.containsKey(taskId)) {
+        offer = taskIDtoOfferMap.get(taskId);
         if (offer != null) {
-          id = offer.getId();
+          offerId = offer.getId();
           usingExistingOffer = true;
         }
       }
-      if (id != null && offer != null) {
-        if (!toLaunch.containsKey(id)) {
-          toLaunch.put(id, new ArrayList<LaunchTask>());
+
+      // Following way of finding resources for the slot is bad!
+      // Suppose we have following offers
+      //     o1 - { host: h1 ports : 31000-32000 }
+      //     o2 - { host: h1 mem : 30000 cpu : 24 }
+      // above offers, because they are fragmented are useless
+      //   1. At this point a worker slot "h1-3000" associated with o1 for instance wouldn't
+      //      be launched because it doesnt have mem and cpu
+      //   2. o2 is useless because it doesnt have any ports and therefore wont be used at all
+      if (offerId != null && offer != null) {
+        // The fact that we are here means that offerId has port. We need to find if offerId also has
+        // enough memory and cpu to launch the worker.
+        if (!toLaunch.containsKey(offerId)) {
+          toLaunch.put(offerId, new ArrayList<LaunchTask>());
         }
         double workerCpu = MesosCommon.topologyWorkerCpu(_conf, details);
         double workerMem = MesosCommon.topologyWorkerMem(_conf, details);
@@ -670,6 +729,10 @@ public class MesosNimbus implements INimbus {
         List<Resource> executorCpuResources = getResourcesScalar(offerResources, executorCpu, "cpus");
         List<Resource> executorMemResources = getResourcesScalar(offerResources, executorMem, "mem");
         List<Resource> executorPortsResources = null;
+
+        // Question(ksoundararaj):
+        // Shouldnt we be validating executorCpuResources and executorCpuResources to ensure they arent
+        // empty or less than what was requested?
         if (!subtractedExecutorResources) {
           offerResources = subtractResourcesScalar(offerResources, executorCpu, "cpus");
           offerResources = subtractResourcesScalar(offerResources, executorMem, "mem");
@@ -694,11 +757,13 @@ public class MesosNimbus implements INimbus {
             offerResources = subtractResourcesRange(offerResources, port, "ports");
           }
         }
+
         Offer remainingOffer = existingBuilder.addAllResources(offerResources).build();
 
         // Update the remaining offer list
-        offers.put(id, remainingOffer);
+        offers.put(offerId, remainingOffer);
 
+        // At this point, hopefully, we have all the resources we need.
         String configUri;
         try {
           configUri = new URL(_configUrl.toURL(), _configUrl.getPath() + "/storm.yaml").toString();
@@ -763,7 +828,7 @@ public class MesosNimbus implements INimbus {
 
         LOG.debug("Launching task: {}", task.toString());
 
-        toLaunch.get(id).add(new LaunchTask(task, newOffer));
+        toLaunch.get(offerId).add(new LaunchTask(task, newOffer));
       }
 
       if (usingExistingOffer) {
