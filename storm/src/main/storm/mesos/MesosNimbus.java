@@ -611,7 +611,7 @@ public class MesosNimbus implements INimbus {
 
       // At this point, we have a map of OfferID and WorkerSlot in the form of offerIDtoWorkerSlotMap
       // Note that at this point, we only know that the ports are available on the node. We still have to
-      // find OfferID with enough cpu and memory in-order to launch the workers
+      // find cpu and memory in-order to launch the workers
       for (OfferID id : offerIDtoWorkerSlotMap.keySet()) {
         computeResourcesForSlot(_offers, topologies, toLaunch, topologyId, offerIDtoWorkerSlotMap, id);
       }
