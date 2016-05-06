@@ -654,13 +654,12 @@ public class MesosNimbus implements INimbus {
                                          String topologyId,
                                          Map<OfferID, List<WorkerSlot>> offerIDtoWorkerSlotMap,
                                          OfferID offerId) {
-    Offer offer = offers.get(offerId);
-    List<WorkerSlot> workerSlots = offerIDtoWorkerSlotMap.get(offerId);
     boolean usingExistingOffer = false;
     boolean subtractedExecutorResources = false;
+    Offer offer = offers.get(offerId);
+    List<WorkerSlot> workerSlots = offerIDtoWorkerSlotMap.get(offerId);
 
-    // For each worker slot corresponding to the offerId
-    // Note: the slot could belong to same topology
+    // Note: As of writing this comment, the workerSlots belong to same topology
     for (WorkerSlot slot : workerSlots) {
       TopologyDetails details = topologies.getById(topologyId);
       String workerPrefix = "";
