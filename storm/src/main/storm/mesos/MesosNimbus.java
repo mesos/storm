@@ -637,7 +637,7 @@ public class MesosNimbus implements INimbus {
 
   /**
    *  Considering the way this method is invoked - computeResourcesForSlot(_offers, topologies, toLaunch, topologyId, offerIDtoWorkerSlotMap, id) -
-   *  following params can be removed/refactored.
+   *  the following params can be removed/refactored.
    *    1) offers - Method could just use the _offers private variable directly.
    *    2) toLaunch - This should be a return value
    *    3) offerId/offerIDtoWorkerSlotMap - Passing both of these params is redundant
@@ -675,7 +675,7 @@ public class MesosNimbus implements INimbus {
       //       mesos returns remnants as a different offer with a completely different offerID
       //    2. If MesosNimbus is restarted, all this information is lost.
       //    3. By not clearing taskIDtoOfferMap at the end of this method, we are only wasting memory
-      // Following if condition to check taskIDtoOfferMap is unnecessary
+      // The following if condition to check taskIDtoOfferMap is unnecessary
       //    1. This function is invoked only once per slot.
       //    2. If the function is invoked a second time for the same slot, then it's either because the task
       //       was finished or killed. Either way, the old offerId we used to launch the worker is invalid
@@ -687,11 +687,11 @@ public class MesosNimbus implements INimbus {
         }
       }
 
-      // Following way of finding resources for the slot is bad!
-      // Suppose we have following offers
+      // The following way of finding resources for the slot is bad!
+      // Suppose we have the following offers:
       //     o1 - { host: h1 ports : 31000-32000 }
       //     o2 - { host: h1 mem : 30000 cpu : 24 }
-      // above offers, because they are fragmented are useless
+      // because the offers are fragmented, they are useless
       //   1. At this point a worker slot "h1-3000" associated with o1 for instance wouldn't
       //      be launched because it doesn't have mem and cpu
       //   2. o2 is useless because it doesn't have any ports and therefore won't be used at all
