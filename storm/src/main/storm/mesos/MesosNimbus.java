@@ -677,8 +677,8 @@ public class MesosNimbus implements INimbus {
       //    3. By not clearing taskIDtoOfferMap at the end of this method, we are only wasting memory
       // Following if condition to check taskIDtoOfferMap is unnecessary
       //    1. This function is invoked only once per slot.
-      //    2. If the function is invoked across second time for the same slot, then its either because the task
-      //       was finished/killed. Either way, the old offerId we used to launch the worker is invalid
+      //    2. If the function is invoked a second time for the same slot, then it's either because the task
+      //       was finished or killed. Either way, the old offerId we used to launch the worker is invalid
       if ((offerId == null || offer == null) && taskIDtoOfferMap.containsKey(taskId)) {
         offer = taskIDtoOfferMap.get(taskId);
         if (offer != null) {
