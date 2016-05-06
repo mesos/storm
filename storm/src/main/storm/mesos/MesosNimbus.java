@@ -693,10 +693,10 @@ public class MesosNimbus implements INimbus {
       //     o2 - { host: h1 mem : 30000 cpu : 24 }
       // above offers, because they are fragmented are useless
       //   1. At this point a worker slot "h1-3000" associated with o1 for instance wouldn't
-      //      be launched because it doesnt have mem and cpu
-      //   2. o2 is useless because it doesnt have any ports and therefore wont be used at all
+      //      be launched because it doesn't have mem and cpu
+      //   2. o2 is useless because it doesn't have any ports and therefore won't be used at all
       if (offerId != null && offer != null) {
-        // The fact that we are here means that offerId has port. We need to find if offerId also has
+        // The fact that we are here means that this offer has a port. We need to find if it also has
         // enough memory and cpu to launch the worker.
         if (!toLaunch.containsKey(offerId)) {
           toLaunch.put(offerId, new ArrayList<LaunchTask>());
@@ -731,7 +731,7 @@ public class MesosNimbus implements INimbus {
         List<Resource> executorPortsResources = null;
 
         // Question(ksoundararaj):
-        // Shouldnt we be validating executorCpuResources and executorCpuResources to ensure they arent
+        // Shouldn't we be validating executorCpuResources and executorCpuResources to ensure they aren't
         // empty or less than what was requested?
         if (!subtractedExecutorResources) {
           offerResources = subtractResourcesScalar(offerResources, executorCpu, "cpus");
