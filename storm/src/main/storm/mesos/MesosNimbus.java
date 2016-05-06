@@ -612,7 +612,7 @@ public class MesosNimbus implements INimbus {
 
       // At this point, we have a map of OfferID and WorkerSlot in the form of offerIDtoWorkerSlotMap
       // Note that at this point, we only know that the ports are available on the node. We still have to
-      // find cpu and memory in-order to launch the workers
+      // find cpu and memory in order to launch the workers
       for (OfferID id : offerIDtoWorkerSlotMap.keySet()) {
         computeResourcesForSlot(_offers, topologies, toLaunch, topologyId, offerIDtoWorkerSlotMap, id);
       }
@@ -675,7 +675,7 @@ public class MesosNimbus implements INimbus {
       //       mesos returns remnants as a different offer with a completely different offerID
       //    2. If MesosNimbus is restarted, all this information is lost.
       //    3. By not clearing taskIDtoOfferMap at the end of this method, we are only wasting memory
-      // Following if condition to check taskIDtoOfferMap is un-necessary
+      // Following if condition to check taskIDtoOfferMap is unnecessary
       //    1. This function is invoked only once per slot.
       //    2. If the function is invoked across second time for the same slot, then its either because the task
       //       was finished/killed. Either way, the old offerId we used to launch the worker is invalid
