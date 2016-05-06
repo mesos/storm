@@ -561,7 +561,8 @@ public class MesosNimbus implements INimbus {
    *  This method is invoked after IScheduler.schedule assigns the worker slots to the topologies that need assignments
    *
    *  @param topologies                             - Information about all topologies
-   *  @param slotsForTopologiesNeedingAssignments   - A key value pair of topology name and collection of worker slots that are assigned to the topology
+   *  @param slotsForTopologiesNeedingAssignments   - A map of topology name and collection of worker slots that are assigned to the topology 
+   *                                                  that need assignments
    */
   @Override
   public void assignSlots(Topologies topologies, Map<String, Collection<WorkerSlot>> slotsForTopologiesNeedingAssignments) {
@@ -587,13 +588,13 @@ public class MesosNimbus implements INimbus {
 
   /**
    *  @param topologies                             - Information about all submitted topologies
-   *  @param slotsForTopologiesNeedingAssignments   - A key value pair of topology name and collection of worker slots that are assigned to the topology
+   *  @param slotsForTopologiesNeedingAssignments   - A map of topology name and collection of worker slots that are assigned to the topology 
+   *                                                  that need assignments
    */
   protected void computeLaunchList(Topologies topologies, Map<String, Collection<WorkerSlot>> slotsForTopologiesNeedingAssignments) {
     Map<OfferID, List<LaunchTask>> toLaunch = new HashMap<>();
     // For every topology that needs assignment
     for (String topologyId : slotsForTopologiesNeedingAssignments.keySet()) {
-      // Get a list of worker slots assigned
       Map<OfferID, List<WorkerSlot>> offerIDtoWorkerSlotMap = new HashMap<>();
       // Find a corresponding offer for every slot that needs to be launched
       for (WorkerSlot slot : slotsForTopologiesNeedingAssignments.get(topologyId)) {
