@@ -566,7 +566,7 @@ public class MesosNimbus implements INimbus {
    */
   @Override
   public void assignSlots(Topologies topologies, Map<String, Collection<WorkerSlot>> slotsForTopologiesNeedingAssignments) {
-    if (slotsForTopologiesNeedingAssignments.size() == 0) {
+    if (slotsForTopologiesNeedingAssignments.isEmpty()) {
       LOG.debug("assignSlots: no slots passed in, nothing to do");
       return;
     }
