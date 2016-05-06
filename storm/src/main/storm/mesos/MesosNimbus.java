@@ -561,7 +561,7 @@ public class MesosNimbus implements INimbus {
    *  This method is invoked after IScheduler.schedule assigns the worker slots to the topologies that need assignments
    *
    *  @param topologies                             - Information about all topologies
-   *  @param slotsForTopologiesNeedingAssignments   - A map of topology name and collection of worker slots that are assigned to the topology 
+   *  @param slotsForTopologiesNeedingAssignments   - A map of topology name and collection of worker slots that are assigned to the topology
    *                                                  that need assignments
    */
   @Override
@@ -588,7 +588,7 @@ public class MesosNimbus implements INimbus {
 
   /**
    *  @param topologies                             - Information about all submitted topologies
-   *  @param slotsForTopologiesNeedingAssignments   - A map of topology name and collection of worker slots that are assigned to the topology 
+   *  @param slotsForTopologiesNeedingAssignments   - A map of topology name and collection of worker slots that are assigned to the topology
    *                                                  that need assignments
    */
   protected void computeLaunchList(Topologies topologies, Map<String, Collection<WorkerSlot>> slotsForTopologiesNeedingAssignments) {
