@@ -570,7 +570,7 @@ public class MesosNimbus implements INimbus {
       return;
     }
 
-    // This is purely to print the debug information. Otherwise, the following for loop is unnecessry.
+    // This is purely to print the debug information. Otherwise, the following for loop is unnecessary.
     for (Map.Entry<String, Collection<WorkerSlot>> topologyToSlots : slotsForTopologiesNeedingAssignments.entrySet()) {
       String topologyId = topologyToSlots.getKey();
       for (WorkerSlot slot : topologyToSlots.getValue()) {
@@ -587,7 +587,7 @@ public class MesosNimbus implements INimbus {
 
   /**
    *  @param topologies                             - Information about all submitted topologies
-   *  @param slotsForTopologiesNeedingAssignments   - A key value pair of topology name and collection of worker slotsForTopologiesNeedingAssignments that are assigned to the topology
+   *  @param slotsForTopologiesNeedingAssignments   - A key value pair of topology name and collection of worker slots that are assigned to the topology
    */
   protected void computeLaunchList(Topologies topologies, Map<String, Collection<WorkerSlot>> slotsForTopologiesNeedingAssignments) {
     Map<OfferID, List<LaunchTask>> toLaunch = new HashMap<>();
@@ -595,7 +595,7 @@ public class MesosNimbus implements INimbus {
     for (String topologyId : slotsForTopologiesNeedingAssignments.keySet()) {
       // Get a list of worker slots assigned
       Map<OfferID, List<WorkerSlot>> offerIDtoWorkerSlotMap = new HashMap<>();
-      // For every slot that need to be launched, find offer for the slot
+      // Find a corresponding offer for every slot that needs to be launched
       for (WorkerSlot slot : slotsForTopologiesNeedingAssignments.get(topologyId)) {
         OfferID id = findOffer(slot);
         if (!offerIDtoWorkerSlotMap.containsKey(id)) {
