@@ -604,7 +604,7 @@ public class MesosNimbus implements INimbus {
         }
         /*
          * Find offer could return "null" or an OfferID
-         * If a port that is specified in the workerSlot if found, findOffer returns the OfferID associated with the port
+         * If a port that is specified in the workerSlot is found, findOffer returns the OfferID associated with the port
          * If a port is not found, findOffer returns null
          */
         offerIDtoWorkerSlotMap.get(id).add(slot);
