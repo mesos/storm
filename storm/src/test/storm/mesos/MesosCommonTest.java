@@ -19,9 +19,14 @@ package storm.mesos;
 
 import backtype.storm.generated.StormTopology;
 import backtype.storm.scheduler.TopologyDetails;
+import org.apache.mesos.Protos;
 import org.junit.Before;
 import org.junit.Test;
+import storm.mesos.resources.OfferResources;
+import storm.mesos.resources.ReservationType;
+import storm.mesos.resources.ResourceType;
 import storm.mesos.util.MesosCommon;
+import storm.mesos.util.RotatingMap;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -35,7 +40,13 @@ public class MesosCommonTest {
   private TopologyDetails info;
   private String topologyName = "t_name";
   private static final double DELTA = 0.0001;
+  private final MesosNimbus mesosNimbus;
 
+  public MesosCommonTest() {
+    Map mesosStromConfig = new HashMap();
+    mesosNimbus = new MesosNimbus();
+    mesosNimbus.initializeMesosStormConf(mesosStromConfig, "/mock");
+  }
 
   @Before
   public void initConf() {
@@ -150,10 +161,10 @@ public class MesosCommonTest {
   @Test
   public void testStartLogViewer() throws Exception {
     // Test the default (true)
-    boolean result = MesosCommon.startLogViewer(conf);
+    boolean result = MesosCommon.autoStartLogViewer(conf);
     assertTrue(result);
     conf.put(MesosCommon.AUTO_START_LOGVIEWER_CONF, false);
-    result = MesosCommon.startLogViewer(conf);
+    result = MesosCommon.autoStartLogViewer(conf);
     assertTrue(!result);
   }
 
@@ -316,5 +327,33 @@ public class MesosCommonTest {
     result = MesosCommon.executorMem(conf);
     expectedResult = 100;
     assertEquals(result, expectedResult, DELTA);
+  }
+
+  @Test
+  public void getConsolidatedOfferResourcesPerNode() {
+    RotatingMap<Protos.OfferID, Protos.Offer> r = new RotatingMap(2);
+    Protos.Offer offer = TestUtils.buildOffer("0-1", "h1", 0, 0);
+    r.put(offer.getId(), offer);
+    offer = TestUtils.buildOffer("0-2", "h1", 10, 1000);
+    r.put(offer.getId(), offer);
+    offer = TestUtils.buildOfferWithReservation("0-1", "h1", 0, 0, 200, 2000);
+    r.put(offer.getId(), offer);
+
+    offer = TestUtils.buildOffer("0-3", "h2", 0, 0);
+    r.put(offer.getId(), offer);
+    offer = TestUtils.buildOfferWithPorts("O-4", "h2", 0, 0, 1, 100);
+    r.put(offer.getId(), offer);
+
+    Map<String, OfferResources> offerResourcesMap = MesosCommon.getConsolidatedOfferResourcesPerNode(r);
+    OfferResources offerResources = offerResourcesMap.get("h1");
+    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU) == 210);
+    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM) == 3000);
+    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU, ReservationType.STATICALLY_RESERVED) == 200);
+    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM, ReservationType.STATICALLY_RESERVED) == 2000);
+    assertTrue(TestUtils.calculateAllAvailableRangeResources(offerResources, ResourceType.PORTS, ReservationType.STATICALLY_RESERVED).size() == 0);
+    offerResources = offerResourcesMap.get("h2");
+    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU, ReservationType.STATICALLY_RESERVED) == 0);
+    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM, ReservationType.STATICALLY_RESERVED) == 0);
+    assertTrue(TestUtils.calculateAllAvailableRangeResources(offerResources, ResourceType.PORTS, ReservationType.UNRESERVED).size() == 100);
   }
 }

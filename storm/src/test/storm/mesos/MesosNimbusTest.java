@@ -17,304 +17,451 @@
  */
 package storm.mesos;
 
-import backtype.storm.generated.StormTopology;
 import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
+import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.Offer;
 import org.apache.mesos.Protos.OfferID;
+import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
+import storm.mesos.resources.OfferResources;
+import storm.mesos.resources.ReservationType;
+import storm.mesos.resources.Resource;
+import storm.mesos.resources.ResourceType;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
 
-import java.net.URI;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 // TODO(dskarthick) : Leverage the build methods defined in TestUtils function.
 public class MesosNimbusTest {
 
-  @Test
-  public void testGetResourcesScalar() throws Exception {
-    MesosNimbus mesosNimbus = new MesosNimbus();
+  public static final Integer DEFAULT_WORKER_COUNT = 2;
+  public static final Integer DEFAULT_BUCKET_COUNT = 2;
+  public static final String FRAMEWORK_ROLE = "staas";
 
-    assertEquals(
-        Arrays.asList(TestUtils.buildScalarResource("cpus", 1.0)),
-        mesosNimbus.getResourcesScalar(
-            TestUtils.buildResourceList(1, 2, 3, 4),
-            1.0,
-            "cpus"
-        )
-    );
+  private RotatingMap<OfferID, Offer> rotatingMap = null;
+  Map<String, Collection<WorkerSlot>> slotsForTopologiesNeedingAssignments = null;
+  MesosNimbus mesosNimbus = null;
+  Map<String, String> mesosStormConf;
 
-    assertEquals(
-        Arrays.asList(TestUtils.buildScalarResource("mem", 2.0)),
-        mesosNimbus.getResourcesScalar(
-            TestUtils.buildResourceList(1, 2, 3, 4),
-            2.0,
-            "mem"
-        )
-    );
+  private boolean hasResources(String role, List<Protos.Resource> resourceList, Double cpus, Double mem, Long port) {
+    Double actualCpu = 0.0d, actualMem = 0.0d;
+    List<Long> expectedPorts = new ArrayList<>();
+    expectedPorts.add(port);
 
-    assertEquals(
-        Arrays.asList(
-            TestUtils.buildScalarResource("cpus", 1.0),
-            TestUtils.buildScalarResourceWithRole("cpus", 1.0, "reserved")
-        ),
-        mesosNimbus.getResourcesScalar(
-            TestUtils.buildResourceList(1, 2, 3, 4),
-            2.0,
-            "cpus"
-        )
-    );
-
-    assertEquals(
-        Arrays.asList(
-            TestUtils.buildScalarResource("mem", 2.0),
-            TestUtils.buildScalarResourceWithRole("mem", 1.0, "reserved")
-        ),
-        mesosNimbus.getResourcesScalar(
-            TestUtils.buildResourceList(1, 2, 3, 4),
-            3.0,
-            "mem"
-        )
-    );
-
-    assertEquals(
-        Arrays.asList(
-            TestUtils.buildScalarResource("cpus", 1.0),
-            TestUtils.buildScalarResourceWithRole("cpus", 3.0, "reserved")
-        ),
-        mesosNimbus.getResourcesScalar(
-            TestUtils.buildResourceList(1, 2, 3, 4),
-            4.0,
-            "cpus"
-        )
-    );
-
-    assertEquals(
-        Arrays.asList(
-            TestUtils.buildScalarResource("mem", 2.0),
-            TestUtils.buildScalarResourceWithRole("mem", 4.0, "reserved")
-        ),
-        mesosNimbus.getResourcesScalar(
-            TestUtils.buildResourceList(1, 2, 3, 4),
-            6.0,
-            "mem"
-        )
-    );
-
-    assertEquals(
-        Arrays.asList(
-            TestUtils.buildScalarResource("cpus", 1.0),
-            TestUtils.buildScalarResourceWithRole("cpus", 0.5, "reserved")
-        ),
-        mesosNimbus.getResourcesScalar(
-            TestUtils.buildResourceList(1, 2, 3, 4),
-            1.5,
-            "cpus"
-        )
-    );
-
-    assertEquals(
-        Arrays.asList(
-            TestUtils.buildScalarResource("mem", 2.0),
-            TestUtils.buildScalarResourceWithRole("mem", 0.5, "reserved")
-        ),
-        mesosNimbus.getResourcesScalar(
-            TestUtils.buildResourceList(1, 2, 3, 4),
-            2.5,
-            "mem"
-        )
-    );
-  }
-
-  @Test
-  public void testSubtractResourcesScalar() throws Exception {
-    MesosNimbus mesosNimbus = new MesosNimbus();
-
-    assertEquals(
-        Arrays.asList(
-            TestUtils.buildScalarResource("mem", 2.0),
-            TestUtils.buildScalarResourceWithRole("cpus", 3.0, "reserved"),
-            TestUtils.buildScalarResourceWithRole("mem", 4.0, "reserved")
-        ),
-        mesosNimbus.subtractResourcesScalar(
-            TestUtils.buildResourceList(1, 2, 3, 4),
-            1.0,
-            "cpus"
-        )
-    );
-
-    assertEquals(
-        Arrays.asList(
-            TestUtils.buildScalarResource("cpus", 1.0),
-            TestUtils.buildScalarResource("mem", 1.0),
-            TestUtils.buildScalarResourceWithRole("cpus", 3.0, "reserved"),
-            TestUtils.buildScalarResourceWithRole("mem", 4.0, "reserved")
-        ),
-        mesosNimbus.subtractResourcesScalar(
-            TestUtils.buildResourceList(1, 2, 3, 4),
-            1.0,
-            "mem"
-        )
-    );
-
-    assertEquals(
-        Arrays.asList(
-            TestUtils.buildScalarResource("mem", 2.0),
-            TestUtils.buildScalarResourceWithRole("cpus", 2.5, "reserved"),
-            TestUtils.buildScalarResourceWithRole("mem", 4.0, "reserved")
-        ),
-        mesosNimbus.subtractResourcesScalar(
-            TestUtils.buildResourceList(1, 2, 3, 4),
-            1.5,
-            "cpus"
-        )
-    );
-
-    assertEquals(
-      Arrays.asList(
-        TestUtils.buildScalarResource("cpus", 1.0),
-        TestUtils.buildScalarResourceWithRole("cpus", 3.0, "reserved"),
-        TestUtils.buildScalarResourceWithRole("mem", 3.5, "reserved")
-      ),
-      mesosNimbus.subtractResourcesScalar(
-        TestUtils.buildResourceList(1, 2, 3, 4),
-        2.5,
-        "mem"
-      )
-    );
-  }
-
-  @Test
-  public void testGetResourcesRange() throws Exception {
-    MesosNimbus mesosNimbus = new MesosNimbus();
-
-    assertEquals(
-        Arrays.asList(
-            TestUtils.buildRangeResource("ports", 100, 100)
-        ),
-        mesosNimbus.getResourcesRange(
-            TestUtils.buildRangeResourceList(100, 100),
-            100,
-            "ports"
-        )
-    );
-
-    assertEquals(
-        Arrays.asList(
-            TestUtils.buildRangeResource("ports", 105, 105)
-        ),
-        mesosNimbus.getResourcesRange(
-            TestUtils.buildRangeResourceList(100, 200),
-            105,
-            "ports"
-        )
-    );
-
-    assertEquals(
-        0,
-        mesosNimbus.getResourcesRange(
-            TestUtils.buildRangeResourceList(100, 100),
-            200,
-            "ports"
-        ).size()
-    );
-  }
-
-
-  @Test
-  public void testSubtractResourcesRange() throws Exception {
-    MesosNimbus mesosNimbus = new MesosNimbus();
-
-    assertEquals(
-        Arrays.asList(
-            TestUtils.buildScalarResource("cpus", 1.0),
-            TestUtils.buildScalarResource("mem", 2.0),
-            TestUtils.buildScalarResourceWithRole("cpus", 3.0, "reserved"),
-            TestUtils.buildScalarResourceWithRole("mem", 4.0, "reserved")
-        ),
-        mesosNimbus.subtractResourcesRange(
-            TestUtils.buildRangeResourceList(100, 100),
-            100,
-            "ports"
-        )
-    );
-
-    assertEquals(
-      Arrays.asList(
-        TestUtils.buildMultiRangeResource("ports", 100, 104, 106, 200),
-        TestUtils.buildMultiRangeResourceWithRole("ports", 100, 104, 106, 200, "reserved"),
-        TestUtils.buildScalarResource("cpus", 1.0),
-        TestUtils.buildScalarResource("mem", 2.0),
-        TestUtils.buildScalarResourceWithRole("cpus", 3.0, "reserved"),
-        TestUtils.buildScalarResourceWithRole("mem", 4.0, "reserved")
-      ),
-      mesosNimbus.subtractResourcesRange(
-        TestUtils.buildRangeResourceList(100, 200),
-        105,
-        "ports"
-      )
-    );
-  }
-
-
-  @Test
-  public void testComputeResourcesForSlot() throws Exception {
-    MesosNimbus mesosNimbus = new MesosNimbus();
-
-    mesosNimbus._configUrl = new URI("http://127.0.0.1/");
-
-    OfferID offerId = OfferID.newBuilder().setValue("derp").build();
-    RotatingMap<OfferID, Offer> offers = new RotatingMap<>(
-        new RotatingMap.ExpiredCallback<OfferID, Offer>() {
-          @Override
-          public void expire(OfferID key, Offer val) {
+    List<Long> actualPorts = new ArrayList<>();
+    for (Protos.Resource resource : resourceList) {
+      if (!resource.getRole().equals(role)) {
+        continue;
+      }
+      ResourceType r = ResourceType.of(resource.getName());
+      switch (r) {
+        case CPU:
+          actualCpu += resource.getScalar().getValue();
+          break;
+        case MEM:
+          actualMem += resource.getScalar().getValue();
+          break;
+        case PORTS:
+          Protos.Value.Ranges ranges = resource.getRanges();
+          for (Protos.Value.Range range : ranges.getRangeList()) {
+            for (long i = 0; i < (range.getEnd() - range.getBegin() + 1); i++) {
+              actualPorts.add(range.getBegin() + i);
+            }
           }
-        }
-    );
+      }
+    }
 
-    offers.put(
-        offerId,
-        TestUtils.buildOfferWithPorts("offer1", "host1.west", 2.0, 2048, 1000, 1000)
-    );
+    boolean hasPorts = (expectedPorts.size() == actualPorts.size()) && expectedPorts.containsAll(actualPorts);
+    return actualCpu.equals(cpus) && actualMem.equals(mem) && hasPorts;
+  }
 
-    HashMap<String, TopologyDetails> topologyMap = new HashMap<>();
-    Map conf = new HashMap<>();
-    conf.put(MesosCommon.WORKER_CPU_CONF, 1);
-    conf.put(MesosCommon.WORKER_MEM_CONF, 1024);
-    conf.put(MesosCommon.EXECUTOR_CPU_CONF, 1);
-    conf.put(MesosCommon.EXECUTOR_MEM_CONF, 1024);
-    conf.put(MesosNimbus.CONF_EXECUTOR_URI, "");
-    mesosNimbus._conf = conf;
+  private boolean hasResources(List<Protos.Resource> resourceList, Double cpus, Double mem, Long port) {
+    Double actualCpu = 0.0d, actualMem = 0.0d;
+    List<Long> expectedPorts = new ArrayList<>();
+    expectedPorts.add(port);
 
-    topologyMap.put("t1", new TopologyDetails("t1", conf, new StormTopology(), 5));
-    HashMap<OfferID, List<LaunchTask>> launchList = new HashMap<>();
-    HashMap<OfferID, List<WorkerSlot>> slotList = new HashMap<>();
-    slotList.put(offerId, Arrays.asList(new WorkerSlot("", 1000)));
-    Topologies topologies = new Topologies(topologyMap);
+    List<Long> actualPorts = new ArrayList<>();
+    for (Protos.Resource resource : resourceList) {
+      ResourceType r = ResourceType.of(resource.getName());
+      switch (r) {
+        case CPU:
+          actualCpu += resource.getScalar().getValue();
+          break;
+        case MEM:
+          actualMem += resource.getScalar().getValue();
+          break;
+        case PORTS:
+          Protos.Value.Ranges ranges = resource.getRanges();
+          for (Protos.Value.Range range : ranges.getRangeList()) {
+            for (long i = 0; i < (range.getEnd() - range.getBegin() + 1); i++) {
+              actualPorts.add(range.getBegin() + i);
+            }
+          }
+      }
+    }
 
-    mesosNimbus.computeResourcesForSlot(
-        offers,
-        topologies,
-        launchList,
-        "t1",
-        slotList,
-        OfferID.newBuilder().setValue("derp").build()
-    );
-    assertEquals(1, launchList.size());
-    assertEquals(1, launchList.get(offerId).size());
+    boolean hasPorts = (expectedPorts.size() == actualPorts.size()) && expectedPorts.containsAll(actualPorts);
+    return actualCpu.equals(cpus) && actualMem.equals(mem) && hasPorts;
+  }
 
-    assertEquals(
-        TestUtils.buildScalarResource("cpus", 1.0),
-        launchList.get(offerId).get(0).getTask().getResources(0)
-    );
+  private boolean hasResources(List<Protos.Resource> resourceList, Double cpus, Double mem) {
+    Double actualCpu = 0.0d, actualMem = 0.0d;
 
-    assertEquals(0, offers.get(offerId).getResourcesCount());
+    for (Protos.Resource resource : resourceList) {
+      ResourceType r = ResourceType.of(resource.getName());
+      switch (r) {
+        case CPU:
+          actualCpu += resource.getScalar().getValue();
+          break;
+        case MEM:
+          actualMem += resource.getScalar().getValue();
+          break;
+      }
+    }
+
+    return actualCpu.equals(cpus) && actualMem.equals(mem);
+  }
+
+  private boolean hasResources(String role, Protos.TaskInfo taskInfo, Double cpus, Double mem) {
+    Double actualCpu = 0.0d, actualMem = 0.0d;
+
+    for (Protos.Resource resource : taskInfo.getResourcesList()) {
+      ResourceType r = ResourceType.of(resource.getName());
+      if (!resource.getRole().equals(role)) {
+        continue;
+      }
+      switch (r) {
+        case CPU:
+          actualCpu += resource.getScalar().getValue();
+          break;
+        case MEM:
+          actualMem += resource.getScalar().getValue();
+          break;
+      }
+    }
+
+    return actualCpu.equals(cpus) && actualMem.equals(mem);
+  }
+
+  private boolean hasResources(Protos.TaskInfo taskInfo, Double cpus, Double mem, Long port) {
+    return hasResources(taskInfo.getResourcesList(), cpus, mem, port);
+  }
+
+  private boolean hasResources(Protos.TaskInfo taskInfo, Double cpus, Double mem) {
+    return hasResources(taskInfo.getResourcesList(), cpus, mem);
+  }
+
+  private boolean hasResources(String role, Protos.TaskInfo taskInfo, Double cpus, Double mem, Long port) {
+    return hasResources(role, taskInfo.getResourcesList(), cpus, mem, port);
+  }
+
+  private boolean hasCorrectExecutorResources(List<Protos.TaskInfo> taskInfoList) {
+    for (Protos.TaskInfo taskInfo : taskInfoList) {
+      if (!hasResources(taskInfo.getExecutor().getResourcesList(), MesosCommon.DEFAULT_EXECUTOR_CPU, MesosCommon.DEFAULT_EXECUTOR_MEM_MB)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private String getTopologyIdFromTaskName(String taskName) {
+    String info[] = taskName.split("\\|");
+    return info[1];
+  }
+
+  private Map<String, List<Protos.TaskInfo>> getTopologyIDtoTaskInfoMap(List<Protos.TaskInfo> taskInfoList) {
+    Map<String, List<Protos.TaskInfo>> topologyIDtoTaskInfoMap = new HashMap<>();
+
+    for (Protos.TaskInfo taskInfo: taskInfoList) {
+      String topologyId = getTopologyIdFromTaskName(taskInfo.getName()).trim();
+      if (!topologyIDtoTaskInfoMap.containsKey(topologyId)) {
+        topologyIDtoTaskInfoMap.put(topologyId, new ArrayList<Protos.TaskInfo>());
+      }
+      topologyIDtoTaskInfoMap.get(topologyId).add(taskInfo);
+    }
+    return topologyIDtoTaskInfoMap;
+  }
+
+  @Before
+  public void initialize() {
+    rotatingMap = new RotatingMap<>(DEFAULT_BUCKET_COUNT);
+    slotsForTopologiesNeedingAssignments = new HashMap<>();
+
+    mesosStormConf = new HashMap<>();
+    mesosStormConf.put(MesosNimbus.CONF_EXECUTOR_URI, "/fake/path/to/storm-mesos.tgz");
+    mesosStormConf.put(MesosCommon.CONF_MESOS_ROLE, FRAMEWORK_ROLE);
+    mesosNimbus = Mockito.spy(new MesosNimbus());
+
+    mesosNimbus.initializeMesosStormConf(mesosStormConf, "/mock");
+    Mockito.doReturn("http://127.0.0.1/").when(mesosNimbus).getFullConfigUri();
+  }
+
+  @Test
+  public void testGetTasksToLaunchWhenNoTopologiesNeedAssignments() {
+    TopologyDetails t1 = TestUtils.constructTopologyDetails("t1",
+                                                            MesosNimbusTest.DEFAULT_WORKER_COUNT,
+                                                            MesosCommon.DEFAULT_WORKER_CPU,
+                                                            MesosCommon.DEFAULT_WORKER_MEM_MB);
+    Map<String, TopologyDetails> topologyDetailsMap = new HashMap<>();
+    topologyDetailsMap.put("t1", t1);
+
+    Topologies topologies = new Topologies(topologyDetailsMap);
+
+    Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    Map<String, Collection<WorkerSlot>> workerSlotsMap = new HashMap<>();
+
+    Map<String,List<Protos.TaskInfo>> tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+
+    assertTrue(tasksToLaunch.isEmpty());
+  }
+
+  @Test
+  public void testGetTasksToLaunchForOneTopologyWithOneOffer() {
+    TopologyDetails t1 = TestUtils.constructTopologyDetails("t1",
+                                                            MesosNimbusTest.DEFAULT_WORKER_COUNT,
+                                                            MesosCommon.DEFAULT_WORKER_CPU,
+                                                            MesosCommon.DEFAULT_WORKER_MEM_MB);
+    Map m = t1.getConf();
+    Map<String, TopologyDetails> topologyDetailsMap = new HashMap<>();
+    topologyDetailsMap.put("t1", t1);
+
+    Topologies topologies = new Topologies(topologyDetailsMap);
+
+    // One offer with sufficient resources
+    Offer offer = TestUtils.buildOfferWithPorts("O-1", "h1", 24, 40000, 3100, 3200);
+    rotatingMap.put(offer.getId(), offer);
+
+    Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    Map<String, Collection<WorkerSlot>> workerSlotsMap = new HashMap<>();
+    Collection<WorkerSlot> workerSlots = new ArrayList<>();
+    workerSlots.add(new WorkerSlot("h1", 3100));
+    workerSlotsMap.put("t1", workerSlots);
+
+    Map<String,List<Protos.TaskInfo>> tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+
+    assertTrue((tasksToLaunch.size() == 1) && (tasksToLaunch.get("h1").size() == 1));
+
+    // One offer with sufficient resources spread across reserved and unreserved resources
+    offer = TestUtils.buildOfferWithReservationAndPorts("O-1", "h1", 0.75, 750, 0.75, 850, 3100, 3101);
+    rotatingMap.put(offer.getId(), offer);
+
+    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    workerSlotsMap = new HashMap<>();
+    workerSlots = new ArrayList<>();
+    workerSlots.add(new WorkerSlot("h1", 3100));
+    workerSlotsMap.put("t1", workerSlots);
+
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+
+    assertTrue((tasksToLaunch.size() == 1) && (tasksToLaunch.get("h1").size() == 1));
+    assertTrue(hasResources(FRAMEWORK_ROLE, tasksToLaunch.get("h1").get(0), 0.75 - MesosCommon.DEFAULT_EXECUTOR_CPU, 850 - MesosCommon.DEFAULT_EXECUTOR_MEM_MB));
+    assertTrue(hasResources("*", tasksToLaunch.get("h1").get(0), 0.35, 650.0));
+    assertTrue(hasCorrectExecutorResources(tasksToLaunch.get("h1")));
+    assertEquals(0.4f, TestUtils.calculateAllAvailableScalarResources(offerResourcesPerNode.get("h1"), ResourceType.CPU), 0.01f);
+    assertEquals(100f, TestUtils.calculateAllAvailableScalarResources(offerResourcesPerNode.get("h1"), ResourceType.MEM), 0.01f);
+
+    // One offer with only reserved resources
+    offer = TestUtils.buildOfferWithReservationAndPorts("O-1", "h1", 0, 0, 1.5, 1600, 3100, 3101);
+    rotatingMap.put(offer.getId(), offer);
+
+    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    workerSlotsMap = new HashMap<>();
+    workerSlots = new ArrayList<>();
+    workerSlots.add(new WorkerSlot("h1", 3100));
+    workerSlotsMap.put("t1", workerSlots);
+
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+
+    assertTrue((tasksToLaunch.size() == 1) && (tasksToLaunch.get("h1").size() == 1));
+    assertTrue(hasResources(FRAMEWORK_ROLE, tasksToLaunch.get("h1").get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB));
+    assertTrue(hasCorrectExecutorResources(tasksToLaunch.get("h1")));
+    assertEquals(TestUtils.calculateAllAvailableScalarResources(offerResourcesPerNode.get("h1"), ResourceType.CPU), 0.4f, 0.01f);
+    assertEquals(TestUtils.calculateAllAvailableScalarResources(offerResourcesPerNode.get("h1"), ResourceType.MEM), 100f, 0.01f);
+
+    // Offer with Insufficient cpu
+    offer = TestUtils.buildOfferWithPorts("O-1", "h1", 0, 40000, 3100, 3200);
+    rotatingMap.put(offer.getId(), offer);
+
+    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    assertTrue(tasksToLaunch.isEmpty());
+
+    // Offer with Insufficient Mem for both executor and worker combined
+    offer = TestUtils.buildOfferWithPorts("O-1", "h1", 24, 900, 3100, 3200);
+    rotatingMap.put(offer.getId(), offer);
+
+    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    assertTrue(tasksToLaunch.isEmpty());
+
+    // Offer with Insufficient Mem for executor
+    offer = TestUtils.buildOfferWithPorts("O-1", "h1", 24, 1400, 3100, 3200);
+    rotatingMap.put(offer.getId(), offer);
+
+    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    assertTrue(tasksToLaunch.isEmpty());
+
+    // One offer with Insufficient ports
+    offer = TestUtils.buildOffer("O-1", "h1", 24, 4000);
+    rotatingMap.put(offer.getId(), offer);
+
+    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    assertTrue(tasksToLaunch.isEmpty());
+  }
+
+  @Test
+  public void testGetTasksToLaunchForOneTopologyWithMultipleOffersOnSameHost() {
+    TopologyDetails t1 = TestUtils.constructTopologyDetails("t1",
+                                                            MesosNimbusTest.DEFAULT_WORKER_COUNT,
+                                                            MesosCommon.DEFAULT_WORKER_CPU,
+                                                            MesosCommon.DEFAULT_WORKER_MEM_MB);
+    Map<String, TopologyDetails> topologyDetailsMap = new HashMap<>();
+    topologyDetailsMap.put("t1", t1);
+
+    Topologies topologies = new Topologies(topologyDetailsMap);
+
+    Offer offer = TestUtils.buildOffer("O-1", "h1", 0, 40000);
+    rotatingMap.put(offer.getId(), offer);
+    offer = TestUtils.buildOffer("O-2", "h1", 24, 0);
+    rotatingMap.put(offer.getId(), offer);
+    offer = TestUtils.buildOfferWithPorts("O-3", "h1", 0, 0, 3100, 3200);
+    rotatingMap.put(offer.getId(), offer);
+
+    Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    Map<String, Collection<WorkerSlot>> workerSlotsMap = new HashMap<>();
+    Collection<WorkerSlot> workerSlots = new ArrayList<>();
+    workerSlots.add(new WorkerSlot("h1", 3100));
+    workerSlotsMap.put("t1", workerSlots);
+    Map<String,List<Protos.TaskInfo>> tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    assertTrue((tasksToLaunch.size() == 1) && (tasksToLaunch.get("h1").size() == 1));
+    List<Protos.TaskInfo> taskInfoList = tasksToLaunch.get("h1");
+    assertTrue(hasResources("*", taskInfoList.get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3100l));
+    assertTrue(hasCorrectExecutorResources(taskInfoList));
+
+    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    workerSlots.add(new WorkerSlot("h1", 3101));
+    workerSlots.add(new WorkerSlot("h1", 3102));
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    taskInfoList = tasksToLaunch.get("h1");
+    assertTrue(taskInfoList.size() == 3);
+    assertTrue(hasResources("*", taskInfoList.get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3100l));
+    assertTrue(hasResources("*", taskInfoList.get(1), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3101l));
+    assertTrue(hasResources("*", taskInfoList.get(2), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3102l));
+    assertTrue(hasCorrectExecutorResources(taskInfoList));
+
+    TopologyDetails t2 = TestUtils.constructTopologyDetails("t2",
+                                                            MesosNimbusTest.DEFAULT_WORKER_COUNT,
+                                                            MesosCommon.DEFAULT_WORKER_CPU,
+                                                            MesosCommon.DEFAULT_WORKER_MEM_MB);
+    workerSlots = new ArrayList<>();
+    workerSlots.add(new WorkerSlot("h1", 3103));
+    workerSlots.add(new WorkerSlot("h1", 3104));
+    workerSlotsMap.put("t2", workerSlots);
+
+    topologyDetailsMap = new HashMap<>();
+    topologyDetailsMap.put("t1", t1);
+    topologyDetailsMap.put("t2", t2);
+    topologies = new Topologies(topologyDetailsMap);
+
+    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    Map<String, List<Protos.TaskInfo>> topologyIDtoTaskInfoMap = getTopologyIDtoTaskInfoMap(tasksToLaunch.get("h1"));
+    taskInfoList = topologyIDtoTaskInfoMap.get("t1");
+    assertTrue(hasResources("*", taskInfoList.get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3100l));
+    assertTrue(hasResources("*", taskInfoList.get(1), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3101l));
+    assertTrue(hasResources("*", taskInfoList.get(2), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3102l));
+    assertTrue(hasCorrectExecutorResources(taskInfoList));
+
+    taskInfoList = topologyIDtoTaskInfoMap.get("t2");
+    assertTrue(hasResources("*", taskInfoList.get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3103l));
+    assertTrue(hasResources("*", taskInfoList.get(1), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3104l));
+    assertTrue(hasCorrectExecutorResources(taskInfoList));
+  }
+
+  @Test
+  public void testGetTasksToLaunchForOneTopologyWithMultipleOffersAcrossMultipleHosts() {
+    TopologyDetails t1 = TestUtils.constructTopologyDetails("t1",
+                                                            MesosNimbusTest.DEFAULT_WORKER_COUNT,
+                                                            MesosCommon.DEFAULT_WORKER_CPU,
+                                                            MesosCommon.DEFAULT_WORKER_MEM_MB);
+    TopologyDetails t2 = TestUtils.constructTopologyDetails("t2",
+                                                            MesosNimbusTest.DEFAULT_WORKER_COUNT,
+                                                            MesosCommon.DEFAULT_WORKER_CPU,
+                                                            MesosCommon.DEFAULT_WORKER_MEM_MB);
+
+    Map<String, TopologyDetails> topologyDetailsMap = new HashMap<>();
+    topologyDetailsMap.put("t1", t1);
+    topologyDetailsMap.put("t2", t2);
+
+    Topologies topologies = new Topologies(topologyDetailsMap);
+
+    Offer offer = TestUtils.buildOffer("O-H1-1", "h1", 0, 4000);
+    rotatingMap.put(offer.getId(), offer);
+    offer = TestUtils.buildOffer("O-H1-2", "h1", 3.21, 0);
+    rotatingMap.put(offer.getId(), offer);
+    offer = TestUtils.buildOfferWithPorts("O-H1-3", "h1", 0, 0, 3100, 3102);
+    rotatingMap.put(offer.getId(), offer);
+
+    offer = TestUtils.buildOffer("O-H2-1", "h2", 0, 4000);
+    rotatingMap.put(offer.getId(), offer);
+    offer = TestUtils.buildOffer("O-H2-2", "h2", 3.21, 0);
+    rotatingMap.put(offer.getId(), offer);
+    offer = TestUtils.buildOfferWithPorts("O-H2-3", "h2", 0, 0, 3100, 3102);
+    rotatingMap.put(offer.getId(), offer);
+
+    Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    Map<String, Collection<WorkerSlot>> workerSlotsMap = new HashMap<>();
+    Map<String, List<Protos.TaskInfo>> tasksToLaunch = new HashMap<>();
+
+    List<WorkerSlot> workerSlots = new ArrayList<>();
+    workerSlots.add(new WorkerSlot("h1", 3100));
+    workerSlots.add(new WorkerSlot("h2", 3101));
+    workerSlots.add(new WorkerSlot("h1", 3102));
+    workerSlotsMap.put("t1", workerSlots);
+
+    workerSlots = new ArrayList<>();
+    workerSlots.add(new WorkerSlot("h2", 3100));
+    workerSlots.add(new WorkerSlot("h1", 3101));
+    workerSlots.add(new WorkerSlot("h2", 3102));
+    workerSlotsMap.put("t2", workerSlots);
+
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+
+    List<Protos.TaskInfo> taskInfoList = new ArrayList<>();
+    for(List<Protos.TaskInfo> til : tasksToLaunch.values()) {
+      taskInfoList.addAll(til);
+    }
+
+    Map<String, List<Protos.TaskInfo>> topologyIDtoTaskInfoMap = getTopologyIDtoTaskInfoMap(taskInfoList);
+    taskInfoList = topologyIDtoTaskInfoMap.get("t1");
+    assertTrue(hasResources(taskInfoList.get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3100l));
+    assertTrue(hasResources(taskInfoList.get(1), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3102l));
+    assertTrue(hasResources(taskInfoList.get(2), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3101l));
+    assertTrue(hasCorrectExecutorResources(taskInfoList));
+    taskInfoList = topologyIDtoTaskInfoMap.get("t2");
+    assertTrue(hasResources(taskInfoList.get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3101l));
+    assertTrue(hasResources(taskInfoList.get(1), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3100l));
+    assertTrue(hasResources(taskInfoList.get(2), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3102l));
+    assertTrue(hasCorrectExecutorResources(taskInfoList));
   }
 }
