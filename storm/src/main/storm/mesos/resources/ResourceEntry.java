@@ -15,36 +15,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package storm.mesos;
+package storm.mesos.resources;
 
-import org.apache.mesos.Protos.Offer;
-import org.apache.mesos.Protos.Resource;
-import org.junit.Test;
+/**
+ * Interface to represent various resource types defined in
+ * {@link storm.mesos.resources.ResourceType}
+ */
+public interface ResourceEntry<T> {
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+  public ResourceEntry<T> add(ResourceEntry<T> entry);
 
-import static org.junit.Assert.assertEquals;
+  public ResourceEntry<T> remove(ResourceEntry<T> entry);
 
-public class OfferRoleComparatorTest {
-
-
-
-  @Test
-  public void testCompare() throws Exception {
-    List<Resource> offerResources = new ArrayList<>();
-    Offer offer = TestUtils.buildOffer();
-    offerResources.addAll(offer.getResourcesList());
-    Collections.sort(offerResources, new ResourceRoleComparator());
-
-    assertEquals(
-        "*",
-        offerResources.get(5).getRole()
-    );
-    assertEquals(
-        "*",
-        offerResources.get(4).getRole()
-    );
-  }
+  public ReservationType getReservationType();
 }

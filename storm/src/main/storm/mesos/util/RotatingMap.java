@@ -31,7 +31,7 @@ import java.util.Map.Entry;
  * The algorithm used will take between expirationSecs and
  * expirationSecs * (1 + 1 / (numBuckets-1)) to actually expire the message.
  * <p/>
- * get, put, remove, containsKey, and size take O(numBuckets) time to run.
+ * get, put, removeAndGet, containsKey, and size take O(numBuckets) time to run.
  * <p/>
  * The advantage of this design is that the expiration thread only locks the object
  * for O(1) time, meaning the object is essentially always available for gets/puts.

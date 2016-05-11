@@ -20,6 +20,11 @@ package storm.mesos;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.scheduler.TopologyDetails;
 import org.apache.mesos.Protos;
+import storm.mesos.resources.OfferResources;
+import storm.mesos.resources.ReservationType;
+import storm.mesos.resources.ResourceEntries;
+import storm.mesos.resources.ResourceEntry;
+import storm.mesos.resources.ResourceType;
 import storm.mesos.util.MesosCommon;
 
 import java.util.ArrayList;
@@ -30,6 +35,15 @@ import java.util.List;
 import java.util.Map;
 
 public class TestUtils {
+
+  public static TopologyDetails constructTopologyDetails(String topologyName, int numWorkers) {
+    Map<String, TopologyDetails> topologyConf1 = new HashMap<>();
+
+    StormTopology stormTopology = new StormTopology();
+    TopologyDetails topologyDetails= new TopologyDetails(topologyName, topologyConf1, stormTopology, numWorkers);
+
+    return topologyDetails;
+  }
 
   public static TopologyDetails constructTopologyDetails(String topologyName, int numWorkers, double numCpus, double memSize) {
     Map<String, TopologyDetails> topologyConf = new HashMap<>();
@@ -51,7 +65,8 @@ public class TestUtils {
                        .addAllResources(
                          Arrays.asList(
                            buildScalarResource("cpus", cpus),
-                           buildScalarResourceWithReservation("cpus", 1.0, "dynamicallyReserved"),
+                           buildScalarResourceWithDynamicReservation("cpus", 1.0, "dynamicallyReserved"),
+                           buildScalarResourceWithDynamicReservation("mem", 1.0, "dynamicallyReserved"),
                            buildScalarResource("mem", mem)
                          )
                        )
@@ -67,7 +82,7 @@ public class TestUtils {
                        .addAllResources(
                          Arrays.asList(
                            buildScalarResource("cpus", cpus),
-                           buildScalarResourceWithReservation("cpus", 1.0, "dynamicallyReserved"),
+                           buildScalarResourceWithDynamicReservation("cpus", 1.0, "dynamicallyReserved"),
                            buildScalarResource("mem", mem),
                            buildRangeResource("ports", portBegin, portEnd)
                          )
@@ -84,10 +99,31 @@ public class TestUtils {
                        .addAllResources(
                          Arrays.asList(
                            buildScalarResource("cpus", cpus),
-                           buildScalarResourceWithReservation("cpus", 1.0, "dynamicallyReserved"),
+                           buildScalarResourceWithDynamicReservation("cpus", 1.0, "dynamicallyReserved"),
                            buildScalarResource("mem", mem),
                            buildScalarResourceWithRole("cpus", reservedCpu, "reserved"),
                            buildScalarResourceWithRole("mem", reservedMem, "reserved")
+                         )
+                       )
+                       .build();
+  }
+
+  public static Protos.Offer buildOfferWithReservationAndPorts(String offerId, String hostName, double cpus,
+                                                               double mem, double reservedCpu, double reservedMem,
+                                                               int portBegin, int portEnd) {
+    return Protos.Offer.newBuilder()
+                       .setId(Protos.OfferID.newBuilder().setValue(offerId).build())
+                       .setFrameworkId(Protos.FrameworkID.newBuilder().setValue("derp").build())
+                       .setSlaveId(Protos.SlaveID.newBuilder().setValue("derp").build())
+                       .setHostname(hostName)
+                       .addAllResources(
+                         Arrays.asList(
+                           buildScalarResource("cpus", cpus),
+                           buildScalarResourceWithDynamicReservation("cpus", 1.0, "dynamicallyReserved"),
+                           buildScalarResource("mem", mem),
+                           buildScalarResourceWithRole("cpus", reservedCpu, "reserved"),
+                           buildScalarResourceWithRole("mem", reservedMem, "reserved"),
+                           buildRangeResource("ports", portBegin, portEnd)
                          )
                        )
                        .build();
@@ -114,7 +150,7 @@ public class TestUtils {
                           .build();
   }
 
-  public static Protos.Resource buildScalarResourceWithReservation(String name, double value, String role) {
+  public static Protos.Resource buildScalarResourceWithDynamicReservation(String name, double value, String role) {
     return Protos.Resource.newBuilder()
                           .setType(Protos.Value.Type.SCALAR)
                           .setScalar(Protos.Value.Scalar.newBuilder()
@@ -253,4 +289,41 @@ public class TestUtils {
                        .addAllResources(resourceList)
                        .build();
   }
+
+  private static double calculateAllAvailableScalarResources(List<ResourceEntry> resourceEntries) {
+    Double retVal = 0.0;
+    for (ResourceEntry resourceEntry : resourceEntries) {
+      retVal += ((ResourceEntries.ScalarResourceEntry) resourceEntry).getValue();
+    }
+    return retVal;
+  }
+
+  public static List<Long> calculateAllAvailableRangeResources(List<ResourceEntry> resourceEntries) {
+    List<Long> retVal = new ArrayList<>();
+    for (ResourceEntry resourceEntry : resourceEntries) {
+      Long begin = ((ResourceEntries.RangeResourceEntry) resourceEntry).getBegin();
+      Long end = ((ResourceEntries.RangeResourceEntry) resourceEntry).getEnd();
+      for (long i = begin; i <= end; i++) {
+        retVal.add(i);
+      }
+    }
+    return retVal;
+  }
+
+  public static double calculateAllAvailableScalarResources(OfferResources offerResources, ResourceType resourceType) {
+    return calculateAllAvailableScalarResources(offerResources.getAllAvailableResources(resourceType));
+  }
+
+  public static List<Long> calculateAllAvailableRangeResources(OfferResources offerResources, ResourceType resourceType) {
+    return calculateAllAvailableRangeResources(offerResources.getAllAvailableResources(resourceType));
+  }
+
+  public static double calculateAllAvailableScalarResources(OfferResources offerResources, ResourceType resourceType, ReservationType reservationType) {
+    return calculateAllAvailableScalarResources(offerResources.getAllAvailableResources(resourceType, reservationType));
+  }
+
+  public static List<Long> calculateAllAvailableRangeResources(OfferResources offerResources, ResourceType resourceType, ReservationType reservationType) {
+    return calculateAllAvailableRangeResources(offerResources.getAllAvailableResources(resourceType, reservationType));
+  }
+
 }
