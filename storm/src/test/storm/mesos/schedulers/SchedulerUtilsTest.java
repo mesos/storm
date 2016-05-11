@@ -24,6 +24,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
+import storm.mesos.resources.OfferResources;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
 

@@ -22,6 +22,11 @@ import backtype.storm.scheduler.TopologyDetails;
 import org.apache.mesos.Protos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.mesos.resources.OfferResources;
+import storm.mesos.resources.RangeResource;
+import storm.mesos.resources.ResourceEntry;
+import storm.mesos.resources.ResourceNotAvailabeException;
+import storm.mesos.resources.ResourceType;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
 
@@ -31,26 +36,66 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static storm.mesos.resources.ResourceEntries.*;
+
 public class SchedulerUtils {
 
   private static final Logger log = LoggerFactory.getLogger(SchedulerUtils.class);
 
-  public static boolean isFit(Map mesosStormConf, OfferResources offerResources, TopologyDetails topologyDetails, boolean supervisorExists) {
+  public static List<RangeResourceEntry> getPorts(OfferResources offerResources, int requiredCount) {
+    List<RangeResourceEntry> retVal = new ArrayList<>();
+    List<RangeResourceEntry> resourceEntryList = offerResources.getAllAvailableResources(ResourceType.PORTS);
+
+    for (RangeResourceEntry rangeResourceEntry : resourceEntryList) {
+      Long begin = rangeResourceEntry.getBegin();
+      Long end = rangeResourceEntry.getEnd();
+      for (int i = 0; i <= (end - begin) && requiredCount > 0; i++) {
+        retVal.add(new RangeResourceEntry(begin, begin + i));
+        requiredCount--;
+      }
+    }
+
+    return retVal;
+  }
+
+  public static boolean isFit(Map mesosStormConf,
+                              OfferResources offerResources,
+                              TopologyDetails topologyDetails,
+                              Long port,
+                              boolean supervisorExists,
+                              boolean autoStartLogviewer) {
+
     double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
     double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
 
     requestedWorkerCpu += supervisorExists ? 0 : MesosCommon.executorCpu(mesosStormConf);
     requestedWorkerMem += supervisorExists ? 0 : MesosCommon.executorMem(mesosStormConf);
 
-    if (requestedWorkerCpu <= offerResources.getCpu() && requestedWorkerMem <= offerResources.getMem()) {
-      return true;
-    }
-    return false;
+    return (offerResources.isAvaliable(ResourceType.CPU, new ScalarResourceEntry(requestedWorkerCpu)) &&
+            offerResources.isAvaliable(ResourceType.MEM, new ScalarResourceEntry(requestedWorkerMem)) &&
+            offerResources.isAvaliable(ResourceType.PORTS, new RangeResourceEntry(port, port)));
   }
 
-  public static boolean isFit(Map mesosStormConf, Protos.Offer offer, TopologyDetails topologyDetails, boolean supervisorExists) {
-    OfferResources offerResources = new OfferResources(offer);
-    return isFit(mesosStormConf, offerResources, topologyDetails, supervisorExists);
+
+
+  public static MesosWorkerSlot createMesosWorkerSlot(Map mesosStormConf,
+                                               OfferResources offerResources,
+                                               TopologyDetails topologyDetails,
+                                               boolean supervisorExists) throws ResourceNotAvailabeException {
+
+    double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
+    double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
+
+    requestedWorkerCpu += supervisorExists ? 0 : MesosCommon.executorCpu(mesosStormConf);
+    requestedWorkerMem += supervisorExists ? 0 : MesosCommon.executorMem(mesosStormConf);
+
+    offerResources.reserve(ResourceType.CPU, new ScalarResourceEntry(requestedWorkerCpu));
+    offerResources.reserve(ResourceType.MEM, new ScalarResourceEntry(requestedWorkerMem));
+
+    List<RangeResourceEntry> ports = getPorts(offerResources, 1);
+    offerResources.reserve(ResourceType.PORTS, ports.get(0));
+
+    return new MesosWorkerSlot(offerResources.getHostName(), ports.get(0).getBegin(), topologyDetails.getId());
   }
 
   /**
@@ -93,36 +138,5 @@ public class SchedulerUtils {
     return offerResourcesListPerNode;
   }
 
-  public static MesosWorkerSlot createWorkerSlotFromOfferResources(Map mesosStormConf, OfferResources offerResources,
-                                                            TopologyDetails topologyDetails, boolean supervisorExists) {
-    double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
-    double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
 
-    requestedWorkerCpu += supervisorExists ? 0 : MesosCommon.executorCpu(mesosStormConf);
-    requestedWorkerMem += supervisorExists ? 0 : MesosCommon.executorMem(mesosStormConf);
-
-    if (requestedWorkerCpu > offerResources.getCpu()) {
-      log.warn("Refusing to create worker slot. requestedWorkerCpu: {} but OfferedCpu: {} at node: {}",
-               requestedWorkerCpu, offerResources.getCpu(), offerResources.getHostName());
-      return null;
-    }
-
-    if (requestedWorkerMem > offerResources.getMem()) {
-      log.warn("Refusing to create worker slot. requestedWorkerMem: {} but OfferedMem: {} at node: {}",
-               requestedWorkerMem, offerResources.getMem(), offerResources.getHostName());
-      return null;
-    }
-
-    long port = offerResources.getPort();
-
-    if (port == -1) {
-      log.warn("Refusing to create worker slot. There are no ports available with offer {}", offerResources.toString());
-      return null;
-    }
-
-    offerResources.decCpu(requestedWorkerCpu);
-    offerResources.decMem(requestedWorkerMem);
-
-    return new MesosWorkerSlot(offerResources.getHostName(), port, topologyDetails.getId());
-  }
 }
