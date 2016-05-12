@@ -34,6 +34,8 @@ public class MesosCommonTest {
   private Map conf;
   private TopologyDetails info;
   private String topologyName = "t_name";
+  private static final double DELTA = 0.0001;
+
 
   @Before
   public void initConf() {
@@ -201,7 +203,7 @@ public class MesosCommonTest {
     // Test default value
     double result = MesosCommon.topologyWorkerCpu(conf, info);
     double expectedResult = MesosCommon.DEFAULT_WORKER_CPU;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
 
     // Test what happens when config is too small
     double cpuConfig = MesosCommon.MESOS_MIN_CPU;
@@ -209,14 +211,20 @@ public class MesosCommonTest {
     conf.put(MesosCommon.WORKER_CPU_CONF, cpuConfig);
     result = MesosCommon.topologyWorkerCpu(conf, info);
     expectedResult = MesosCommon.DEFAULT_WORKER_CPU;
-    assertEquals(result, expectedResult, 0.0001);
+    assertEquals(result, expectedResult, DELTA);
+
+    // Test what happens when config is null
+    conf.put(MesosCommon.WORKER_CPU_CONF, null);
+    result = MesosCommon.topologyWorkerCpu(conf, info);
+    expectedResult = MesosCommon.DEFAULT_WORKER_CPU;
+    assertEquals(result, expectedResult, DELTA);
 
     // Test explicit value
     conf.put(MesosCommon.WORKER_CPU_CONF, 1.5);
     info = new TopologyDetails("t2", conf, new StormTopology(), 2);
     result = MesosCommon.topologyWorkerCpu(conf, info);
     expectedResult = 1.5;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
 
     // Test string passed in
     conf = new HashMap<>();
@@ -224,7 +232,7 @@ public class MesosCommonTest {
     info = new TopologyDetails("t3", conf, new StormTopology(), 1);
     result = MesosCommon.topologyWorkerCpu(conf, info);
     expectedResult = 1;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
 
     // Test that this value is not overwritten by Topology config
     Map nimbusConf = new HashMap<>();
@@ -234,7 +242,7 @@ public class MesosCommonTest {
     info = new TopologyDetails("t4", conf, new StormTopology(), 1);
     result = MesosCommon.topologyWorkerCpu(nimbusConf, info);
     expectedResult = 1.5;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
   }
 
   @Test
@@ -242,7 +250,7 @@ public class MesosCommonTest {
     // Test default value
     double result = MesosCommon.topologyWorkerMem(conf, info);
     double expectedResult = MesosCommon.DEFAULT_WORKER_MEM_MB;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
     
     // Test what happens when config is too small
     double memConfig = MesosCommon.MESOS_MIN_MEM_MB;
@@ -250,21 +258,27 @@ public class MesosCommonTest {
     conf.put(MesosCommon.WORKER_MEM_CONF, memConfig);
     result = MesosCommon.topologyWorkerMem(conf, info);
     expectedResult = MesosCommon.DEFAULT_WORKER_MEM_MB;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
+
+    // Test what happens when config is null
+    conf.put(MesosCommon.WORKER_MEM_CONF, null);
+    result = MesosCommon.topologyWorkerMem(conf, info);
+    expectedResult = MesosCommon.DEFAULT_WORKER_MEM_MB;
+    assertEquals(result, expectedResult, DELTA);
 
     // Test explicit value
     conf.put(MesosCommon.WORKER_MEM_CONF, 1200);
     info = new TopologyDetails("t2", conf, new StormTopology(), 2);
     result = MesosCommon.topologyWorkerMem(conf, info);
     expectedResult = 1200;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
 
     // Test string passed in
     conf.put(MesosCommon.WORKER_MEM_CONF, "1200");
     info = new TopologyDetails("t3", conf, new StormTopology(), 1);
     result = MesosCommon.topologyWorkerMem(conf, info);
     expectedResult = 1000;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
 
     // Test that this value is overwritten by Topology config
     Map nimbusConf = new HashMap<>();
@@ -273,7 +287,7 @@ public class MesosCommonTest {
     info = new TopologyDetails("t4", conf, new StormTopology(), 1);
     result = MesosCommon.topologyWorkerMem(nimbusConf, info);
     expectedResult = 150;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
   }
 
   @Test
@@ -281,13 +295,13 @@ public class MesosCommonTest {
     // Test default config
     double result = MesosCommon.executorCpu(conf);
     double expectedResult = MesosCommon.DEFAULT_EXECUTOR_CPU;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
 
     // Test explicit value
     conf.put(MesosCommon.EXECUTOR_CPU_CONF, 2.0);
     result = MesosCommon.executorCpu(conf);
     expectedResult = 2.0;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
   }
 
   @Test
@@ -295,12 +309,12 @@ public class MesosCommonTest {
     // Test default config
     double result = MesosCommon.executorMem(conf);
     double expectedResult = MesosCommon.DEFAULT_EXECUTOR_MEM_MB;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
 
     // Test explicit value
     conf.put(MesosCommon.EXECUTOR_MEM_CONF, 100);
     result = MesosCommon.executorMem(conf);
     expectedResult = 100;
-    assertEquals(result, expectedResult, 0.001);
+    assertEquals(result, expectedResult, DELTA);
   }
 }
