@@ -40,6 +40,8 @@ public class MesosCommon {
   public static final String WORKER_NAME_PREFIX_DELIMITER = "topology.mesos.worker.prefix.delimiter";
   public static final String MESOS_COMPONENT_NAME_DELIMITER = "topology.mesos.component.name.delimiter";
 
+  public static final double MESOS_MIN_CPU = 0.01;
+  public static final double MESOS_MIN_MEM_MB = 32;
   public static final double DEFAULT_WORKER_CPU = 1;
   public static final double DEFAULT_WORKER_MEM_MB = 1000;
   public static final double DEFAULT_EXECUTOR_CPU = 0.1;
@@ -132,16 +134,38 @@ public class MesosCommon {
     return ret;
   }
 
+  public static Number getScalarTopologyConf(Map conf, String configName, String topologyName, Number defaultValue) {
+    Object configOption = conf.get(configName);
+
+    Number ret = defaultValue;
+    if (configOption != null && !(configOption instanceof Number)) {
+      LOG.warn("Topology {} has invalid option \'{}\' -- Expected type \'{}\', Actual type \'{}\' -- Falling back to default of {}", topologyName, configName, Number.class, configOption.getClass(), defaultValue);
+    } else if (configOption != null && configOption instanceof Number) {
+      ret = (Number) configOption;
+    } else {
+      LOG.debug("Topology {} does not set {}, default of {} will be used", topologyName, configName, defaultValue);
+    }
+    return ret;
+  }
+
   public static double topologyWorkerCpu(Map conf, TopologyDetails info) {
     Map topologyConfig = getFullTopologyConfig(conf, info);
-    return Optional.fromNullable((Number) topologyConfig.get(WORKER_CPU_CONF))
-        .or(DEFAULT_WORKER_CPU).doubleValue();
+    double topologyWorkerCpu = getScalarTopologyConf(topologyConfig, WORKER_CPU_CONF, info.getId(), DEFAULT_WORKER_CPU).doubleValue();
+    if (topologyWorkerCpu < MESOS_MIN_CPU) {
+      LOG.warn("Topology {} has invalid option \'{}\' -- {} is below {}, which is the minimum defined by Mesos -- Falling back to default of {}", info.getId(), WORKER_CPU_CONF, topologyWorkerCpu, MESOS_MIN_CPU, DEFAULT_WORKER_CPU);
+      topologyWorkerCpu = DEFAULT_WORKER_CPU;
+    }
+    return topologyWorkerCpu;
   }
 
   public static double topologyWorkerMem(Map conf, TopologyDetails info) {
     Map topologyConfig = getFullTopologyConfig(conf, info);
-    return Optional.fromNullable((Number) topologyConfig.get(WORKER_MEM_CONF))
-        .or(DEFAULT_WORKER_MEM_MB).doubleValue();
+    double topologyWorkerMem = getScalarTopologyConf(topologyConfig, WORKER_MEM_CONF, info.getId(), DEFAULT_WORKER_MEM_MB).doubleValue();
+    if (topologyWorkerMem < MESOS_MIN_MEM_MB) {
+      LOG.warn("Topology {} has invalid option \'{}\' -- {} is below {}, which is the minimum defined by Mesos -- Falling back to default of {}", info.getId(), WORKER_MEM_CONF, topologyWorkerMem, MESOS_MIN_MEM_MB, DEFAULT_WORKER_MEM_MB);
+      topologyWorkerMem = DEFAULT_WORKER_MEM_MB;
+    }
+    return topologyWorkerMem;
   }
 
   public static double executorCpu(Map conf) {
