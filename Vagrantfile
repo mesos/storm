@@ -55,6 +55,7 @@ if [[ ! "$java_version" > "1.8" ]]; then
   add-apt-repository ppa:webupd8team/java
 
   echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | sudo /usr/bin/debconf-set-selections
+  apt-get -o Acquire::http::Timeout=1 -o Acquire::ftp::Timeout=1 -y update
 
   install_package "oracle-java8-installer"
   install_package "oracle-java8-set-default"
