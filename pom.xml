@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
-  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.mesos</groupId>
   <artifactId>storm-parent</artifactId>
@@ -92,6 +91,29 @@
             </goals>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-release-plugin</artifactId>
+        <version>2.5.3</version>
+        <configuration>
+          <autoVersionSubmodules>true</autoVersionSubmodules>
+          <mavenExecutorId>forked-path</mavenExecutorId>
+          <pushChanges>true</pushChanges>
+          <localCheckout>true</localCheckout>
+          <preparationGoals>clean install verify</preparationGoals>
+          <useReleaseProfile>false</useReleaseProfile>
+          <!-- use tags of the form "v0.1.3" instead of "storm-mesos-0.1.3" -->
+          <tagNameFormat>v@{project.version}</tagNameFormat>
+          <!-- XXX: Prevent `mvn release:perform` from doing anything, since we leverage
+               the release plugin merely to rev versions and commit tags.
+               i.e., when the release tag is pushed to the master branch of the mesos/storm
+               repo in GitHub, a travis-ci build is kicked off which automatically uploads
+               its artifacts to the GitHub project release page:
+                  https://github.com/mesos/storm/releases
+            -->
+          <goals>help:help -q</goals>
+        </configuration>
       </plugin>
     </plugins>
   </build>
