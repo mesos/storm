@@ -30,4 +30,9 @@ public class MesosWorkerSlot extends WorkerSlot {
   public String getTopologyId() {
     return this.topologyId;
   }
+
+  @Override
+  public String toString() {
+    return super.getNodeId() + ":" + super.getPort() + " topology: " + topologyId;
+  }
 }

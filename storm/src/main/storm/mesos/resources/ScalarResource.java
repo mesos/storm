@@ -83,7 +83,7 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
 
   public List<ResourceEntry> reserveScalarResource(ResourceType resourceType, ScalarResourceEntry requiredValue) throws ResourceNotAvailabeException {
     if (totalAvailableResource <= requiredValue.getValue()) {
-      throw new ResourceNotAvailabeException(String.format("resouceType: {} is not available. Requested {} Available {}",
+      throw new ResourceNotAvailabeException(String.format("resourceType: {} is not available. Requested {} Available {}",
                                                            resourceType, requiredValue, totalAvailableResource));
     }
     return removeAndGet(requiredValue);
