@@ -17,9 +17,12 @@
  */
 package storm.mesos.resources;
 
+import backtype.storm.scheduler.TopologyDetails;
 import org.apache.mesos.Protos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.mesos.schedulers.SchedulerUtils;
+import storm.mesos.util.MesosCommon;
 import storm.mesos.util.PrettyProtobuf;
 
 import java.util.ArrayList;
@@ -154,6 +157,33 @@ public class OfferResources {
   public String toString() {
     return String.format("cpu : %s, memory: %s, ports : %s", availableResources.get(ResourceType.CPU),
                          availableResources.get(ResourceType.MEM), availableResources.get(ResourceType.PORTS));
+  }
+
+
+  public boolean isFit(Map mesosStormConf, TopologyDetails topologyDetails, boolean supervisorExists) {
+
+    double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
+    double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
+
+    requestedWorkerCpu += supervisorExists ? 0 : MesosCommon.executorCpu(mesosStormConf);
+    requestedWorkerMem += supervisorExists ? 0 : MesosCommon.executorMem(mesosStormConf);
+
+    return (isAvaliable(ResourceType.CPU, new ResourceEntries.ScalarResourceEntry(requestedWorkerCpu)) &&
+            isAvaliable(ResourceType.MEM, new ResourceEntries.ScalarResourceEntry(requestedWorkerMem)) &&
+            !this.getAllAvailableResources(ResourceType.PORTS).isEmpty());
+  }
+
+  public boolean isFit(Map mesosStormConf, TopologyDetails topologyDetails, Long port, boolean supervisorExists) {
+
+    double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
+    double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
+
+    requestedWorkerCpu += supervisorExists ? 0 : MesosCommon.executorCpu(mesosStormConf);
+    requestedWorkerMem += supervisorExists ? 0 : MesosCommon.executorMem(mesosStormConf);
+
+    return (isAvaliable(ResourceType.CPU, new ResourceEntries.ScalarResourceEntry(requestedWorkerCpu)) &&
+            isAvaliable(ResourceType.MEM, new ResourceEntries.ScalarResourceEntry(requestedWorkerMem)) &&
+            isAvaliable(ResourceType.PORTS, new ResourceEntries.RangeResourceEntry(port, port)));
   }
 }
 

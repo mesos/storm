@@ -309,11 +309,11 @@ public class MesosNimbus implements INimbus {
 
       for (Protos.Offer offer : offers) {
         if (isHostAccepted(offer.getHostname())) {
-          LOG.debug("resourceOffers: Recording offer from host: {}, offerId: {}",
+          LOG.info("resourceOffers: Recording offer from host: {}, offerId: {}",
                     offer.getHostname(), offer.getId().getValue());
           _offers.put(offer.getId(), offer);
         } else {
-          LOG.debug("resourceOffers: Declining offer from host: {}, offerId: {}",
+          LOG.info("resourceOffers: Declining offer from host: {}, offerId: {}",
                     offer.getHostname(), offer.getId().getValue());
           driver.declineOffer(offer.getId());
         }
@@ -574,7 +574,7 @@ public class MesosNimbus implements INimbus {
 
         boolean autostartLogviewer =  !subtractExecutorResources && MesosCommon.autoStartLogViewer(mesosStormConf);
 
-        if (!SchedulerUtils.isFit(mesosStormConf, offerResources, topologyDetails, workerPort, !subtractExecutorResources, autostartLogviewer)) {
+        if (!offerResources.isFit(mesosStormConf, topologyDetails, workerPort, !subtractExecutorResources)) {
           LOG.error(String.format("Unable to launch worker %s. Required cpu: %f, Required mem: %f. Available OfferResources : %s",
                                   workerHost, requiredCpu, requiredMem, offerResources));
           continue;

@@ -58,24 +58,6 @@ public class SchedulerUtils {
     return retVal;
   }
 
-  public static boolean isFit(Map mesosStormConf,
-                              OfferResources offerResources,
-                              TopologyDetails topologyDetails,
-                              Long port,
-                              boolean supervisorExists,
-                              boolean autoStartLogviewer) {
-
-    double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
-    double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
-
-    requestedWorkerCpu += supervisorExists ? 0 : MesosCommon.executorCpu(mesosStormConf);
-    requestedWorkerMem += supervisorExists ? 0 : MesosCommon.executorMem(mesosStormConf);
-
-    return (offerResources.isAvaliable(ResourceType.CPU, new ScalarResourceEntry(requestedWorkerCpu)) &&
-            offerResources.isAvaliable(ResourceType.MEM, new ScalarResourceEntry(requestedWorkerMem)) &&
-            offerResources.isAvaliable(ResourceType.PORTS, new RangeResourceEntry(port, port)));
-  }
-
 
 
   public static MesosWorkerSlot createMesosWorkerSlot(Map mesosStormConf,
@@ -93,32 +75,33 @@ public class SchedulerUtils {
     offerResources.reserve(ResourceType.MEM, new ScalarResourceEntry(requestedWorkerMem));
 
     List<RangeResourceEntry> ports = getPorts(offerResources, 1);
+    if (ports.isEmpty()) {
+      throw new ResourceNotAvailabeException("No ports available to create MesosWorkerSlot.");
+    }
     offerResources.reserve(ResourceType.PORTS, ports.get(0));
 
     return new MesosWorkerSlot(offerResources.getHostName(), ports.get(0).getBegin(), topologyDetails.getId());
   }
 
   /**
-   * Method checks if all topologies that need assignment already have supervisor running on the node where the Offer
-   * comes from. Required for more accurate available resource calculation where we can exclude supervisor's demand from
-   * the Offer.
-   * Unfortunately because of WorkerSlot type is not topology agnostic, we need to exclude supervisor's resources only
-   * in case where ALL topologies in 'allSlotsAvailableForScheduling' method satisfy condition of supervisor existence
-   * @param offerHost hostname corresponding to the offer
-   * @param existingSupervisors Supervisors which already placed on the node for the Offer
-   * @param topologyId Topology id for which we are checking if the supervisor exists already
+   * Check if this topology already has a supervisor running on the node where the Offer
+   * comes from. Required to account for supervisor/mesos-executor's resource needs.
+   * Note that there is one-and-only-one supervisor per topology per node.
+   *
+   * @param offerHost host that sent this Offer
+   * @param existingSupervisors List of supervisors which already exist on the Offer's node
+   * @param topologyId ID of topology requiring assignment
    * @return boolean value indicating supervisor existence
    */
   public static boolean supervisorExists(String offerHost, Collection<SupervisorDetails> existingSupervisors,
                                    String topologyId) {
-    boolean supervisorExists = false;
     String expectedSupervisorId = MesosCommon.supervisorId(offerHost, topologyId);
     for (SupervisorDetails supervisorDetail : existingSupervisors) {
       if (supervisorDetail.getId().equals(expectedSupervisorId)) {
-        supervisorExists = true;
+        return true;
       }
     }
-    return supervisorExists;
+    return false;
   }
 
   public static Map<String, List<OfferResources>> getOfferResourcesListPerNode(RotatingMap<Protos.OfferID, Protos.Offer> offers) {

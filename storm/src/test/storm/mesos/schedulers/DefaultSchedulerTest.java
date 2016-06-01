@@ -198,14 +198,14 @@ public class DefaultSchedulerTest {
     rotatingMap.put(offer.getId(), offer);
     workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies,
                                                                                         topologiesMissingAssignments);
-    assertEquals(workerSlotsAvailableForScheduling.size(), 1);
+    assertEquals(1, workerSlotsAvailableForScheduling.size());
 
     /* Case 2 - Supervisor does not exists for topology test-topology1-65-1442255385 on the host */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.east", 0.1, 200, samplePort, samplePort + 1);
     rotatingMap.put(offer.getId(), offer);
     workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies,
                                                                                         topologiesMissingAssignments);
-    assertEquals(workerSlotsAvailableForScheduling.size(), 0);
+    assertEquals(0, workerSlotsAvailableForScheduling.size());
 
     /* Case 3 - Supervisor exists for topology test-topology1-65-1442255385 on the host & offer has additional resources for supervisor */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.east", 0.1 + MesosCommon.DEFAULT_EXECUTOR_CPU, 200 + MesosCommon.DEFAULT_EXECUTOR_MEM_MB,
@@ -213,7 +213,7 @@ public class DefaultSchedulerTest {
     rotatingMap.put(offer.getId(), offer);
     workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies,
                                                                                         topologiesMissingAssignments);
-    assertEquals(workerSlotsAvailableForScheduling.size(), 1);
+    assertEquals(1, workerSlotsAvailableForScheduling.size());
 
     /* Test default values for worker cpu and memory - This is to make sure that we account for default worker cpu and memory when the user does not pass MesosCommon.DEFAULT_WORKER_CPU && MesosCommon.DEFAULT_WORKER_MEM  */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.east", MesosCommon.DEFAULT_WORKER_CPU + MesosCommon.DEFAULT_EXECUTOR_CPU,
@@ -224,7 +224,7 @@ public class DefaultSchedulerTest {
     defaultScheduler.prepare(topologyDetails.getConf());
     workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
-    assertEquals(workerSlotsAvailableForScheduling.size(), 1);
+    assertEquals(1, workerSlotsAvailableForScheduling.size());
 
 
     /* More than 1 worker slot is required - Plenty of memory & cpu is available, only two ports are available */
@@ -236,7 +236,7 @@ public class DefaultSchedulerTest {
     defaultScheduler.prepare(topologyDetails.getConf());
     workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
-    assertEquals(workerSlotsAvailableForScheduling.size(), 2);
+    assertEquals(2, workerSlotsAvailableForScheduling.size());
 
     /* More than 1 worker slot is required - Plenty of ports & cpu is available, but memory is available for only two workers */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.east", 10 * MesosCommon.DEFAULT_WORKER_CPU + MesosCommon.DEFAULT_EXECUTOR_CPU,
@@ -247,7 +247,7 @@ public class DefaultSchedulerTest {
     defaultScheduler.prepare(topologyDetails.getConf());
     workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
-    assertEquals(workerSlotsAvailableForScheduling.size(), 2);
+    assertEquals(2, workerSlotsAvailableForScheduling.size());
 
     /* More than 1 worker slot is required - Plenty of ports & memory are available, but cpu is available for only two workers */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.east", 2 * MesosCommon.DEFAULT_WORKER_CPU + MesosCommon.DEFAULT_EXECUTOR_CPU,
@@ -258,7 +258,7 @@ public class DefaultSchedulerTest {
     defaultScheduler.prepare(topologyDetails.getConf());
     workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
-    assertEquals(workerSlotsAvailableForScheduling.size(), 2);
+    assertEquals(2, workerSlotsAvailableForScheduling.size());
 
     /* 10 worker slots are required - Plenty of cpu, memory & ports are available */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.east", 20 * MesosCommon.DEFAULT_WORKER_CPU + MesosCommon.DEFAULT_EXECUTOR_CPU,
@@ -269,7 +269,7 @@ public class DefaultSchedulerTest {
     defaultScheduler.prepare(topologyDetails.getConf());
     workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
-    assertEquals(workerSlotsAvailableForScheduling.size(), 10);
+    assertEquals(10, workerSlotsAvailableForScheduling.size());
   }
 
   private void addToRotatingMap(List<Offer> offers) {
