@@ -59,7 +59,7 @@ USAGE
 }; function --help { help ;}; function -h { help ;}
 
 function downloadStormRelease {
-  if [ ! -f apache-storm-${STORM_RELEASE}.tar.gz ]; then
+  if [ ! -f apache-storm-${STORM_RELEASE}*.tar.gz ]; then
     if [ -z ${STORM_URL} ]; then
       curl -L -O ${MIRROR}/apache/storm/apache-storm-${STORM_RELEASE}/apache-storm-${STORM_RELEASE}.tar.gz
     else
@@ -108,7 +108,7 @@ function package {(
   local tarName="${dirName}.tgz"
   cd _release
   # When supervisor starts up it looks for storm-mesos not apache-storm.
-  mv apache-storm-${STORM_RELEASE} ${dirName}
+  mv apache-storm-${STORM_RELEASE}* ${dirName}
   tar cvzf ${tarName} --numeric-owner --owner 0 --group 0 ${dirName}
   echo "Copying ${tarName} to $(cd .. && pwd)/${tarName}"
   cp ${tarName} ../
@@ -153,7 +153,7 @@ function main {
   clean
   downloadStormRelease
   mvnPackage
-  prePackage apache-storm-${STORM_RELEASE}.tar.gz
+  prePackage apache-storm-${STORM_RELEASE}*.tar.gz
   package
 }
 
