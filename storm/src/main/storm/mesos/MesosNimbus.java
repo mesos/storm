@@ -753,10 +753,27 @@ public class MesosNimbus implements INimbus {
           executorPortsResources = getResourcesRange(offerResources, port, "ports");
           if (!executorPortsResources.isEmpty()) {
             // Was the port available?
-            extraConfig = String.format(" -c %s=true", MesosCommon.AUTO_START_LOGVIEWER_CONF);
+            extraConfig += String.format(" -c %s=true", MesosCommon.AUTO_START_LOGVIEWER_CONF);
             offerResources = subtractResourcesRange(offerResources, port, "ports");
           }
         }
+
+        // Set the MesosSupervisor's storm.local.dir value. By default it is set to "storm-local",
+        // which is the same as the storm-core default, which is interpreted relative to the pwd of
+        // the storm daemon (the mesos executor sandbox in the case of the MesosSupervisor).
+        //
+        // If this isn't done, then MesosSupervisor inherits MesosNimbus's storm.local.dir config.
+        // That is fine if the MesosNimbus storm.local.dir config is just the default too ("storm-local"),
+        // since the mesos executor sandbox is isolated per-topology.
+        // However, if the MesosNimbus storm.local.dir is specialized (e.g., /var/run/storm-local), then
+        // this will cause problems since multiple topologies on the same host would use the same
+        // storm.local.dir and thus interfere with each other's state. And *that* leads to one topology's
+        // supervisor killing the workers of every other topology on the same host (due to interference
+        // in the stored worker assignments).
+        //
+        // Note that you *can* force the MesosSupervisor to use a specific directory by setting
+        // the "mesos.supervisor.storm.local.dir" variable in the MesosNimbus's storm.yaml.
+        extraConfig += String.format(" -c storm.local.dir=%s", MesosCommon.getSupervisorStormLocalDir(_conf));
 
         Offer remainingOffer = existingBuilder.addAllResources(offerResources).build();
 
