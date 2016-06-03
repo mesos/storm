@@ -34,6 +34,7 @@ public class MesosCommon {
   public static final String EXECUTOR_CPU_CONF = "topology.mesos.executor.cpu";
   public static final String EXECUTOR_MEM_CONF = "topology.mesos.executor.mem.mb";
   public static final String SUICIDE_CONF = "mesos.supervisor.suicide.inactive.timeout.secs";
+  public static final String SUPERVISOR_STORM_LOCAL_DIR_CONF = "mesos.supervisor.storm.local.dir";
   public static final String AUTO_START_LOGVIEWER_CONF = "supervisor.autostart.logviewer";
   // Should we prefix the Worker Task ID with a configurable string (as well as the topology name)?
   public static final String WORKER_NAME_PREFIX = "topology.mesos.worker.prefix";
@@ -47,6 +48,7 @@ public class MesosCommon {
   public static final double DEFAULT_EXECUTOR_CPU = 0.1;
   public static final double DEFAULT_EXECUTOR_MEM_MB = 500;
   public static final int DEFAULT_SUICIDE_TIMEOUT_SECS = 120;
+  public static final String DEFAULT_SUPERVISOR_STORM_LOCAL_DIR = "storm-local";
 
   public static final String SUPERVISOR_ID = "supervisorid";
   public static final String ASSIGNMENT_ID = "assignmentid";
@@ -126,6 +128,11 @@ public class MesosCommon {
   public static int getSuicideTimeout(Map conf) {
     return Optional.fromNullable((Number) conf.get(SUICIDE_CONF))
         .or(DEFAULT_SUICIDE_TIMEOUT_SECS).intValue();
+  }
+
+  public static String getSupervisorStormLocalDir(Map conf) {
+    return Optional.fromNullable((String) conf.get(SUPERVISOR_STORM_LOCAL_DIR_CONF))
+        .or(DEFAULT_SUPERVISOR_STORM_LOCAL_DIR);
   }
 
   public static Map getFullTopologyConfig(Map conf, TopologyDetails info) {
