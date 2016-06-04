@@ -14,14 +14,14 @@ all: help
 
 help:
 	@echo 'Options available:'
-	@echo '  make images STORM_RELEASE=0.10.1 MESOS_RELEASE=0.28.1 DOCKER_REPO=mesos'
-	@echo '  make push   STORM_RELEASE=0.10.1 MESOS_RELEASE=0.28.1 DOCKER_REPO=mesos'
+	@echo '  make images STORM_RELEASE=0.10.1 MESOS_RELEASE=0.28.2 DOCKER_REPO=mesos'
+	@echo '  make push   STORM_RELEASE=0.10.1 MESOS_RELEASE=0.28.2 DOCKER_REPO=mesos'
 	@echo ''
 	@echo 'ENV'
 	@echo '  STORM_RELEASE          The targeted release version of Storm'
 	@echo '                             Default: 0.10.1'
 	@echo '  MESOS_RELEASE          The targeted release version of MESOS'
-	@echo '                             Default: 0.28.1'
+	@echo '                             Default: 0.28.2'
 	@echo '  DOCKER_REPO            The docker repo for which to build the docker image'
 	@echo '                             Default: mesos'
 	@echo '  RELEASE                The targeted release version of Storm'

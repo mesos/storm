@@ -12,7 +12,7 @@ ONBUILD ENV JAVA_PRODUCT_VERSION ${JAVA_PRODUCT_VERSION:-7}
 
 # Add mesosphere
 # install mesos version, build arg, MESOS_RELEASE with a default value
-ONBUILD ARG MESOS_RELEASE=0.28.1
+ONBUILD ARG MESOS_RELEASE=0.28.2
 ONBUILD RUN DISTRO=$(lsb_release -is | tr "[:upper:]" "[:lower:]") && \
         CODENAME=$(lsb_release -cs) && \
         echo "deb http://repos.mesosphere.com/${DISTRO} ${CODENAME} main" > /etc/apt/sources.list.d/mesosphere.list && \
@@ -28,7 +28,7 @@ ONBUILD ARG STORM_URL=''
 ONBUILD ARG RELEASE=''
 
 # set runtime environment variables
-ENV MESOS_RELEASE ${MESOS_RELEASE:-0.28.1}
+ENV MESOS_RELEASE ${MESOS_RELEASE:-0.28.2}
 ENV STORM_RELEASE ${STORM_RELEASE:-0.10.1}
 ENV DEBIAN_FRONTEND ${DEBIAN_FRONTEND:-noninteractive}
 ENV MESOS_NATIVE_JAVA_LIBRARY ${MESOS_NATIVE_JAVA_LIBRARY:-/usr/lib/libmesos.so}
