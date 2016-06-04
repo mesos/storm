@@ -49,7 +49,7 @@
     <profile>
       <id>storm10</id>
       <properties>
-        <storm.version>0.10.0</storm.version>
+        <storm.version>0.10.1</storm.version>
         <shim>storm-shim-10x</shim>
         <snakeyaml.scope>compile</snakeyaml.scope>
       </properties>
