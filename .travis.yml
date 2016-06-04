@@ -12,7 +12,7 @@ env:
     - DOCKER_REPO=mesos
 before_install:
   - apt-cache madison docker-engine
-  - sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-engine=${TRAVIS_DOCKER_VERSION}
+  - travis_retry sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-engine=${TRAVIS_DOCKER_VERSION}
 
 install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true
 script:
@@ -20,7 +20,7 @@ script:
 - mvn test
 - jdk_switcher use oraclejdk7
 - mvn test
-- bin/build-release.sh
+- travis_retry bin/build-release.sh
 matrix:
   fast_finish: true
   include:
@@ -29,12 +29,12 @@ matrix:
   - env: STORM_RELEASE="0.9.6" MESOS_RELEASE="0.28.2"
   - env: STORM_RELEASE="0.9.6" MESOS_RELEASE="0.27.2"
 before_deploy:
-  - make images
-  - make images JAVA_PRODUCT_VERSION=8
+  - travis_retry make images
+  - travis_retry make images JAVA_PRODUCT_VERSION=8
   - docker images
-  - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-  - make push
-  - make push JAVA_PRODUCT_VERSION=8
+  - travis_retry docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+  - travis_retry make push
+  - travis_retry make push JAVA_PRODUCT_VERSION=8
 # Deploy archives to GitHub release tags
 deploy:
   provider: releases
