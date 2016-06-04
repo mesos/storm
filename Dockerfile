@@ -12,7 +12,7 @@ ENV JAVA_PRODUCT_VERSION ${JAVA_PRODUCT_VERSION:-7}
 
 # Add mesosphere
 # install mesos version, build arg, MESOS_RELEASE with a default value
-ARG MESOS_RELEASE=0.28.0
+ARG MESOS_RELEASE=0.28.1
 RUN DISTRO=$(lsb_release -is | tr "[:upper:]" "[:lower:]") && \
         CODENAME=$(lsb_release -cs) && \
         echo "deb http://repos.mesosphere.com/${DISTRO} ${CODENAME} main" > /etc/apt/sources.list.d/mesosphere.list && \
@@ -22,14 +22,14 @@ RUN DISTRO=$(lsb_release -is | tr "[:upper:]" "[:lower:]") && \
         apt-get clean
 
 # set build arg STORM_RELEASE, MIRROR with defaults values
-ARG STORM_RELEASE=0.10.0
+ARG STORM_RELEASE=0.10.1
 ARG MIRROR=''
 ARG STORM_URL=''
 ARG RELEASE=''
 
 # set runtime environment variables
-ENV MESOS_RELEASE ${MESOS_RELEASE:-0.28.0}
-ENV STORM_RELEASE ${STORM_RELEASE:-0.10.0}
+ENV MESOS_RELEASE ${MESOS_RELEASE:-0.28.1}
+ENV STORM_RELEASE ${STORM_RELEASE:-0.10.1}
 ENV DEBIAN_FRONTEND ${DEBIAN_FRONTEND:-noninteractive}
 ENV MESOS_NATIVE_JAVA_LIBRARY ${MESOS_NATIVE_JAVA_LIBRARY:-/usr/lib/libmesos.so}
 
