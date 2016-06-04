@@ -1,23 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
-         xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.mesos</groupId>
   <artifactId>storm-mesos</artifactId>
-  <version>${project.parent.version}</version>
+  <version>0.1.3</version>
   <name>storm-mesos</name>
   <description>Storm integration with the Mesos cluster manager</description>
   <scm>
     <connection>scm:git:git://github.com/mesos/storm.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/mesos/storm.git</developerConnection>
     <url>https://github.com/mesos/storm</url>
+    <tag>v0.1.3</tag>
   </scm>
 
   <parent>
     <artifactId>storm-parent</artifactId>
     <groupId>org.apache.mesos</groupId>
-    <version>0.1.3-SNAPSHOT</version>
+    <version>0.1.3</version>
   </parent>
 
   <properties>
