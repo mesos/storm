@@ -129,7 +129,7 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
       availableResourcesByResourceTypeList.add(String.format("%s : %s", entry.getKey(), entry.getValue().getValue()));
     }
     String tmp = String.join(", ", availableResourcesByResourceTypeList);
-    return String.format("Resouce %s - Total available : %f Total available by reservation type : [ %s ]", resourceType.toString(), totalAvailableResource, tmp);
+    return String.format("Resource %s - Total available : %f Total available by reservation type : [ %s ]", resourceType.toString(), totalAvailableResource, tmp);
   }
 
   private List<ResourceEntry> removeAndGet(ScalarResourceEntry scalarResourceEntry, Collection<ReservationType> reservationTypesListByPriority) throws ResourceNotAvailabeException {
