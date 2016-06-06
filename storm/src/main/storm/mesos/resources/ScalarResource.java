@@ -17,6 +17,8 @@
  */
 package storm.mesos.resources;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -128,7 +130,7 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
     for (Map.Entry<ReservationType, ScalarResourceEntry> entry: availableResourcesByReservationType.entrySet()) {
       availableResourcesByResourceTypeList.add(String.format("%s : %s", entry.getKey(), entry.getValue().getValue()));
     }
-    String tmp = String.join(", ", availableResourcesByResourceTypeList);
+    String tmp = StringUtils.join(", ", availableResourcesByResourceTypeList);
     return String.format("Resource %s - Total available : %f Total available by reservation type : [ %s ]", resourceType.toString(), totalAvailableResource, tmp);
   }
 
