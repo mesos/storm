@@ -21,7 +21,6 @@ import backtype.storm.scheduler.TopologyDetails;
 import org.apache.mesos.Protos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.mesos.schedulers.SchedulerUtils;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.PrettyProtobuf;
 
@@ -77,7 +76,6 @@ public class OfferResources {
       }
 
       ResourceType resourceType = ResourceType.of(r.getName());
-      log.info("Processing Resource {}", r.getName());
 
       ReservationType reservationType = (r.getRole().equals("*")) ? ReservationType.UNRESERVED : ReservationType.STATICALLY_RESERVED;
 

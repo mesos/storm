@@ -24,7 +24,6 @@ import backtype.storm.scheduler.SupervisorDetails;
 import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
-import clojure.lang.MapEntry;
 import com.google.common.base.Optional;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.StringUtils;
@@ -53,7 +52,6 @@ import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
 import storm.mesos.resources.OfferResources;
 import storm.mesos.resources.ReservationType;
-import storm.mesos.resources.ResourceEntries;
 import storm.mesos.resources.ResourceEntries.RangeResourceEntry;
 import storm.mesos.resources.ResourceEntries.ScalarResourceEntry;
 import storm.mesos.resources.ResourceEntry;
@@ -61,7 +59,6 @@ import storm.mesos.resources.ResourceNotAvailabeException;
 import storm.mesos.resources.ResourceType;
 import storm.mesos.schedulers.DefaultScheduler;
 import storm.mesos.schedulers.IMesosStormScheduler;
-import storm.mesos.schedulers.SchedulerUtils;
 import storm.mesos.shims.CommandLineShimFactory;
 import storm.mesos.shims.ICommandLineShim;
 import storm.mesos.shims.LocalStateShim;
@@ -117,6 +114,7 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_FRAMEWORK_NAME = "mesos.framework.name";
   public static final String CONF_MESOS_PREFER_RESERVED_RESOURCES = "mesos.prefer.reserved.resources";
   public static final String CONF_MESOS_CONTAINER_DOCKER_IMAGE = "mesos.container.docker.image";
+  public static final String CONF_MESOS_SUPERVISOR_STORM_LOCAL_DIR = "mesos.supervisor.storm.local.dir";
   public static final String FRAMEWORK_ID = "FRAMEWORK_ID";
   private static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
   private final Object _offersLock = new Object();
@@ -309,11 +307,12 @@ public class MesosNimbus implements INimbus {
 
       for (Protos.Offer offer : offers) {
         if (isHostAccepted(offer.getHostname())) {
-          LOG.info("resourceOffers: Recording offer from host: {}, offerId: {}",
+          // TODO(ksoundararaj): Should we record the following as info instead of debug
+          LOG.debug("resourceOffers: Recording offer from host: {}, offerId: {}",
                     offer.getHostname(), offer.getId().getValue());
           _offers.put(offer.getId(), offer);
         } else {
-          LOG.info("resourceOffers: Declining offer from host: {}, offerId: {}",
+          LOG.debug("resourceOffers: Declining offer from host: {}, offerId: {}",
                     offer.getHostname(), offer.getId().getValue());
           driver.declineOffer(offer.getId());
         }
@@ -571,8 +570,7 @@ public class MesosNimbus implements INimbus {
         String executorName = "storm-supervisor | " + topologyAndNodeId;
         String taskName = "storm-worker | " + topologyAndNodeId + ":" + slot.getPort();
         String executorDataStr = JSONValue.toJSONString(executorData);
-
-        boolean autostartLogviewer =  !subtractExecutorResources && MesosCommon.autoStartLogViewer(mesosStormConf);
+        String extraConfig = "";
 
         if (!offerResources.isFit(mesosStormConf, topologyDetails, workerPort, !subtractExecutorResources)) {
           LOG.error(String.format("Unable to launch worker %s. Required cpu: %f, Required mem: %f. Available OfferResources : %s",
@@ -617,6 +615,11 @@ public class MesosNimbus implements INimbus {
             executorPortResources.add(createMesosRangeResource(ResourceType.PORTS, logViewerPortList));
           } */
 
+          String supervisorStormLocalDir = (String) mesosStormConf.get(CONF_MESOS_SUPERVISOR_STORM_LOCAL_DIR);
+          if (supervisorStormLocalDir != null) {
+            extraConfig += String.format(" -c storm.local.dir=%s", supervisorStormLocalDir);
+          }
+
           scalarResourceEntryList = offerResources.reserveAndGet(ResourceType.CPU, new ScalarResourceEntry(workerCpu));
           workerCpuResources.addAll(createMesosScalarResource(ResourceType.CPU, scalarResourceEntryList));
           scalarResourceEntryList = offerResources.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(workerMem));
@@ -631,11 +634,6 @@ public class MesosNimbus implements INimbus {
           continue;
         }
 
-
-        String extraConfig = "";
-        if (autostartLogviewer) {
-          extraConfig = getLogViewerConfig();
-        }
 
         ExecutorInfo.Builder executorInfoBuilder = getExecutorInfoBuilder(topologyDetails, executorDataStr, executorName, executorCpuResources,
                                                                           executorMemResources, executorPortResources, extraConfig);

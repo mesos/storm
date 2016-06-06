@@ -23,8 +23,6 @@ import org.apache.mesos.Protos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.mesos.resources.OfferResources;
-import storm.mesos.resources.RangeResource;
-import storm.mesos.resources.ResourceEntry;
 import storm.mesos.resources.ResourceNotAvailabeException;
 import storm.mesos.resources.ResourceType;
 import storm.mesos.util.MesosCommon;
@@ -36,7 +34,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import static storm.mesos.resources.ResourceEntries.*;
+import static storm.mesos.resources.ResourceEntries.RangeResourceEntry;
+import static storm.mesos.resources.ResourceEntries.ScalarResourceEntry;
 
 public class SchedulerUtils {
 

@@ -17,14 +17,13 @@
  */
 package storm.mesos;
 
+import org.apache.mesos.Protos.TaskID;
+import storm.mesos.util.MesosCommon;
+
 import java.io.Serializable;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-
-import org.apache.mesos.Protos.TaskID;
-
-import storm.mesos.util.MesosCommon;
 
 /**
  * Tracks the Mesos Tasks / Storm Worker Processes that have been assigned
