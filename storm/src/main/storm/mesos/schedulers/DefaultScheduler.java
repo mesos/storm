@@ -27,10 +27,7 @@ import backtype.storm.scheduler.WorkerSlot;
 import org.apache.mesos.Protos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.mesos.MesosNimbus;
 import storm.mesos.resources.OfferResources;
-import storm.mesos.resources.RangeResource;
-import storm.mesos.resources.ResourceEntries;
 import storm.mesos.resources.ResourceNotAvailabeException;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
@@ -125,8 +122,9 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
                                                          Collection<SupervisorDetails> existingSupervisors,
                                                          Topologies topologies, Set<String> topologiesMissingAssignments) {
     if (topologiesMissingAssignments.isEmpty()) {
-      log.info("Not Declining all offers that are currently buffered because no topologies need assignments");
-      //offers.clear();
+      log.info("Declining all offers that are currently buffered because no topologies need assignments");
+      // TODO(ksoundararaj): Do we need to clear offers not that consolidate resources?
+      offers.clear();
       return new ArrayList<>();
     }
 
