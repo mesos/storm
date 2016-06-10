@@ -50,7 +50,7 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
   }
 
   public boolean isAvailable(ScalarResourceEntry scalarResourceEntry, ReservationType reservationType) {
-    return (availableResourcesByReservationType.get(reservationType).getValue() <= scalarResourceEntry.getValue());
+    return (availableResourcesByReservationType.get(reservationType).getValue() >= scalarResourceEntry.getValue());
   }
 
   public Double getTotalAvailableResource(ReservationType reservationType) {
@@ -79,13 +79,13 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
     totalAvailableResource += scalarResourceEntry.getValue();
   }
 
-  public List<ResourceEntry> removeAndGet(ScalarResourceEntry scalarResourceEntry) throws ResourceNotAvailabeException {
+  public List<ResourceEntry> removeAndGet(ScalarResourceEntry scalarResourceEntry) throws ResourceNotAvailableException {
     return removeAndGet(scalarResourceEntry, availableResourcesByReservationType.keySet());
   }
 
-  public List<ResourceEntry> reserveScalarResource(ResourceType resourceType, ScalarResourceEntry requiredValue) throws ResourceNotAvailabeException {
-    if (totalAvailableResource <= requiredValue.getValue()) {
-      throw new ResourceNotAvailabeException(String.format("resourceType: {} is not available. Requested {} Available {}",
+  public List<ResourceEntry> reserveScalarResource(ResourceType resourceType, ScalarResourceEntry requiredValue) throws ResourceNotAvailableException {
+    if (totalAvailableResource < requiredValue.getValue()) {
+      throw new ResourceNotAvailableException(String.format("resourceType: {} is not available. Requested {} Available {}",
                                                            resourceType, requiredValue, totalAvailableResource));
     }
     return removeAndGet(requiredValue);
@@ -98,7 +98,8 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
    * to determine the priority of the reservation type. When resources of all reservations are available, resources
    * are removed in the priority order specified by this comparator.
    */
-  public List<ResourceEntry> removeAndGet(ScalarResourceEntry scalarResourceEntry, Comparator<ReservationType> reservationTypeComparator) throws ResourceNotAvailabeException {
+  public List<ResourceEntry> removeAndGet(ScalarResourceEntry scalarResourceEntry, Comparator<ReservationType> reservationTypeComparator) throws
+    ResourceNotAvailableException {
     List<ReservationType> reservationTypeList = Arrays.asList(ReservationType.values());
     Collections.sort(reservationTypeList, reservationTypeComparator);
     return removeAndGet(scalarResourceEntry, reservationTypeList);
@@ -110,11 +111,11 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
    * {@param scalarResourceEntry} amount of scalar resource to removeAndGet/decrement.
    * {@link storm.mesos.resources.DefaultReservationTypeComparator} determines the priority of the reservation type.
    */
-  public List<ResourceEntry> removeAndGet(ScalarResourceEntry scalarResourceEntry, ReservationType reservationType) throws ResourceNotAvailabeException {
+  public List<ResourceEntry> removeAndGet(ScalarResourceEntry scalarResourceEntry, ReservationType reservationType) throws ResourceNotAvailableException {
     ScalarResourceEntry availableResource = availableResourcesByReservationType.get(reservationType);
     List<ResourceEntry> reservedResources = new ArrayList<>();
 
-    if (scalarResourceEntry.getValue() < availableResource.getValue()) {
+    if (scalarResourceEntry.getValue() <= availableResource.getValue()) {
       availableResourcesByReservationType.put(reservationType, availableResource.remove(scalarResourceEntry));
       totalAvailableResource -= scalarResourceEntry.getValue();
       reservedResources.add(new ScalarResourceEntry(scalarResourceEntry.getReservationType(), scalarResourceEntry.getValue()));
@@ -122,7 +123,7 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
     }
     String message = String.format("ResourceType '%s' of reservationType '%s' is not available. Requested value: %s Available: %s",
                                    resourceType, reservationType.toString(), scalarResourceEntry.getValue(), availableResourcesByReservationType.get(reservationType));
-    throw new ResourceNotAvailabeException(message);
+    throw new ResourceNotAvailableException(message);
   }
 
   public String toString() {
@@ -134,14 +135,15 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
     return String.format("Resource %s - Total available : %f Total available by reservation type : [ %s ]", resourceType.toString(), totalAvailableResource, tmp);
   }
 
-  private List<ResourceEntry> removeAndGet(ScalarResourceEntry scalarResourceEntry, Collection<ReservationType> reservationTypesListByPriority) throws ResourceNotAvailabeException {
+  private List<ResourceEntry> removeAndGet(ScalarResourceEntry scalarResourceEntry, Collection<ReservationType> reservationTypesListByPriority) throws
+    ResourceNotAvailableException {
     Double requiredValue = scalarResourceEntry.getValue();
     List<ResourceEntry> reservedResources = new ArrayList<>();
 
     if (requiredValue > totalAvailableResource) {
       String message = String.format("ResourceType '%s' is not available. Requested value: %s Available: %s",
                                      resourceType, requiredValue, totalAvailableResource);
-      throw new ResourceNotAvailabeException(message);
+      throw new ResourceNotAvailableException(message);
     }
 
     for (ReservationType reservationType : reservationTypesListByPriority) {
@@ -154,6 +156,8 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
         reservedResources.add(new ScalarResourceEntry(reservationType, requiredValue));
         return reservedResources;
       } else if (availableResourceValue > 0) {
+        // Fact that we are here => 0 < availableResourceValue < requiredValue.
+        // So we could entire availableResourceValue.
         availableResourcesByReservationType.put(reservationType, new ScalarResourceEntry(reservationType, 0.0));
         requiredValue -= availableResourceValue;
         totalAvailableResource -= availableResourceValue;

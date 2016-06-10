@@ -17,8 +17,8 @@
  */
 package storm.mesos.resources;
 
-public class ResourceNotAvailabeException extends Exception {
-  public ResourceNotAvailabeException(String message) {
+public class ResourceNotAvailableException extends Exception {
+  public ResourceNotAvailableException(String message) {
     super(message);
   }
 }

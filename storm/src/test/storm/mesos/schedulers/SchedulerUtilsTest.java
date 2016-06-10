@@ -24,14 +24,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
-import storm.mesos.resources.OfferResources;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static storm.mesos.TestUtils.buildOffer;
@@ -62,36 +59,5 @@ public class SchedulerUtilsTest {
 
     assertEquals(true, SchedulerUtils.supervisorExists(hostName, existingSupervisors, "test-topology1-65-1442255385"));
     assertEquals(false, SchedulerUtils.supervisorExists(hostName, existingSupervisors, "test-topology2-65-1442255385"));
-  }
-
-  @Test
-  public void testGetOfferResourcesListPerNode() {
-    String hostName = sampleHost;
-
-    buildOfferAndUpdateRotatingMap("offer1", hostName, 0, 1000);
-    buildOfferAndUpdateRotatingMap("offer2", hostName, 10, 0);
-    buildOfferAndUpdateRotatingMap("offer3", hostName, 0, 100.01);
-    buildOfferAndUpdateRotatingMap("offer4", hostName, 1.001, 0);
-    buildOfferAndUpdateRotatingMap("offer5", hostName, 0, 0.001);
-    buildOfferAndUpdateRotatingMap("offer6", hostName, 0.001, 0.01);
-
-    Map<String, List<OfferResources>> offerResourcesMap = SchedulerUtils.getOfferResourcesListPerNode(rotatingMap);
-    assertEquals(offerResourcesMap.size(), 1);
-
-    List<OfferResources> offerResources = offerResourcesMap.get("host1.east");
-    assertEquals(offerResources.size(), 6);
-
-    hostName = "host1.west";
-    buildOfferAndUpdateRotatingMap("offer7", hostName, 0, 1000);
-    buildOfferAndUpdateRotatingMap("offer8", hostName, 10, 0);
-
-    offerResourcesMap = SchedulerUtils.getOfferResourcesListPerNode(rotatingMap);
-    assertEquals(offerResourcesMap.size(), 2);
-
-    offerResources = offerResourcesMap.get("host1.east");
-    assertEquals(offerResources.size(), 6);
-
-    offerResources = offerResourcesMap.get("host1.west");
-    assertEquals(offerResources.size(), 2);
   }
 }

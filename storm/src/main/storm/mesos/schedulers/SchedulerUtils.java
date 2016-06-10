@@ -19,18 +19,15 @@ package storm.mesos.schedulers;
 
 import backtype.storm.scheduler.SupervisorDetails;
 import backtype.storm.scheduler.TopologyDetails;
-import org.apache.mesos.Protos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.mesos.resources.OfferResources;
-import storm.mesos.resources.ResourceNotAvailabeException;
+import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.resources.ResourceType;
 import storm.mesos.util.MesosCommon;
-import storm.mesos.util.RotatingMap;
 
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -62,7 +59,7 @@ public class SchedulerUtils {
   public static MesosWorkerSlot createMesosWorkerSlot(Map mesosStormConf,
                                                OfferResources offerResources,
                                                TopologyDetails topologyDetails,
-                                               boolean supervisorExists) throws ResourceNotAvailabeException {
+                                               boolean supervisorExists) throws ResourceNotAvailableException {
 
     double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
     double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
@@ -75,7 +72,7 @@ public class SchedulerUtils {
 
     List<RangeResourceEntry> ports = getPorts(offerResources, 1);
     if (ports.isEmpty()) {
-      throw new ResourceNotAvailabeException("No ports available to create MesosWorkerSlot.");
+      throw new ResourceNotAvailableException("No ports available to create MesosWorkerSlot.");
     }
     offerResources.reserve(ResourceType.PORTS, ports.get(0));
 
@@ -102,23 +99,4 @@ public class SchedulerUtils {
     }
     return false;
   }
-
-  public static Map<String, List<OfferResources>> getOfferResourcesListPerNode(RotatingMap<Protos.OfferID, Protos.Offer> offers) {
-    Map<String, List<OfferResources>> offerResourcesListPerNode = new HashMap<>();
-
-    for (Protos.Offer offer : offers.values()) {
-      String hostName = offer.getHostname();
-
-      List<OfferResources> offerResourcesListForCurrentHost = offerResourcesListPerNode.get(hostName);
-      OfferResources offerResources = new OfferResources(offer);
-      if (offerResourcesListForCurrentHost == null) {
-        offerResourcesListPerNode.put(hostName, new ArrayList<OfferResources>());
-      }
-      offerResourcesListPerNode.get(hostName).add(offerResources);
-      log.info("Available resources at {}: {}", hostName, offerResources.toString());
-    }
-    return offerResourcesListPerNode;
-  }
-
-
 }
