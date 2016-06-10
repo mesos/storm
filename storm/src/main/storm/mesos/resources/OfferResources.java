@@ -55,9 +55,7 @@ public class OfferResources {
 
   public OfferResources(Protos.Offer offer) {
     initializeAvailableResources();
-    if (slaveID == null) {
-      this.slaveID = offer.getSlaveId();
-    }
+    this.slaveID = offer.getSlaveId();
     this.hostName = offer.getHostname();
     add(offer);
   }
@@ -70,14 +68,14 @@ public class OfferResources {
     offerList.add(offer);
 
     for (Protos.Resource r : offer.getResourcesList()) {
+      ResourceType resourceType = ResourceType.of(r.getName());
+      ReservationType reservationType = (r.getRole().equals("*")) ?
+                                        ReservationType.UNRESERVED : ReservationType.STATICALLY_RESERVED;
+
       if (r.hasReservation()) {
         // skip resources with dynamic reservations
         continue;
       }
-
-      ResourceType resourceType = ResourceType.of(r.getName());
-
-      ReservationType reservationType = (r.getRole().equals("*")) ? ReservationType.UNRESERVED : ReservationType.STATICALLY_RESERVED;
 
       switch (resourceType) {
         case CPU:
@@ -115,22 +113,23 @@ public class OfferResources {
     return availableResources.get(resourceType).getAllAvailableResources(reservationType);
   }
 
-  public void reserve(ResourceType resourceType, ResourceEntry<?> resource) throws ResourceNotAvailabeException {
+  public void reserve(ResourceType resourceType, ResourceEntry<?> resource) throws ResourceNotAvailableException {
     if (availableResources.get(resourceType).isAvailable(resource)) {
       availableResources.get(resourceType).removeAndGet(resource);
     }
   }
 
-  public List<ResourceEntry> reserveAndGet(ResourceType resourceType, ResourceEntry<?> resource) throws ResourceNotAvailabeException {
+  public List<ResourceEntry> reserveAndGet(ResourceType resourceType, ResourceEntry<?> resource) throws ResourceNotAvailableException {
     if (availableResources.get(resourceType).isAvailable(resource)) {
       return availableResources.get(resourceType).removeAndGet(resource);
     }
     return new ArrayList<>();
   }
 
-  public List<ResourceEntry> reserveAndGet(ResourceType resourceType, ReservationType reservationType, ResourceEntry<?> resource) throws ResourceNotAvailabeException {
+  public List<ResourceEntry> reserveAndGet(ResourceType resourceType, ReservationType reservationType, ResourceEntry<?> resource) throws
+    ResourceNotAvailableException {
     if (availableResources.get(resourceType).isAvailable(resource, reservationType)) {
-      availableResources.get(resourceType).removeAndGet(resource, reservationType);
+      return availableResources.get(resourceType).removeAndGet(resource, reservationType);
     }
     return new ArrayList<>();
   }
@@ -168,7 +167,7 @@ public class OfferResources {
 
     return (isAvaliable(ResourceType.CPU, new ResourceEntries.ScalarResourceEntry(requestedWorkerCpu)) &&
             isAvaliable(ResourceType.MEM, new ResourceEntries.ScalarResourceEntry(requestedWorkerMem)) &&
-            !this.getAllAvailableResources(ResourceType.PORTS).isEmpty());
+            !getAllAvailableResources(ResourceType.PORTS).isEmpty());
   }
 
   public boolean isFit(Map mesosStormConf, TopologyDetails topologyDetails, Long port, boolean supervisorExists) {

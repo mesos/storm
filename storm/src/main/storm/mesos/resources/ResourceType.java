@@ -32,17 +32,17 @@ public enum ResourceType {
   private final String resourceType;
   private static final Logger LOG = LoggerFactory.getLogger(ResourceType.class);
 
-  private static final Map<String, ResourceType> map = new HashMap<>(ResourceType.values().length);
+  private static final Map<String, ResourceType> availableResourceTypes = new HashMap<>(ResourceType.values().length);
 
   static {
     for (ResourceType r : ResourceType.values()) {
-      map.put(r.resourceType, r);
+      availableResourceTypes.put(r.resourceType, r);
     }
   }
 
 
   public static ResourceType of(String name) {
-    ResourceType result = map.get(name);
+    ResourceType result = availableResourceTypes.get(name);
     if (result == null) {
       LOG.warn("Unexpected resource type {}", name);
     }

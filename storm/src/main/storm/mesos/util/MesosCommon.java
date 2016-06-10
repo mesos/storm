@@ -61,12 +61,11 @@ public class MesosCommon {
   public static final String DEFAULT_WORKER_NAME_PREFIX_DELIMITER = "_";
   public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = " | ";
 
-
   public static String getNimbusHost(Map mesosStormConf) throws UnknownHostException {
     Optional<String> nimbusHostFromConfig =  Optional.fromNullable((String) mesosStormConf.get(Config.NIMBUS_HOST));
     Optional<String> nimbusHostFromEnv = Optional.fromNullable(System.getenv("MESOS_NIMBUS_HOST"));
 
-    return nimbusHostFromConfig.or(nimbusHostFromEnv).or(nimbusHostFromConfig).or(InetAddress.getLocalHost().getCanonicalHostName());
+    return nimbusHostFromConfig.or(nimbusHostFromEnv).or(InetAddress.getLocalHost().getCanonicalHostName());
   }
 
   public static String hostFromAssignmentId(String assignmentId, String delimiter) {
@@ -145,14 +144,17 @@ public class MesosCommon {
     for (Protos.Offer offer : offers.values()) {
       String hostName = offer.getHostname();
 
-      OfferResources offerResourcesForHost = offerResourcesPerNode.get(hostName);
-      if (offerResourcesForHost == null) {
-        offerResourcesForHost = new OfferResources(offer);
-        offerResourcesPerNode.put(hostName, offerResourcesForHost);
+      OfferResources offerResources = offerResourcesPerNode.get(hostName);
+      if (offerResources == null) {
+        offerResources = new OfferResources(offer);
+        offerResourcesPerNode.put(hostName, offerResources);
       } else {
-        offerResourcesForHost.add(offer);
+        offerResources.add(offer);
       }
-      LOG.info("Available resources at " + hostName + ": " + offerResourcesForHost.toString());
+    }
+
+    for (OfferResources offerResources : offerResourcesPerNode.values()) {
+      LOG.info("Available resources at {}: {}", offerResources.getHostName(), offerResources.toString());
     }
     return offerResourcesPerNode;
   }

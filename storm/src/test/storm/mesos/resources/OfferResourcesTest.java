@@ -23,14 +23,14 @@ import org.junit.runner.RunWith;
 import org.mockito.runners.MockitoJUnitRunner;
 import storm.mesos.TestUtils;
 
-import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import storm.mesos.TestUtils;
 
 @RunWith(MockitoJUnitRunner.class)
 public class OfferResourcesTest {
+  private static final double DELTA_FOR_DOUBLE_COMPARISON = 0.0001;
 
   @Test
   public void testToIgnoreDynamicResources() {
@@ -42,23 +42,23 @@ public class OfferResourcesTest {
     Offer offer = TestUtils.buildOffer("0-1", "h1", 0, 0);
     OfferResources offerResources = new OfferResources(offer);
 
-    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU) == 0);
-    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM) == 0);
+    assertEquals(0, TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU), DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(0, TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM), DELTA_FOR_DOUBLE_COMPARISON);
 
     assertTrue(offerResources.getHostName().equals(offer.getHostname()));
     assertTrue(offerResources.getSlaveID().equals(offer.getSlaveId()));
 
     offer = TestUtils.buildOfferWithReservation("offer1", "h1", 2, 1000, 6, 1000);
     offerResources = new OfferResources(offer);
-    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU) == 8);
-    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM) == 2000);
+    assertEquals(8, TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU), DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(2000, TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM), DELTA_FOR_DOUBLE_COMPARISON);
     assertTrue(offerResources.getHostName().equals(offer.getHostname()));
     assertTrue(offerResources.getSlaveID().equals(offer.getSlaveId()));
 
     offer = TestUtils.buildOfferWithPorts("offer1", "h1", 2.0, 2000, 3000, 3100);
     offerResources = new OfferResources(offer);
-    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU) == 2.0);
-    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM) == 2000);
+    assertEquals(2.0, TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU), DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(2000, TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM),DELTA_FOR_DOUBLE_COMPARISON);
     List<Long> rangeResources = TestUtils.calculateAllAvailableRangeResources(offerResources, ResourceType.PORTS);
     assertTrue(rangeResources.size() == 101);
   }
