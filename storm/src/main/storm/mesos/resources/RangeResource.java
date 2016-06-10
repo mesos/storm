@@ -94,14 +94,14 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
    * {@param rangeResourceEntry} range resource to removeAndGet
    */
   @Override
-  public List<ResourceEntry> removeAndGet(RangeResourceEntry rangeResourceEntry) throws ResourceNotAvailabeException {
+  public List<ResourceEntry> removeAndGet(RangeResourceEntry rangeResourceEntry) throws ResourceNotAvailableException {
     if (isAvailable(rangeResourceEntry)) {
       return removeAndGet(availableResourcesByReservationType.keySet(), rangeResourceEntry);
     }
 
     String message = String.format("ResourceType '%s' is not available. Requested value: %s Available: %s",
                                    resourceType, rangeResourceEntry, toString());
-    throw new ResourceNotAvailabeException(message);
+    throw new ResourceNotAvailableException(message);
   }
 
 
@@ -109,11 +109,11 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
    * Remove/Reserve range from available ranges.
    * {@param rangeResourceEntry} range resource to removeAndGet
    * {@parm reservationType} reservation type of resource that needs to be removed. If the resource represented by rangeResourceEntry
-   * of the reservation type specied by this parameter is not available, then {@link storm.mesos.resources.ResourceNotAvailabeException}
+   * of the reservation type specied by this parameter is not available, then {@link ResourceNotAvailableException}
    * is thrown
    */
   @Override
-  public List<ResourceEntry> removeAndGet(RangeResourceEntry rangeResourceEntry, ReservationType reservationType) throws ResourceNotAvailabeException {
+  public List<ResourceEntry> removeAndGet(RangeResourceEntry rangeResourceEntry, ReservationType reservationType) throws ResourceNotAvailableException {
 
     if (isAvailable(rangeResourceEntry, reservationType)) {
       List<ReservationType> reservationTypeList = new ArrayList<>();
@@ -123,7 +123,7 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
 
     String message = String.format("ResourceType '%s' of reservationType '%s' is not available. Requested value: %s Available: %s",
                                    resourceType, reservationType.toString(), rangeResourceEntry.toString(), toString(availableResourcesByReservationType.get(reservationType)));
-    throw new ResourceNotAvailabeException(message);
+    throw new ResourceNotAvailableException(message);
   }
 
   /**
@@ -134,7 +134,8 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
    * are available, the priority of reservation type removed is governed by {@link storm.mesos.resources.DefaultReservationTypeComparator}
    */
   @Override
-  public List<ResourceEntry> removeAndGet(RangeResourceEntry rangeResourceEntry, Comparator<ReservationType> reservationTypeCompartor) throws ResourceNotAvailabeException {
+  public List<ResourceEntry> removeAndGet(RangeResourceEntry rangeResourceEntry, Comparator<ReservationType> reservationTypeCompartor) throws
+    ResourceNotAvailableException {
     if (isAvailable(rangeResourceEntry)) {
       List<ReservationType> reservationTypeList = Arrays.asList(ReservationType.values());
       Collections.sort(reservationTypeList, reservationTypeCompartor);
@@ -143,7 +144,40 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
 
     String message = String.format("ResourceType '%s' is not available. Requested value: %s Available: %s",
                                    resourceType, rangeResourceEntry, toString());
-    throw new ResourceNotAvailabeException(message);
+    throw new ResourceNotAvailableException(message);
+  }
+
+  private List<ResourceEntry> removeAndGet(Collection<ReservationType> reservationTypes, RangeResourceEntry desiredRange) {
+    List<ResourceEntry> removedResources = new ArrayList<>();
+    Long desiredBegin = desiredRange.getBegin();
+    Long desiredEnd = desiredRange.getEnd();
+
+    for (ReservationType reservationType : reservationTypes) {
+      List<RangeResourceEntry> availableRanges = availableResourcesByReservationType.get(reservationType);
+      for (int i = 0; i < availableRanges.size(); i++) {
+        RangeResourceEntry availableRange = availableRanges.get(i);
+        if (desiredBegin >= availableRange.getBegin() && desiredEnd <= availableRange.getEnd()) {
+          availableRanges.remove(i);
+          // We already removed the entry. So when beginValue == endValue,
+          // we dont have to add a new entry
+          if (availableRange.getBegin().equals(availableRange.getEnd()) || (availableRange.getBegin().equals(desiredBegin) && availableRange.getEnd().equals(desiredEnd))) {
+            removedResources.add(availableRange);
+            return removedResources;
+          } else if (desiredBegin > availableRange.getBegin() && availableRange.getEnd().equals(desiredEnd)) {
+            availableRanges.add(new RangeResourceEntry(reservationType, availableRange.getBegin(), desiredBegin - 1));
+            removedResources.add(new RangeResourceEntry(reservationType, desiredBegin, desiredEnd));
+          } else if (availableRange.getBegin().equals(desiredBegin) && desiredEnd < availableRange.getEnd()) {
+            availableRanges.add(new RangeResourceEntry(reservationType, desiredEnd + 1, availableRange.getEnd()));
+            removedResources.add(new RangeResourceEntry(reservationType, desiredBegin, desiredEnd));
+          } else if (desiredBegin > availableRange.getBegin() && desiredEnd < availableRange.getEnd()) {
+            availableRanges.add(new RangeResourceEntry(reservationType, availableRange.getBegin(), desiredBegin - 1));
+            availableRanges.add(new RangeResourceEntry(reservationType, desiredEnd + 1, availableRange.getEnd()));
+            removedResources.add(new RangeResourceEntry(reservationType, desiredBegin, desiredEnd));
+          }
+        }
+      }
+    }
+    return removedResources;
   }
 
   public String toString(List<RangeResourceEntry> ranges) {
@@ -175,40 +209,5 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
       resourceRanges.addAll(entry.getValue());
     }
     return toString(resourceRanges);
-  }
-
-  private List<ResourceEntry> removeAndGet(Collection<ReservationType> reservationTypes, RangeResourceEntry rangeResourceEntry) {
-    List<ResourceEntry> removedResources = new ArrayList<>();
-    Long beginValue = rangeResourceEntry.getBegin();
-    Long endValue = rangeResourceEntry.getEnd();
-
-    for (ReservationType reservationType : reservationTypes) {
-      List<RangeResourceEntry> rangeResourceEntryList = availableResourcesByReservationType.get(reservationType);
-      for (int i = 0; i < rangeResourceEntryList.size(); i++) {
-        RangeResourceEntry tmp = rangeResourceEntryList.get(i);
-        if (beginValue >= tmp.getBegin() && endValue <= tmp.getEnd()) {
-          rangeResourceEntryList.remove(i);
-          // We already removed the entry. So when beginValue == endValue,
-          // we dont have to add a new entry
-          if (tmp.getBegin().equals(tmp.getEnd()) || (tmp.getBegin().equals(beginValue) && tmp.getEnd().equals(endValue))) {
-            removedResources.add(tmp);
-            return removedResources;
-          }
-
-          if (beginValue > tmp.getBegin() && tmp.getEnd().equals(endValue)) {
-            rangeResourceEntryList.add(new RangeResourceEntry(reservationType, tmp.getBegin(), beginValue - 1));
-            removedResources.add(new RangeResourceEntry(reservationType, beginValue, endValue));
-          } else if (tmp.getBegin().equals(beginValue) && endValue < tmp.getEnd()) {
-            rangeResourceEntryList.add(new RangeResourceEntry(reservationType, endValue + 1, tmp.getEnd()));
-            removedResources.add(new RangeResourceEntry(reservationType, beginValue, endValue));
-          } else if (beginValue > tmp.getBegin() && endValue < tmp.getEnd()) {
-            rangeResourceEntryList.add(new RangeResourceEntry(reservationType, tmp.getBegin(), beginValue - 1));
-            rangeResourceEntryList.add(new RangeResourceEntry(reservationType, endValue + 1, tmp.getEnd()));
-            removedResources.add(new RangeResourceEntry(reservationType, beginValue, endValue));
-          }
-        }
-      }
-    }
-    return removedResources;
   }
 }

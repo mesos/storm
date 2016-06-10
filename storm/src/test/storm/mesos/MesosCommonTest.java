@@ -39,7 +39,7 @@ public class MesosCommonTest {
   private Map conf;
   private TopologyDetails info;
   private String topologyName = "t_name";
-  private static final double DELTA = 0.0001;
+  private static final double DELTA_FOR_DOUBLE_COMPARISON = 0.0001;
   private final MesosNimbus mesosNimbus;
 
   public MesosCommonTest() {
@@ -214,7 +214,7 @@ public class MesosCommonTest {
     // Test default value
     double result = MesosCommon.topologyWorkerCpu(conf, info);
     double expectedResult = MesosCommon.DEFAULT_WORKER_CPU;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test what happens when config is too small
     double cpuConfig = MesosCommon.MESOS_MIN_CPU;
@@ -222,20 +222,20 @@ public class MesosCommonTest {
     conf.put(MesosCommon.WORKER_CPU_CONF, cpuConfig);
     result = MesosCommon.topologyWorkerCpu(conf, info);
     expectedResult = MesosCommon.DEFAULT_WORKER_CPU;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test what happens when config is null
     conf.put(MesosCommon.WORKER_CPU_CONF, null);
     result = MesosCommon.topologyWorkerCpu(conf, info);
     expectedResult = MesosCommon.DEFAULT_WORKER_CPU;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test explicit value
     conf.put(MesosCommon.WORKER_CPU_CONF, 1.5);
     info = new TopologyDetails("t2", conf, new StormTopology(), 2);
     result = MesosCommon.topologyWorkerCpu(conf, info);
     expectedResult = 1.5;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test string passed in
     conf = new HashMap<>();
@@ -243,7 +243,7 @@ public class MesosCommonTest {
     info = new TopologyDetails("t3", conf, new StormTopology(), 1);
     result = MesosCommon.topologyWorkerCpu(conf, info);
     expectedResult = 1;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test that this value is not overwritten by Topology config
     Map nimbusConf = new HashMap<>();
@@ -253,7 +253,7 @@ public class MesosCommonTest {
     info = new TopologyDetails("t4", conf, new StormTopology(), 1);
     result = MesosCommon.topologyWorkerCpu(nimbusConf, info);
     expectedResult = 1.5;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
   }
 
   @Test
@@ -261,7 +261,7 @@ public class MesosCommonTest {
     // Test default value
     double result = MesosCommon.topologyWorkerMem(conf, info);
     double expectedResult = MesosCommon.DEFAULT_WORKER_MEM_MB;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
     
     // Test what happens when config is too small
     double memConfig = MesosCommon.MESOS_MIN_MEM_MB;
@@ -269,27 +269,27 @@ public class MesosCommonTest {
     conf.put(MesosCommon.WORKER_MEM_CONF, memConfig);
     result = MesosCommon.topologyWorkerMem(conf, info);
     expectedResult = MesosCommon.DEFAULT_WORKER_MEM_MB;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test what happens when config is null
     conf.put(MesosCommon.WORKER_MEM_CONF, null);
     result = MesosCommon.topologyWorkerMem(conf, info);
     expectedResult = MesosCommon.DEFAULT_WORKER_MEM_MB;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test explicit value
     conf.put(MesosCommon.WORKER_MEM_CONF, 1200);
     info = new TopologyDetails("t2", conf, new StormTopology(), 2);
     result = MesosCommon.topologyWorkerMem(conf, info);
     expectedResult = 1200;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test string passed in
     conf.put(MesosCommon.WORKER_MEM_CONF, "1200");
     info = new TopologyDetails("t3", conf, new StormTopology(), 1);
     result = MesosCommon.topologyWorkerMem(conf, info);
     expectedResult = 1000;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test that this value is overwritten by Topology config
     Map nimbusConf = new HashMap<>();
@@ -298,7 +298,7 @@ public class MesosCommonTest {
     info = new TopologyDetails("t4", conf, new StormTopology(), 1);
     result = MesosCommon.topologyWorkerMem(nimbusConf, info);
     expectedResult = 150;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
   }
 
   @Test
@@ -306,13 +306,13 @@ public class MesosCommonTest {
     // Test default config
     double result = MesosCommon.executorCpu(conf);
     double expectedResult = MesosCommon.DEFAULT_EXECUTOR_CPU;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test explicit value
     conf.put(MesosCommon.EXECUTOR_CPU_CONF, 2.0);
     result = MesosCommon.executorCpu(conf);
     expectedResult = 2.0;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
   }
 
   @Test
@@ -320,13 +320,13 @@ public class MesosCommonTest {
     // Test default config
     double result = MesosCommon.executorMem(conf);
     double expectedResult = MesosCommon.DEFAULT_EXECUTOR_MEM_MB;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test explicit value
     conf.put(MesosCommon.EXECUTOR_MEM_CONF, 100);
     result = MesosCommon.executorMem(conf);
     expectedResult = 100;
-    assertEquals(result, expectedResult, DELTA);
+    assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
   }
 
   @Test
@@ -346,14 +346,14 @@ public class MesosCommonTest {
 
     Map<String, OfferResources> offerResourcesMap = MesosCommon.getConsolidatedOfferResourcesPerNode(r);
     OfferResources offerResources = offerResourcesMap.get("h1");
-    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU) == 210);
-    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM) == 3000);
-    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU, ReservationType.STATICALLY_RESERVED) == 200);
-    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM, ReservationType.STATICALLY_RESERVED) == 2000);
-    assertTrue(TestUtils.calculateAllAvailableRangeResources(offerResources, ResourceType.PORTS, ReservationType.STATICALLY_RESERVED).size() == 0);
+    assertEquals(210, TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(3000, TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(200, TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU, ReservationType.STATICALLY_RESERVED), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(2000, TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM, ReservationType.STATICALLY_RESERVED), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(0, TestUtils.calculateAllAvailableRangeResources(offerResources, ResourceType.PORTS, ReservationType.STATICALLY_RESERVED).size(), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
     offerResources = offerResourcesMap.get("h2");
-    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU, ReservationType.STATICALLY_RESERVED) == 0);
-    assertTrue(TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM, ReservationType.STATICALLY_RESERVED) == 0);
-    assertTrue(TestUtils.calculateAllAvailableRangeResources(offerResources, ResourceType.PORTS, ReservationType.UNRESERVED).size() == 100);
+    assertEquals(0, TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.CPU, ReservationType.STATICALLY_RESERVED), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(0, TestUtils.calculateAllAvailableScalarResources(offerResources, ResourceType.MEM, ReservationType.STATICALLY_RESERVED), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(100, TestUtils.calculateAllAvailableRangeResources(offerResources, ResourceType.PORTS, ReservationType.UNRESERVED).size(), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
   }
 }

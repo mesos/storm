@@ -28,7 +28,7 @@ import org.apache.mesos.Protos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.mesos.resources.OfferResources;
-import storm.mesos.resources.ResourceNotAvailabeException;
+import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
 
@@ -63,10 +63,10 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
     double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
 
     List<MesosWorkerSlot> mesosWorkerSlots = new ArrayList<>();
-    boolean slotFound = true;
+    boolean slotFound = false;
     int slotsNeeded = topologyDetails.getNumWorkers();
 
-    while (slotFound && slotsNeeded > 0) {
+    do {
       slotFound = false;
       for (String currentNode : offerResourcesPerNode.keySet()) {
         OfferResources offerResources = offerResourcesPerNode.get(currentNode);
@@ -81,23 +81,22 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
 
         log.info("{} is a fit for {} requestedWorkerCpu: {} requestedWorkerMem: {}", offerResources.toString(),
                  topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMem);
-        nodesWithExistingSupervisors.add(currentNode);
         MesosWorkerSlot mesosWorkerSlot;
-
         try {
           mesosWorkerSlot = SchedulerUtils.createMesosWorkerSlot(mesosStormConf, offerResources, topologyDetails, supervisorExists);
-        } catch (ResourceNotAvailabeException rexp) {
+        } catch (ResourceNotAvailableException rexp) {
           log.warn(rexp.getMessage());
           continue;
         }
 
+        nodesWithExistingSupervisors.add(currentNode);
         mesosWorkerSlots.add(mesosWorkerSlot);
         slotFound = true;
         if (--slotsNeeded == 0) {
           break;
         }
       }
-    }
+    } while (slotFound && slotsNeeded > 0);
 
     return mesosWorkerSlots;
   }
@@ -136,7 +135,6 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
     for (String currentTopology : topologiesMissingAssignments) {
       TopologyDetails topologyDetails = topologies.getById(currentTopology);
       int slotsNeeded = topologyDetails.getNumWorkers();
-
 
       log.info("Trying to find {} slots for {}", slotsNeeded, topologyDetails.getId());
       if (slotsNeeded <= 0) {

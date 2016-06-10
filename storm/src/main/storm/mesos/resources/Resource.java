@@ -36,10 +36,10 @@ public interface Resource<T extends ResourceEntry<? extends Number>> {
 
   public void add(T resourceEntry, ReservationType reservationType);
 
-  public List<ResourceEntry> removeAndGet(T resourceEntry) throws ResourceNotAvailabeException;
+  public List<ResourceEntry> removeAndGet(T resourceEntry) throws ResourceNotAvailableException;
 
-  public List<ResourceEntry> removeAndGet(T value, ReservationType reservationType) throws ResourceNotAvailabeException;
+  public List<ResourceEntry> removeAndGet(T value, ReservationType reservationType) throws ResourceNotAvailableException;
 
-  public List<ResourceEntry> removeAndGet(T value, Comparator<ReservationType> reservationTypeComparator) throws ResourceNotAvailabeException;
+  public List<ResourceEntry> removeAndGet(T value, Comparator<ReservationType> reservationTypeComparator) throws ResourceNotAvailableException;
 
 }

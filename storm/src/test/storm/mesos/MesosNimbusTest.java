@@ -27,8 +27,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import storm.mesos.resources.OfferResources;
-import storm.mesos.resources.ReservationType;
-import storm.mesos.resources.Resource;
 import storm.mesos.resources.ResourceType;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
@@ -36,10 +34,8 @@ import storm.mesos.util.RotatingMap;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -77,8 +73,11 @@ public class MesosNimbusTest {
         case PORTS:
           Protos.Value.Ranges ranges = resource.getRanges();
           for (Protos.Value.Range range : ranges.getRangeList()) {
-            for (long i = 0; i < (range.getEnd() - range.getBegin() + 1); i++) {
-              actualPorts.add(range.getBegin() + i);
+            long endValue = range.getEnd();
+            long beginValue = range.getBegin();
+            while (endValue >= beginValue) {
+              actualPorts.add(beginValue);
+              ++beginValue;
             }
           }
       }
@@ -113,8 +112,8 @@ public class MesosNimbusTest {
       }
     }
 
-    boolean hasPorts = (expectedPorts.size() == actualPorts.size()) && expectedPorts.containsAll(actualPorts);
-    return actualCpu.equals(cpus) && actualMem.equals(mem) && hasPorts;
+    boolean hasExpectedPorts = (expectedPorts.size() == actualPorts.size()) && expectedPorts.containsAll(actualPorts);
+    return actualCpu.equals(cpus) && actualMem.equals(mem) && hasExpectedPorts;
   }
 
   private boolean hasResources(List<Protos.Resource> resourceList, Double cpus, Double mem) {
@@ -252,7 +251,8 @@ public class MesosNimbusTest {
 
     Map<String,List<Protos.TaskInfo>> tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
 
-    assertTrue((tasksToLaunch.size() == 1) && (tasksToLaunch.get("h1").size() == 1));
+    assertTrue((tasksToLaunch.size() == 1));
+    assertTrue((tasksToLaunch.get("h1").size() == 1));
 
     // One offer with sufficient resources spread across reserved and unreserved resources
     offer = TestUtils.buildOfferWithReservationAndPorts("O-1", "h1", 0.75, 750, 0.75, 850, 3100, 3101);
@@ -266,7 +266,8 @@ public class MesosNimbusTest {
 
     tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
 
-    assertTrue((tasksToLaunch.size() == 1) && (tasksToLaunch.get("h1").size() == 1));
+    assertTrue((tasksToLaunch.size() == 1));
+    assertTrue((tasksToLaunch.get("h1").size() == 1));
     assertTrue(hasResources(FRAMEWORK_ROLE, tasksToLaunch.get("h1").get(0), 0.75 - MesosCommon.DEFAULT_EXECUTOR_CPU, 850 - MesosCommon.DEFAULT_EXECUTOR_MEM_MB));
     assertTrue(hasResources("*", tasksToLaunch.get("h1").get(0), 0.35, 650.0));
     assertTrue(hasCorrectExecutorResources(tasksToLaunch.get("h1")));
@@ -285,7 +286,8 @@ public class MesosNimbusTest {
 
     tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
 
-    assertTrue((tasksToLaunch.size() == 1) && (tasksToLaunch.get("h1").size() == 1));
+    assertTrue((tasksToLaunch.size() == 1));
+    assertTrue(tasksToLaunch.get("h1").size() == 1);
     assertTrue(hasResources(FRAMEWORK_ROLE, tasksToLaunch.get("h1").get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB));
     assertTrue(hasCorrectExecutorResources(tasksToLaunch.get("h1")));
     assertEquals(TestUtils.calculateAllAvailableScalarResources(offerResourcesPerNode.get("h1"), ResourceType.CPU), 0.4f, 0.01f);
@@ -352,7 +354,8 @@ public class MesosNimbusTest {
     workerSlots.add(new WorkerSlot("h1", 3100));
     workerSlotsMap.put("t1", workerSlots);
     Map<String,List<Protos.TaskInfo>> tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
-    assertTrue((tasksToLaunch.size() == 1) && (tasksToLaunch.get("h1").size() == 1));
+    assertTrue((tasksToLaunch.size() == 1));
+    assertTrue((tasksToLaunch.get("h1").size() == 1));
     List<Protos.TaskInfo> taskInfoList = tasksToLaunch.get("h1");
     assertTrue(hasResources("*", taskInfoList.get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3100l));
     assertTrue(hasCorrectExecutorResources(taskInfoList));

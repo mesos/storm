@@ -60,7 +60,6 @@ public class ResourceEntries {
     private Long end;
 
     public RangeResourceEntry(Long begin, Long end) {
-      this.reservationType = reservationType;
       this.begin = begin;
       this.end = end;
     }
@@ -83,9 +82,21 @@ public class ResourceEntries {
       return reservationType;
     }
 
-    @Override
+    /**
+     * Lets say, we have a range [u,v]. Using this add function, we can expand the range to [w,x] if and
+     * only if one of the following conditions are satisfied
+     *   `w < u`
+     *   `x > v`
+     *   `w < u` and `x > v`
+     * In case of a disjoint (u,v) and (w,x), no action is taken.
+     */
     public RangeResourceEntry add(ResourceEntry<Long> resourceEntry) {
       RangeResourceEntry rangeResourceEntry = (RangeResourceEntry) resourceEntry;
+
+      if (rangeResourceEntry.getBegin() > this.end || rangeResourceEntry.getEnd() < this.begin) {
+        return this;
+      }
+
       if (this.begin < rangeResourceEntry.getBegin()) {
         this.begin = rangeResourceEntry.getBegin();
       }
@@ -95,14 +106,13 @@ public class ResourceEntries {
       return this;
     }
 
-    @Override
     public RangeResourceEntry remove(ResourceEntry<Long> resourceEntry) {
       RangeResourceEntry rangeResourceEntry = (RangeResourceEntry) resourceEntry;
-      if (this.begin > rangeResourceEntry.getBegin()) {
+      if (this.begin < rangeResourceEntry.getBegin()) {
         this.begin = rangeResourceEntry.getBegin();
       }
 
-      if (this.end < rangeResourceEntry.getEnd()) {
+      if (this.end > rangeResourceEntry.getEnd()) {
         this.end = rangeResourceEntry.getEnd();
       }
       return this;

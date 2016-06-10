@@ -55,7 +55,7 @@ import storm.mesos.resources.ReservationType;
 import storm.mesos.resources.ResourceEntries.RangeResourceEntry;
 import storm.mesos.resources.ResourceEntries.ScalarResourceEntry;
 import storm.mesos.resources.ResourceEntry;
-import storm.mesos.resources.ResourceNotAvailabeException;
+import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.resources.ResourceType;
 import storm.mesos.schedulers.DefaultScheduler;
 import storm.mesos.schedulers.IMesosStormScheduler;
@@ -178,7 +178,7 @@ public class MesosNimbus implements INimbus {
   public void prepare(Map conf, String localDir) {
     try {
       initializeMesosStormConf(conf, localDir);
-      startLocalServer();
+      startLocalHttpServer();
 
       MesosSchedulerDriver driver = createMesosDriver();
 
@@ -204,15 +204,16 @@ public class MesosNimbus implements INimbus {
     try {
       _state = new LocalStateShim(localDir);
     } catch (IOException exp) {
-      // TODO(ksoundararaj) : Should we exit here?
-      LOG.error("Encounted IOException while setting up LocalState at {} : {}", localDir, exp);
+      throw new RuntimeException(String.format("Encountered IOException while setting up LocalState at %s : %s", localDir, exp));
     }
+
     _allowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_ALLOWED_HOSTS));
     _disallowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_DISALLOWED_HOSTS));
     Boolean preferReservedResources = (Boolean) conf.get(CONF_MESOS_PREFER_RESERVED_RESOURCES);
     if (preferReservedResources != null) {
       _preferReservedResources = preferReservedResources;
     }
+
     _container = Optional.fromNullable((String) conf.get(CONF_MESOS_CONTAINER_DOCKER_IMAGE));
     _scheduler = new NimbusScheduler(this);
 
@@ -227,8 +228,7 @@ public class MesosNimbus implements INimbus {
     try {
       mesosStormConf.put(Config.NIMBUS_HOST, MesosCommon.getNimbusHost(mesosStormConf));
     } catch (UnknownHostException exp) {
-      LOG.error("Exception while configuring nimbus host: {}", exp);
-      // TODO(ksoundararaj): Should we exit here?
+      throw new RuntimeException(String.format("Exception while configuring nimbus host: %s", exp));
     }
 
     Path pathToDumpConfig = Paths.get(_generatedConfPath.toString(), "storm.yaml");
@@ -243,7 +243,7 @@ public class MesosNimbus implements INimbus {
   }
 
   @SuppressWarnings("unchecked")
-  protected void startLocalServer() throws Exception {
+  protected void startLocalHttpServer() throws Exception {
     createLocalServerPort();
     setupHttpServer();
   }
@@ -414,6 +414,12 @@ public class MesosNimbus implements INimbus {
     }
 
     synchronized (_offersLock) {
+      /**
+       * We need to call getConsolidatedOfferResourcesPerNode again here for the following
+       *   1. Because _offers could have changed between `allSlotsAvailableForScheduling()' and `assignSlots()'
+       *   2. In `allSlotsAvailableForScheduling()', we change what is returned by `getConsolidatedOfferResourcesPerNode'
+       *      calculate the number of slots available.
+       */
       Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(_offers);
       Map<String, List<TaskInfo>> tasksToLaunchPerNode = getTasksToLaunch(topologies, slotsForTopologiesNeedingAssignments, offerResourcesPerNode);
 
@@ -431,16 +437,37 @@ public class MesosNimbus implements INimbus {
     }
   }
 
+  // Set the MesosSupervisor's storm.local.dir value. By default it is set to "storm-local",
+  // which is the same as the storm-core default, which is interpreted relative to the pwd of
+  // the storm daemon (the mesos executor sandbox in the case of the MesosSupervisor).
+  //
+  // If this isn't done, then MesosSupervisor inherits MesosNimbus's storm.local.dir config.
+  // That is fine if the MesosNimbus storm.local.dir config is just the default too ("storm-local"),
+  // since the mesos executor sandbox is isolated per-topology.
+  // However, if the MesosNimbus storm.local.dir is specialized (e.g., /var/run/storm-local), then
+  // this will cause problems since multiple topologies on the same host would use the same
+  // storm.local.dir and thus interfere with each other's state. And *that* leads to one topology's
+  // supervisor killing the workers of every other topology on the same host (due to interference
+  // in the stored worker assignments).
+  // Note that you *can* force the MesosSupervisor to use a specific directory by setting
+  // the "mesos.supervisor.storm.local.dir" variable in the MesosNimbus's storm.yaml.
+  public String getStormLocalDirForWorkers() {
+    String supervisorStormLocalDir = (String) mesosStormConf.get(CONF_MESOS_SUPERVISOR_STORM_LOCAL_DIR);
+    if (supervisorStormLocalDir == null) {
+      supervisorStormLocalDir = MesosCommon.DEFAULT_SUPERVISOR_STORM_LOCAL_DIR;
+    }
+    return supervisorStormLocalDir;
+  }
+
   private Resource createMesosScalarResource(ResourceType resourceType, ScalarResourceEntry scalarResourceEntry) {
     return Resource.newBuilder()
                    .setName(resourceType.toString())
                    .setType(Protos.Value.Type.SCALAR)
                    .setScalar(Scalar.newBuilder().setValue(scalarResourceEntry.getValue()))
                    .build();
-
   }
 
-  private List<Resource> createMesosScalarResource(ResourceType resourceType, List<ResourceEntry> scalarResourceEntryList) {
+  private List<Resource> createMesosScalarResourceList(ResourceType resourceType, List<ResourceEntry> scalarResourceEntryList) {
     List<Resource> retVal = new ArrayList<>();
     ScalarResourceEntry scalarResourceEntry = null;
 
@@ -486,9 +513,7 @@ public class MesosNimbus implements INimbus {
 
   private ExecutorInfo.Builder getExecutorInfoBuilder(TopologyDetails details, String executorDataStr,
                                                       String executorName,
-                                                      List<Resource> executorCpuResources,
-                                                      List<Resource> executorMemResources,
-                                                      List<Resource> executorPortsResources,
+                                                      List<Resource> executorResources,
                                                       String extraConfig) {
     String configUri;
 
@@ -500,11 +525,13 @@ public class MesosNimbus implements INimbus {
       .setName(executorName)
       .setExecutorId(ExecutorID.newBuilder().setValue(details.getId()))
       .setData(ByteString.copyFromUtf8(executorDataStr))
-      .addAllResources(executorCpuResources)
-      .addAllResources(executorMemResources)
-      .addAllResources(executorPortsResources);
+      .addAllResources(executorResources);
 
     ICommandLineShim commandLineShim = CommandLineShimFactory.makeCommandLineShim(_container.isPresent(), extraConfig);
+    /**
+     *  _container.isPresent() might be slightly misleading at first blush. It is only checking whether or not
+     *  CONF_MESOS_CONTAINER_DOCKER_IMAGE is set to a value other than null.
+     */
     if (_container.isPresent()) {
       executorInfoBuilder.setCommand(CommandInfo.newBuilder()
                                                 .addUris(URI.newBuilder().setValue(configUri))
@@ -527,6 +554,7 @@ public class MesosNimbus implements INimbus {
     return executorInfoBuilder;
   }
 
+
   public Map<String, List<TaskInfo>> getTasksToLaunch(Topologies topologies,
                                                       Map<String, Collection<WorkerSlot>> slots,
                                                       Map<String, OfferResources> offerResourcesPerNode) {
@@ -541,10 +569,11 @@ public class MesosNimbus implements INimbus {
       double workerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
       double executorCpu = MesosCommon.executorCpu(mesosStormConf);
       double executorMem = MesosCommon.executorMem(mesosStormConf);
-      double requiredCpu = workerCpu;
-      double requiredMem = workerMem;
 
       for (WorkerSlot slot : slotList) {
+        double requiredCpu = workerCpu;
+        double requiredMem = workerMem;
+
         String workerHost = slot.getNodeId();
         Long workerPort = Long.valueOf(slot.getPort());
 
@@ -557,7 +586,7 @@ public class MesosNimbus implements INimbus {
           workerPrefix = MesosCommon.getWorkerPrefix(mesosStormConf, topologyDetails);
         }
 
-        if (hostsUsedSoFar.contains(workerHost)) {
+        if (!hostsUsedSoFar.contains(workerHost)) {
           requiredCpu += executorCpu;
           requiredMem += executorMem;
         }
@@ -578,13 +607,8 @@ public class MesosNimbus implements INimbus {
           continue;
         }
 
-        List<Resource> executorCpuResources = new ArrayList<>();
-        List<Resource> executorMemResources = new ArrayList<>();
-        List<Resource> executorPortResources = new ArrayList<>();
-        List<Resource> workerCpuResources = new ArrayList<>();
-        List<Resource> workerMemResources = new ArrayList<>();
-        List<Resource> workerPortResources = new ArrayList<>();
-
+        List<Resource> executorResources = new ArrayList<>();
+        List<Resource> workerResources = new ArrayList<>();
 
         try {
           List<ResourceEntry> scalarResourceEntryList = null;
@@ -592,51 +616,33 @@ public class MesosNimbus implements INimbus {
 
           if (subtractExecutorResources) {
             scalarResourceEntryList = offerResources.reserveAndGet(ResourceType.CPU, new ScalarResourceEntry(executorCpu));
-            executorCpuResources.addAll(createMesosScalarResource(ResourceType.CPU, scalarResourceEntryList));
+            executorResources.addAll(createMesosScalarResourceList(ResourceType.CPU, scalarResourceEntryList));
             scalarResourceEntryList = offerResources.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(executorMem));
-            executorMemResources.addAll(createMesosScalarResource(ResourceType.MEM, scalarResourceEntryList));
+            executorResources.addAll(createMesosScalarResourceList(ResourceType.MEM, scalarResourceEntryList));
           } else {
-            // TODO(ksoundararaj): Do we need to ensure consistent roles for all executors belonging to same topology?
-            // If so, how do we do that?
-            executorCpuResources.add(createMesosScalarResource(ResourceType.CPU, new ScalarResourceEntry(executorCpu)));
-            executorMemResources.add(createMesosScalarResource(ResourceType.MEM, new ScalarResourceEntry(executorMem)));
+            executorResources.add(createMesosScalarResource(ResourceType.CPU, new ScalarResourceEntry(executorCpu)));
+            executorResources.add(createMesosScalarResource(ResourceType.MEM, new ScalarResourceEntry(executorMem)));
           }
 
-          /**
-           *  Autostart logviewer cannot be supported. If we try to fetch a random port P
-           *  from the list of available ports and assign it to the logviewer, its possible that
-           *  one of the workers is already assigned to that port. So I am not supporting auto starting
-           *  logviewer at this point
-           *
-          if (MesosCommon.autoStartLogViewer(mesosStormConf)) {
-            Long logViewerPort = offerResources.reserveRangeResource(ResourceType.PORTS, 1).get(0);
-            List<RangeResourceEntry> logViewerPortList = new ArrayList<>();
-            logViewerPortList.add(new RangeResourceEntry(logViewerPort, logViewerPort));
-            executorPortResources.add(createMesosRangeResource(ResourceType.PORTS, logViewerPortList));
-          } */
-
-          String supervisorStormLocalDir = (String) mesosStormConf.get(CONF_MESOS_SUPERVISOR_STORM_LOCAL_DIR);
-          if (supervisorStormLocalDir != null) {
-            extraConfig += String.format(" -c storm.local.dir=%s", supervisorStormLocalDir);
-          }
+          String supervisorStormLocalDir = getStormLocalDirForWorkers();
+          extraConfig += String.format(" -c storm.local.dir=%s", supervisorStormLocalDir);
 
           scalarResourceEntryList = offerResources.reserveAndGet(ResourceType.CPU, new ScalarResourceEntry(workerCpu));
-          workerCpuResources.addAll(createMesosScalarResource(ResourceType.CPU, scalarResourceEntryList));
+          workerResources.addAll(createMesosScalarResourceList(ResourceType.CPU, scalarResourceEntryList));
           scalarResourceEntryList = offerResources.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(workerMem));
-          workerCpuResources.addAll(createMesosScalarResource(ResourceType.MEM, scalarResourceEntryList));
+          workerResources.addAll(createMesosScalarResourceList(ResourceType.MEM, scalarResourceEntryList));
           rangeResourceEntryList = offerResources.reserveAndGet(ResourceType.PORTS, new RangeResourceEntry(workerPort, workerPort));
           for (ResourceEntry resourceEntry : rangeResourceEntryList) {
-            workerCpuResources.add(createMesosRangeResource(ResourceType.PORTS, (RangeResourceEntry) resourceEntry));
+            workerResources.add(createMesosRangeResource(ResourceType.PORTS, (RangeResourceEntry) resourceEntry));
           }
-        } catch (ResourceNotAvailabeException rexp) {
+        } catch (ResourceNotAvailableException rexp) {
           LOG.warn("Unable to launch worker %s. Required cpu: %f, Required mem: %f. Available OfferResources : %s",
                    workerHost, requiredCpu, requiredMem, offerResources);
           continue;
         }
 
 
-        ExecutorInfo.Builder executorInfoBuilder = getExecutorInfoBuilder(topologyDetails, executorDataStr, executorName, executorCpuResources,
-                                                                          executorMemResources, executorPortResources, extraConfig);
+        ExecutorInfo.Builder executorInfoBuilder = getExecutorInfoBuilder(topologyDetails, executorDataStr, executorName, executorResources, extraConfig);
         TaskID taskId = TaskID.newBuilder()
                               .setValue(MesosCommon.taskId(slot.getNodeId(), slot.getPort()))
                               .build();
@@ -646,9 +652,7 @@ public class MesosNimbus implements INimbus {
                                 .setName(taskName)
                                 .setSlaveId(offerResources.getSlaveID())
                                 .setExecutor(executorInfoBuilder.build())
-                                .addAllResources(workerCpuResources)
-                                .addAllResources(workerMemResources)
-                                .addAllResources(workerPortResources)
+                                .addAllResources(workerResources)
                                 .build();
 
         List<TaskInfo> taskInfoList = tasksToLaunchPerNode.get(slot.getNodeId());
