@@ -83,8 +83,8 @@ public class MesosNimbusTest {
       }
     }
 
-    boolean hasPorts = (expectedPorts.size() == actualPorts.size()) && expectedPorts.containsAll(actualPorts);
-    return actualCpu.equals(cpus) && actualMem.equals(mem) && hasPorts;
+    boolean hasExpectedPorts = (expectedPorts.size() == actualPorts.size()) && expectedPorts.containsAll(actualPorts);
+    return actualCpu.equals(cpus) && actualMem.equals(mem) && hasExpectedPorts;
   }
 
   private boolean hasResources(List<Protos.Resource> resourceList, Double cpus, Double mem, Long port) {
@@ -105,12 +105,15 @@ public class MesosNimbusTest {
         case PORTS:
           Protos.Value.Ranges ranges = resource.getRanges();
           for (Protos.Value.Range range : ranges.getRangeList()) {
-            for (long i = 0; i < (range.getEnd() - range.getBegin() + 1); i++) {
-              actualPorts.add(range.getBegin() + i);
+            long endValue = range.getEnd();
+            long beginValue = range.getBegin();
+            while (endValue >= beginValue) {
+              actualPorts.add(beginValue);
+              ++beginValue;
             }
           }
+        }
       }
-    }
 
     boolean hasExpectedPorts = (expectedPorts.size() == actualPorts.size()) && expectedPorts.containsAll(actualPorts);
     return actualCpu.equals(cpus) && actualMem.equals(mem) && hasExpectedPorts;
