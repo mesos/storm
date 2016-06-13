@@ -19,8 +19,6 @@ package storm.mesos.schedulers;
 
 import backtype.storm.scheduler.SupervisorDetails;
 import backtype.storm.scheduler.TopologyDetails;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import storm.mesos.resources.OfferResources;
 import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.resources.ResourceType;
@@ -36,8 +34,6 @@ import static storm.mesos.resources.ResourceEntries.ScalarResourceEntry;
 
 public class SchedulerUtils {
 
-  private static final Logger log = LoggerFactory.getLogger(SchedulerUtils.class);
-
   public static List<RangeResourceEntry> getPorts(OfferResources offerResources, int requiredCount) {
     List<RangeResourceEntry> retVal = new ArrayList<>();
     List<RangeResourceEntry> resourceEntryList = offerResources.getAllAvailableResources(ResourceType.PORTS);
@@ -45,16 +41,14 @@ public class SchedulerUtils {
     for (RangeResourceEntry rangeResourceEntry : resourceEntryList) {
       Long begin = rangeResourceEntry.getBegin();
       Long end = rangeResourceEntry.getEnd();
-      for (int i = 0; i <= (end - begin) && requiredCount > 0; i++) {
-        retVal.add(new RangeResourceEntry(begin, begin + i));
-        requiredCount--;
+      while (begin <= end && requiredCount > 0) {
+        retVal.add(new RangeResourceEntry(begin, begin));
+        ++begin;
+        --requiredCount;
       }
     }
-
     return retVal;
   }
-
-
 
   public static MesosWorkerSlot createMesosWorkerSlot(Map mesosStormConf,
                                                OfferResources offerResources,
