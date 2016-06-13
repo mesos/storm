@@ -563,22 +563,19 @@ public class MesosNimbus implements INimbus {
     for (String topologyId : slots.keySet()) {
       Collection<WorkerSlot> slotList = slots.get(topologyId);
       TopologyDetails topologyDetails = topologies.getById(topologyId);
-      Set<String> hostsUsedSoFar = new HashSet<>();
+      Set<String> hostsWithSupervisors = new HashSet<>();
 
-      double workerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
-      double workerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
       double executorCpu = MesosCommon.executorCpu(mesosStormConf);
       double executorMem = MesosCommon.executorMem(mesosStormConf);
 
       for (WorkerSlot slot : slotList) {
+        double workerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
+        double workerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
         double requiredCpu = workerCpu;
         double requiredMem = workerMem;
 
         String workerHost = slot.getNodeId();
         Long workerPort = Long.valueOf(slot.getPort());
-
-        Boolean subtractExecutorResources = !hostsUsedSoFar.contains(workerHost);
-        hostsUsedSoFar.add(workerHost);
 
         OfferResources offerResources = offerResourcesPerNode.get(slot.getNodeId());
         String workerPrefix = "";
@@ -586,7 +583,7 @@ public class MesosNimbus implements INimbus {
           workerPrefix = MesosCommon.getWorkerPrefix(mesosStormConf, topologyDetails);
         }
 
-        if (!hostsUsedSoFar.contains(workerHost)) {
+        if (!hostsWithSupervisors.contains(workerHost)) {
           requiredCpu += executorCpu;
           requiredMem += executorMem;
         }
@@ -601,7 +598,7 @@ public class MesosNimbus implements INimbus {
         String executorDataStr = JSONValue.toJSONString(executorData);
         String extraConfig = "";
 
-        if (!offerResources.isFit(mesosStormConf, topologyDetails, workerPort, !subtractExecutorResources)) {
+        if (!offerResources.isFit(mesosStormConf, topologyDetails, workerPort, hostsWithSupervisors.contains(workerHost))) {
           LOG.error(String.format("Unable to launch worker %s. Required cpu: %f, Required mem: %f. Available OfferResources : %s",
                                   workerHost, requiredCpu, requiredMem, offerResources));
           continue;
@@ -614,14 +611,14 @@ public class MesosNimbus implements INimbus {
           List<ResourceEntry> scalarResourceEntryList = null;
           List<ResourceEntry> rangeResourceEntryList = null;
 
-          if (subtractExecutorResources) {
+          if (hostsWithSupervisors.contains(workerHost)) {
+            executorResources.add(createMesosScalarResource(ResourceType.CPU, new ScalarResourceEntry(executorCpu)));
+            executorResources.add(createMesosScalarResource(ResourceType.MEM, new ScalarResourceEntry(executorMem)));
+          } else {
             scalarResourceEntryList = offerResources.reserveAndGet(ResourceType.CPU, new ScalarResourceEntry(executorCpu));
             executorResources.addAll(createMesosScalarResourceList(ResourceType.CPU, scalarResourceEntryList));
             scalarResourceEntryList = offerResources.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(executorMem));
             executorResources.addAll(createMesosScalarResourceList(ResourceType.MEM, scalarResourceEntryList));
-          } else {
-            executorResources.add(createMesosScalarResource(ResourceType.CPU, new ScalarResourceEntry(executorCpu)));
-            executorResources.add(createMesosScalarResource(ResourceType.MEM, new ScalarResourceEntry(executorMem)));
           }
 
           String supervisorStormLocalDir = getStormLocalDirForWorkers();
@@ -641,6 +638,7 @@ public class MesosNimbus implements INimbus {
           continue;
         }
 
+        hostsWithSupervisors.add(workerHost);
 
         ExecutorInfo.Builder executorInfoBuilder = getExecutorInfoBuilder(topologyDetails, executorDataStr, executorName, executorResources, extraConfig);
         TaskID taskId = TaskID.newBuilder()
