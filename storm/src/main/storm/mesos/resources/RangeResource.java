@@ -108,8 +108,8 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
   /**
    * Remove/Reserve range from available ranges.
    * {@param rangeResourceEntry} range resource to removeAndGet
-   * {@parm reservationType} reservation type of resource that needs to be removed. If the resource represented by rangeResourceEntry
-   * of the reservation type specied by this parameter is not available, then {@link ResourceNotAvailableException}
+   * {@param reservationType} reservation type of resource that needs to be removed. If the resource represented by rangeResourceEntry
+   * of the reservation type specified by this parameter is not available, then {@link ResourceNotAvailableException}
    * is thrown
    */
   @Override
@@ -159,7 +159,7 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
         if (desiredBegin >= availableRange.getBegin() && desiredEnd <= availableRange.getEnd()) {
           availableRanges.remove(i);
           // We already removed the entry. So when beginValue == endValue,
-          // we dont have to add a new entry
+          // we don't have to add a new entry
           if (availableRange.getBegin().equals(availableRange.getEnd()) || (availableRange.getBegin().equals(desiredBegin) && availableRange.getEnd().equals(desiredEnd))) {
             removedResources.add(availableRange);
             return removedResources;
