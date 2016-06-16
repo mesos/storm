@@ -90,6 +90,7 @@ public class OfferResources {
           }
           break;
         case DISK:
+          // TODO: Support disk resource isolation (https://github.com/mesos/storm/issues/147)
           break;
         default:
           log.warn(String.format("Found unsupported resourceType '%s' while adding offer %s", resourceType, PrettyProtobuf.offerToString(offer)));
