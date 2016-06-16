@@ -158,22 +158,21 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
         RangeResourceEntry availableRange = availableRanges.get(i);
         if (desiredBegin >= availableRange.getBegin() && desiredEnd <= availableRange.getEnd()) {
           availableRanges.remove(i);
-          // We already removed the entry. So when beginValue == endValue,
-          // we don't have to add a new entry
+          // If this is exactly the ranges we were looking for, then we can use them
           if (availableRange.getBegin().equals(availableRange.getEnd()) || (availableRange.getBegin().equals(desiredBegin) && availableRange.getEnd().equals(desiredEnd))) {
             removedResources.add(availableRange);
             return removedResources;
-          } else if (desiredBegin > availableRange.getBegin() && availableRange.getEnd().equals(desiredEnd)) {
-            availableRanges.add(new RangeResourceEntry(reservationType, availableRange.getBegin(), desiredBegin - 1));
-            removedResources.add(new RangeResourceEntry(reservationType, desiredBegin, desiredEnd));
-          } else if (availableRange.getBegin().equals(desiredBegin) && desiredEnd < availableRange.getEnd()) {
-            availableRanges.add(new RangeResourceEntry(reservationType, desiredEnd + 1, availableRange.getEnd()));
-            removedResources.add(new RangeResourceEntry(reservationType, desiredBegin, desiredEnd));
-          } else if (desiredBegin > availableRange.getBegin() && desiredEnd < availableRange.getEnd()) {
-            availableRanges.add(new RangeResourceEntry(reservationType, availableRange.getBegin(), desiredBegin - 1));
-            availableRanges.add(new RangeResourceEntry(reservationType, desiredEnd + 1, availableRange.getEnd()));
-            removedResources.add(new RangeResourceEntry(reservationType, desiredBegin, desiredEnd));
           }
+          // Salvage resources before the beginning of the requested range
+          if (availableRange.getBegin() < desiredBegin) {
+            availableRanges.add(new RangeResourceEntry(reservationType, availableRange.getBegin(), desiredBegin - 1));
+          }
+          // Salvage resources after the end of the requested range
+          if (availableRange.getEnd() > desiredEnd) {
+            availableRanges.add(new RangeResourceEntry(reservationType, desiredEnd + 1, availableRange.getEnd()));
+          }
+          // Now that we've salvaged all available resources, add the resources for the specifically requested range
+          removedResources.add(new RangeResourceEntry(reservationType, desiredBegin, desiredEnd));
         }
       }
     }
