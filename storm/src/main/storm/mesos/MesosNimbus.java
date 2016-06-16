@@ -415,10 +415,10 @@ public class MesosNimbus implements INimbus {
 
     synchronized (_offersLock) {
       /**
-       * We need to call getConsolidatedOfferResourcesPerNode again here for the following
+       * We need to call getConsolidatedOfferResourcesPerNode again here for the following reasons
        *   1. Because _offers could have changed between `allSlotsAvailableForScheduling()' and `assignSlots()'
        *   2. In `allSlotsAvailableForScheduling()', we change what is returned by `getConsolidatedOfferResourcesPerNode'
-       *      calculate the number of slots available.
+       *      in order to calculate the number of slots available.
        */
       Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(_offers);
       Map<String, List<TaskInfo>> tasksToLaunchPerNode = getTasksToLaunch(topologies, slotsForTopologiesNeedingAssignments, offerResourcesPerNode);
@@ -565,12 +565,12 @@ public class MesosNimbus implements INimbus {
       TopologyDetails topologyDetails = topologies.getById(topologyId);
       Set<String> hostsWithSupervisors = new HashSet<>();
 
+      double workerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
+      double workerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
       double executorCpu = MesosCommon.executorCpu(mesosStormConf);
       double executorMem = MesosCommon.executorMem(mesosStormConf);
 
       for (WorkerSlot slot : slotList) {
-        double workerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
-        double workerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
         double requiredCpu = workerCpu;
         double requiredMem = workerMem;
 
