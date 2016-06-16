@@ -97,10 +97,10 @@ public class ResourceEntries {
         return this;
       }
 
-      if (this.begin < rangeResourceEntry.getBegin()) {
+      if (this.begin < rangeResourceEntry.getBegin() || this.begin == rangeResourceEntry.getEnd() + 1) {
         this.begin = rangeResourceEntry.getBegin();
       }
-      if (this.end > rangeResourceEntry.getBegin()) {
+      if (this.end > rangeResourceEntry.getBegin() || this.end == rangeResourceEntry.getBegin() + 1) {
         this.end = rangeResourceEntry.getBegin();
       }
       return this;
