@@ -20,7 +20,7 @@ package storm.mesos;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.scheduler.TopologyDetails;
 import org.apache.mesos.Protos;
-import storm.mesos.resources.OfferResources;
+import storm.mesos.resources.AggregatedOffers;
 import storm.mesos.resources.ReservationType;
 import storm.mesos.resources.ResourceEntries;
 import storm.mesos.resources.ResourceEntry;
@@ -310,20 +310,20 @@ public class TestUtils {
     return retVal;
   }
 
-  public static double calculateAllAvailableScalarResources(OfferResources offerResources, ResourceType resourceType) {
-    return calculateAllAvailableScalarResources(offerResources.getAllAvailableResources(resourceType));
+  public static double calculateAllAvailableScalarResources(AggregatedOffers aggregatedOffers, ResourceType resourceType) {
+    return calculateAllAvailableScalarResources(aggregatedOffers.getAllAvailableResources(resourceType));
   }
 
-  public static List<Long> calculateAllAvailableRangeResources(OfferResources offerResources, ResourceType resourceType) {
-    return calculateAllAvailableRangeResources(offerResources.getAllAvailableResources(resourceType));
+  public static List<Long> calculateAllAvailableRangeResources(AggregatedOffers aggregatedOffers, ResourceType resourceType) {
+    return calculateAllAvailableRangeResources(aggregatedOffers.getAllAvailableResources(resourceType));
   }
 
-  public static double calculateAllAvailableScalarResources(OfferResources offerResources, ResourceType resourceType, ReservationType reservationType) {
-    return calculateAllAvailableScalarResources(offerResources.getAllAvailableResources(resourceType, reservationType));
+  public static double calculateAllAvailableScalarResources(AggregatedOffers aggregatedOffers, ResourceType resourceType, ReservationType reservationType) {
+    return calculateAllAvailableScalarResources(aggregatedOffers.getAllAvailableResources(resourceType, reservationType));
   }
 
-  public static List<Long> calculateAllAvailableRangeResources(OfferResources offerResources, ResourceType resourceType, ReservationType reservationType) {
-    return calculateAllAvailableRangeResources(offerResources.getAllAvailableResources(resourceType, reservationType));
+  public static List<Long> calculateAllAvailableRangeResources(AggregatedOffers aggregatedOffers, ResourceType resourceType, ReservationType reservationType) {
+    return calculateAllAvailableRangeResources(aggregatedOffers.getAllAvailableResources(resourceType, reservationType));
   }
 
 }

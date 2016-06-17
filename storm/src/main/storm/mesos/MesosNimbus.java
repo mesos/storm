@@ -50,7 +50,7 @@ import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
-import storm.mesos.resources.OfferResources;
+import storm.mesos.resources.AggregatedOffers;
 import storm.mesos.resources.ReservationType;
 import storm.mesos.resources.ResourceEntries.RangeResourceEntry;
 import storm.mesos.resources.ResourceEntries.ScalarResourceEntry;
@@ -415,16 +415,16 @@ public class MesosNimbus implements INimbus {
 
     synchronized (_offersLock) {
       /**
-       * We need to call getConsolidatedOfferResourcesPerNode again here for the following reasons
+       * We need to call getAggregatedOffersPerNode again here for the following reasons
        *   1. Because _offers could have changed between `allSlotsAvailableForScheduling()' and `assignSlots()'
-       *   2. In `allSlotsAvailableForScheduling()', we change what is returned by `getConsolidatedOfferResourcesPerNode'
+       *   2. In `allSlotsAvailableForScheduling()', we change what is returned by `getAggregatedOffersPerNode'
        *      in order to calculate the number of slots available.
        */
-      Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(_offers);
-      Map<String, List<TaskInfo>> tasksToLaunchPerNode = getTasksToLaunch(topologies, slotsForTopologiesNeedingAssignments, offerResourcesPerNode);
+      Map<String, AggregatedOffers> aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(_offers);
+      Map<String, List<TaskInfo>> tasksToLaunchPerNode = getTasksToLaunch(topologies, slotsForTopologiesNeedingAssignments, aggregatedOffersPerNode);
 
       for (String node : tasksToLaunchPerNode.keySet()) {
-        List<OfferID> offerIDList = offerResourcesPerNode.get(node).getOfferIDList();
+        List<OfferID> offerIDList = aggregatedOffersPerNode.get(node).getOfferIDList();
         List<TaskInfo> taskInfoList = tasksToLaunchPerNode.get(node);
 
         LOG.info("Using offerIDs: " + offerIDListToString(offerIDList) + " on host: " + node + " to launch tasks: " + taskInfoListToString(taskInfoList));
@@ -557,7 +557,7 @@ public class MesosNimbus implements INimbus {
 
   public Map<String, List<TaskInfo>> getTasksToLaunch(Topologies topologies,
                                                       Map<String, Collection<WorkerSlot>> slots,
-                                                      Map<String, OfferResources> offerResourcesPerNode) {
+                                                      Map<String, AggregatedOffers> aggregatedOffersPerNode) {
     Map<String, List<TaskInfo>> tasksToLaunchPerNode = new HashMap<>();
 
     for (String topologyId : slots.keySet()) {
@@ -577,7 +577,7 @@ public class MesosNimbus implements INimbus {
         String workerHost = slot.getNodeId();
         Long workerPort = Long.valueOf(slot.getPort());
 
-        OfferResources offerResources = offerResourcesPerNode.get(slot.getNodeId());
+        AggregatedOffers aggregatedOffers = aggregatedOffersPerNode.get(slot.getNodeId());
         String workerPrefix = "";
         if (mesosStormConf.containsKey(MesosCommon.WORKER_NAME_PREFIX)) {
           workerPrefix = MesosCommon.getWorkerPrefix(mesosStormConf, topologyDetails);
@@ -598,9 +598,9 @@ public class MesosNimbus implements INimbus {
         String executorDataStr = JSONValue.toJSONString(executorData);
         String extraConfig = "";
 
-        if (!offerResources.isFit(mesosStormConf, topologyDetails, workerPort, hostsWithSupervisors.contains(workerHost))) {
-          LOG.error(String.format("Unable to launch worker %s. Required cpu: %f, Required mem: %f. Available OfferResources : %s",
-                                  workerHost, requiredCpu, requiredMem, offerResources));
+        if (!aggregatedOffers.isFit(mesosStormConf, topologyDetails, workerPort, hostsWithSupervisors.contains(workerHost))) {
+          LOG.error(String.format("Unable to launch worker %s. Required cpu: %f, Required mem: %f. Available aggregatedOffers : %s",
+                                  workerHost, requiredCpu, requiredMem, aggregatedOffers));
           continue;
         }
 
@@ -615,26 +615,26 @@ public class MesosNimbus implements INimbus {
             executorResources.add(createMesosScalarResource(ResourceType.CPU, new ScalarResourceEntry(executorCpu)));
             executorResources.add(createMesosScalarResource(ResourceType.MEM, new ScalarResourceEntry(executorMem)));
           } else {
-            scalarResourceEntryList = offerResources.reserveAndGet(ResourceType.CPU, new ScalarResourceEntry(executorCpu));
+            scalarResourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.CPU, new ScalarResourceEntry(executorCpu));
             executorResources.addAll(createMesosScalarResourceList(ResourceType.CPU, scalarResourceEntryList));
-            scalarResourceEntryList = offerResources.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(executorMem));
+            scalarResourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(executorMem));
             executorResources.addAll(createMesosScalarResourceList(ResourceType.MEM, scalarResourceEntryList));
           }
 
           String supervisorStormLocalDir = getStormLocalDirForWorkers();
           extraConfig += String.format(" -c storm.local.dir=%s", supervisorStormLocalDir);
 
-          scalarResourceEntryList = offerResources.reserveAndGet(ResourceType.CPU, new ScalarResourceEntry(workerCpu));
+          scalarResourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.CPU, new ScalarResourceEntry(workerCpu));
           workerResources.addAll(createMesosScalarResourceList(ResourceType.CPU, scalarResourceEntryList));
-          scalarResourceEntryList = offerResources.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(workerMem));
+          scalarResourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(workerMem));
           workerResources.addAll(createMesosScalarResourceList(ResourceType.MEM, scalarResourceEntryList));
-          rangeResourceEntryList = offerResources.reserveAndGet(ResourceType.PORTS, new RangeResourceEntry(workerPort, workerPort));
+          rangeResourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.PORTS, new RangeResourceEntry(workerPort, workerPort));
           for (ResourceEntry resourceEntry : rangeResourceEntryList) {
             workerResources.add(createMesosRangeResource(ResourceType.PORTS, (RangeResourceEntry) resourceEntry));
           }
         } catch (ResourceNotAvailableException rexp) {
-          LOG.warn("Unable to launch worker %s. Required cpu: %f, Required mem: %f. Available OfferResources : %s",
-                   workerHost, requiredCpu, requiredMem, offerResources);
+          LOG.warn("Unable to launch worker %s. Required cpu: %f, Required mem: %f. Available aggregatedOffers : %s",
+                   workerHost, requiredCpu, requiredMem, aggregatedOffers);
           continue;
         }
 
@@ -648,7 +648,7 @@ public class MesosNimbus implements INimbus {
         TaskInfo task = TaskInfo.newBuilder()
                                 .setTaskId(taskId)
                                 .setName(taskName)
-                                .setSlaveId(offerResources.getSlaveID())
+                                .setSlaveId(aggregatedOffers.getSlaveID())
                                 .setExecutor(executorInfoBuilder.build())
                                 .addAllResources(workerResources)
                                 .build();

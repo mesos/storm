@@ -19,7 +19,7 @@ package storm.mesos.schedulers;
 
 import backtype.storm.scheduler.SupervisorDetails;
 import backtype.storm.scheduler.TopologyDetails;
-import storm.mesos.resources.OfferResources;
+import storm.mesos.resources.AggregatedOffers;
 import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.resources.ResourceType;
 import storm.mesos.util.MesosCommon;
@@ -34,9 +34,9 @@ import static storm.mesos.resources.ResourceEntries.ScalarResourceEntry;
 
 public class SchedulerUtils {
 
-  public static List<RangeResourceEntry> getPorts(OfferResources offerResources, int requiredCount) {
+  public static List<RangeResourceEntry> getPorts(AggregatedOffers aggregatedOffers, int requiredCount) {
     List<RangeResourceEntry> retVal = new ArrayList<>();
-    List<RangeResourceEntry> resourceEntryList = offerResources.getAllAvailableResources(ResourceType.PORTS);
+    List<RangeResourceEntry> resourceEntryList = aggregatedOffers.getAllAvailableResources(ResourceType.PORTS);
 
     for (RangeResourceEntry rangeResourceEntry : resourceEntryList) {
       Long begin = rangeResourceEntry.getBegin();
@@ -51,7 +51,7 @@ public class SchedulerUtils {
   }
 
   public static MesosWorkerSlot createMesosWorkerSlot(Map mesosStormConf,
-                                               OfferResources offerResources,
+                                               AggregatedOffers aggregatedOffers,
                                                TopologyDetails topologyDetails,
                                                boolean supervisorExists) throws ResourceNotAvailableException {
 
@@ -61,16 +61,16 @@ public class SchedulerUtils {
     requestedWorkerCpu += supervisorExists ? 0 : MesosCommon.executorCpu(mesosStormConf);
     requestedWorkerMem += supervisorExists ? 0 : MesosCommon.executorMem(mesosStormConf);
 
-    offerResources.reserve(ResourceType.CPU, new ScalarResourceEntry(requestedWorkerCpu));
-    offerResources.reserve(ResourceType.MEM, new ScalarResourceEntry(requestedWorkerMem));
+    aggregatedOffers.reserve(ResourceType.CPU, new ScalarResourceEntry(requestedWorkerCpu));
+    aggregatedOffers.reserve(ResourceType.MEM, new ScalarResourceEntry(requestedWorkerMem));
 
-    List<RangeResourceEntry> ports = getPorts(offerResources, 1);
+    List<RangeResourceEntry> ports = getPorts(aggregatedOffers, 1);
     if (ports.isEmpty()) {
       throw new ResourceNotAvailableException("No ports available to create MesosWorkerSlot.");
     }
-    offerResources.reserve(ResourceType.PORTS, ports.get(0));
+    aggregatedOffers.reserve(ResourceType.PORTS, ports.get(0));
 
-    return new MesosWorkerSlot(offerResources.getHostName(), ports.get(0).getBegin(), topologyDetails.getId());
+    return new MesosWorkerSlot(aggregatedOffers.getHostName(), ports.get(0).getBegin(), topologyDetails.getId());
   }
 
   /**
