@@ -93,15 +93,15 @@ public class ResourceEntries {
     public RangeResourceEntry add(ResourceEntry<Long> resourceEntry) {
       RangeResourceEntry rangeResourceEntry = (RangeResourceEntry) resourceEntry;
 
-      if (rangeResourceEntry.getBegin() > this.end || rangeResourceEntry.getEnd() < this.begin) {
+      if (rangeResourceEntry.getEnd() < rangeResourceEntry.getEnd() || rangeResourceEntry.getBegin() > this.end + 1 || rangeResourceEntry.getEnd() < this.begin - 1) {
         return this;
       }
 
-      if (this.begin < rangeResourceEntry.getBegin() || this.begin == rangeResourceEntry.getEnd() + 1) {
+      if (rangeResourceEntry.getBegin() < this.begin) {
         this.begin = rangeResourceEntry.getBegin();
       }
-      if (this.end > rangeResourceEntry.getBegin() || this.end == rangeResourceEntry.getBegin() + 1) {
-        this.end = rangeResourceEntry.getBegin();
+      if (rangeResourceEntry.getEnd() > this.end) {
+        this.end = rangeResourceEntry.getEnd();
       }
       return this;
     }
