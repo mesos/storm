@@ -26,7 +26,7 @@ import org.apache.mesos.Protos.OfferID;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
-import storm.mesos.resources.OfferResources;
+import storm.mesos.resources.AggregatedOffers;
 import storm.mesos.resources.ResourceType;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
@@ -222,10 +222,10 @@ public class MesosNimbusTest {
 
     Topologies topologies = new Topologies(topologyDetailsMap);
 
-    Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    Map<String, AggregatedOffers> aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(rotatingMap);
     Map<String, Collection<WorkerSlot>> workerSlotsMap = new HashMap<>();
 
-    Map<String,List<Protos.TaskInfo>> tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    Map<String,List<Protos.TaskInfo>> tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, aggregatedOffersPerNode);
 
     assertTrue(tasksToLaunch.isEmpty());
   }
@@ -246,13 +246,13 @@ public class MesosNimbusTest {
     Offer offer = TestUtils.buildOfferWithPorts("O-1", "h1", 24, 40000, 3100, 3200);
     rotatingMap.put(offer.getId(), offer);
 
-    Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    Map<String, AggregatedOffers> aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(rotatingMap);
     Map<String, Collection<WorkerSlot>> workerSlotsMap = new HashMap<>();
     Collection<WorkerSlot> workerSlots = new ArrayList<>();
     workerSlots.add(new WorkerSlot("h1", 3100));
     workerSlotsMap.put("t1", workerSlots);
 
-    Map<String,List<Protos.TaskInfo>> tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    Map<String,List<Protos.TaskInfo>> tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, aggregatedOffersPerNode);
 
     assertTrue((tasksToLaunch.size() == 1));
     assertTrue((tasksToLaunch.get("h1").size() == 1));
@@ -261,75 +261,75 @@ public class MesosNimbusTest {
     offer = TestUtils.buildOfferWithReservationAndPorts("O-1", "h1", 0.75, 750, 0.75, 850, 3100, 3101);
     rotatingMap.put(offer.getId(), offer);
 
-    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(rotatingMap);
     workerSlotsMap = new HashMap<>();
     workerSlots = new ArrayList<>();
     workerSlots.add(new WorkerSlot("h1", 3100));
     workerSlotsMap.put("t1", workerSlots);
 
-    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, aggregatedOffersPerNode);
 
     assertTrue((tasksToLaunch.size() == 1));
     assertTrue((tasksToLaunch.get("h1").size() == 1));
     assertTrue(hasResources(FRAMEWORK_ROLE, tasksToLaunch.get("h1").get(0), 0.75 - MesosCommon.DEFAULT_EXECUTOR_CPU, 850 - MesosCommon.DEFAULT_EXECUTOR_MEM_MB));
     assertTrue(hasResources("*", tasksToLaunch.get("h1").get(0), 0.35, 650.0));
     assertTrue(hasCorrectExecutorResources(tasksToLaunch.get("h1")));
-    assertEquals(0.4f, TestUtils.calculateAllAvailableScalarResources(offerResourcesPerNode.get("h1"), ResourceType.CPU), 0.01f);
-    assertEquals(100f, TestUtils.calculateAllAvailableScalarResources(offerResourcesPerNode.get("h1"), ResourceType.MEM), 0.01f);
+    assertEquals(0.4f, TestUtils.calculateAllAvailableScalarResources(aggregatedOffersPerNode.get("h1"), ResourceType.CPU), 0.01f);
+    assertEquals(100f, TestUtils.calculateAllAvailableScalarResources(aggregatedOffersPerNode.get("h1"), ResourceType.MEM), 0.01f);
 
     // One offer with only reserved resources
     offer = TestUtils.buildOfferWithReservationAndPorts("O-1", "h1", 0, 0, 1.5, 1600, 3100, 3101);
     rotatingMap.put(offer.getId(), offer);
 
-    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(rotatingMap);
     workerSlotsMap = new HashMap<>();
     workerSlots = new ArrayList<>();
     workerSlots.add(new WorkerSlot("h1", 3100));
     workerSlotsMap.put("t1", workerSlots);
 
-    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, aggregatedOffersPerNode);
 
     assertTrue((tasksToLaunch.size() == 1));
     assertTrue(tasksToLaunch.get("h1").size() == 1);
     assertTrue(hasResources(FRAMEWORK_ROLE, tasksToLaunch.get("h1").get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB));
     assertTrue(hasCorrectExecutorResources(tasksToLaunch.get("h1")));
-    assertEquals(TestUtils.calculateAllAvailableScalarResources(offerResourcesPerNode.get("h1"), ResourceType.CPU), 0.4f, 0.01f);
-    assertEquals(TestUtils.calculateAllAvailableScalarResources(offerResourcesPerNode.get("h1"), ResourceType.MEM), 100f, 0.01f);
+    assertEquals(TestUtils.calculateAllAvailableScalarResources(aggregatedOffersPerNode.get("h1"), ResourceType.CPU), 0.4f, 0.01f);
+    assertEquals(TestUtils.calculateAllAvailableScalarResources(aggregatedOffersPerNode.get("h1"), ResourceType.MEM), 100f, 0.01f);
 
     // Offer with Insufficient cpu
     offer = TestUtils.buildOfferWithPorts("O-1", "h1", 0, 40000, 3100, 3200);
     rotatingMap.put(offer.getId(), offer);
 
-    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(rotatingMap);
 
-    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, aggregatedOffersPerNode);
     assertTrue(tasksToLaunch.isEmpty());
 
     // Offer with Insufficient Mem for both executor and worker combined
     offer = TestUtils.buildOfferWithPorts("O-1", "h1", 24, 900, 3100, 3200);
     rotatingMap.put(offer.getId(), offer);
 
-    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(rotatingMap);
 
-    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, aggregatedOffersPerNode);
     assertTrue(tasksToLaunch.isEmpty());
 
     // Offer with Insufficient Mem for executor
     offer = TestUtils.buildOfferWithPorts("O-1", "h1", 24, 1400, 3100, 3200);
     rotatingMap.put(offer.getId(), offer);
 
-    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(rotatingMap);
 
-    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, aggregatedOffersPerNode);
     assertTrue(tasksToLaunch.isEmpty());
 
     // One offer with Insufficient ports
     offer = TestUtils.buildOffer("O-1", "h1", 24, 4000);
     rotatingMap.put(offer.getId(), offer);
 
-    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(rotatingMap);
 
-    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, aggregatedOffersPerNode);
     assertTrue(tasksToLaunch.isEmpty());
   }
 
@@ -351,22 +351,22 @@ public class MesosNimbusTest {
     offer = TestUtils.buildOfferWithPorts("O-3", "h1", 0, 0, 3100, 3200);
     rotatingMap.put(offer.getId(), offer);
 
-    Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    Map<String, AggregatedOffers> aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(rotatingMap);
     Map<String, Collection<WorkerSlot>> workerSlotsMap = new HashMap<>();
     Collection<WorkerSlot> workerSlots = new ArrayList<>();
     workerSlots.add(new WorkerSlot("h1", 3100));
     workerSlotsMap.put("t1", workerSlots);
-    Map<String,List<Protos.TaskInfo>> tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    Map<String,List<Protos.TaskInfo>> tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, aggregatedOffersPerNode);
     assertTrue((tasksToLaunch.size() == 1));
     assertTrue((tasksToLaunch.get("h1").size() == 1));
     List<Protos.TaskInfo> taskInfoList = tasksToLaunch.get("h1");
     assertTrue(hasResources("*", taskInfoList.get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3100l));
     assertTrue(hasCorrectExecutorResources(taskInfoList));
 
-    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(rotatingMap);
     workerSlots.add(new WorkerSlot("h1", 3101));
     workerSlots.add(new WorkerSlot("h1", 3102));
-    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, aggregatedOffersPerNode);
     taskInfoList = tasksToLaunch.get("h1");
     assertTrue(taskInfoList.size() == 3);
     assertTrue(hasResources("*", taskInfoList.get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3100l));
@@ -388,9 +388,9 @@ public class MesosNimbusTest {
     topologyDetailsMap.put("t2", t2);
     topologies = new Topologies(topologyDetailsMap);
 
-    offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(rotatingMap);
 
-    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, aggregatedOffersPerNode);
     Map<String, List<Protos.TaskInfo>> topologyIDtoTaskInfoMap = getTopologyIDtoTaskInfoMap(tasksToLaunch.get("h1"));
     taskInfoList = topologyIDtoTaskInfoMap.get("t1");
     assertTrue(hasResources("*", taskInfoList.get(0), MesosCommon.DEFAULT_WORKER_CPU, MesosCommon.DEFAULT_WORKER_MEM_MB, 3100l));
@@ -435,7 +435,7 @@ public class MesosNimbusTest {
     offer = TestUtils.buildOfferWithPorts("O-H2-3", "h2", 0, 0, 3100, 3102);
     rotatingMap.put(offer.getId(), offer);
 
-    Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(rotatingMap);
+    Map<String, AggregatedOffers> aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(rotatingMap);
     Map<String, Collection<WorkerSlot>> workerSlotsMap = new HashMap<>();
     Map<String, List<Protos.TaskInfo>> tasksToLaunch = new HashMap<>();
 
@@ -451,7 +451,7 @@ public class MesosNimbusTest {
     workerSlots.add(new WorkerSlot("h2", 3102));
     workerSlotsMap.put("t2", workerSlots);
 
-    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, offerResourcesPerNode);
+    tasksToLaunch = mesosNimbus.getTasksToLaunch(topologies, workerSlotsMap, aggregatedOffersPerNode);
 
     List<Protos.TaskInfo> taskInfoList = new ArrayList<>();
     for(List<Protos.TaskInfo> til : tasksToLaunch.values()) {
