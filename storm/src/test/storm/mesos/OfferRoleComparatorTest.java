@@ -33,18 +33,18 @@ public class OfferRoleComparatorTest {
 
   @Test
   public void testCompare() throws Exception {
-    List<Resource> offerResources = new ArrayList<>();
+    List<Resource> aggregatedOffers = new ArrayList<>();
     Offer offer = TestUtils.buildOffer();
-    offerResources.addAll(offer.getResourcesList());
-    Collections.sort(offerResources, new ResourceRoleComparator());
+    aggregatedOffers.addAll(offer.getResourcesList());
+    Collections.sort(aggregatedOffers, new ResourceRoleComparator());
 
     assertEquals(
         "*",
-        offerResources.get(5).getRole()
+        aggregatedOffers.get(5).getRole()
     );
     assertEquals(
         "*",
-        offerResources.get(4).getRole()
+        aggregatedOffers.get(4).getRole()
     );
   }
 }

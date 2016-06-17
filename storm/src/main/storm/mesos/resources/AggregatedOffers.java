@@ -30,9 +30,9 @@ import java.util.List;
 import java.util.Map;
 
 // TODO(ksoundararaj): a better name? - OfferAggregator?
-public class OfferResources {
+public class AggregatedOffers {
 
-  private final Logger log = LoggerFactory.getLogger(OfferResources.class);
+  private final Logger log = LoggerFactory.getLogger(AggregatedOffers.class);
   private Map<ResourceType, Resource> availableResources;
 
   private List<Protos.Offer> offerList = new ArrayList<Protos.Offer>();
@@ -48,12 +48,12 @@ public class OfferResources {
     availableResources.put(ResourceType.PORTS, new RangeResource(ResourceType.PORTS));
   }
 
-  public OfferResources(String hostName) {
+  public AggregatedOffers(String hostName) {
     this.hostName = hostName;
     initializeAvailableResources();
   }
 
-  public OfferResources(Protos.Offer offer) {
+  public AggregatedOffers(Protos.Offer offer) {
     initializeAvailableResources();
     this.slaveID = offer.getSlaveId();
     this.hostName = offer.getHostname();

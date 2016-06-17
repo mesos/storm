@@ -27,7 +27,7 @@ import backtype.storm.scheduler.WorkerSlot;
 import org.apache.mesos.Protos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.mesos.resources.OfferResources;
+import storm.mesos.resources.AggregatedOffers;
 import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
@@ -55,7 +55,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
     mesosStormConf = conf;
   }
 
-  private List<MesosWorkerSlot> getMesosWorkerSlots(Map<String, OfferResources> offerResourcesPerNode,
+  private List<MesosWorkerSlot> getMesosWorkerSlots(Map<String, AggregatedOffers> aggregatedOffersPerNode,
                                                     Collection<String> nodesWithExistingSupervisors,
                                                     TopologyDetails topologyDetails) {
 
@@ -68,22 +68,22 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
 
     do {
       slotFound = false;
-      for (String currentNode : offerResourcesPerNode.keySet()) {
-        OfferResources offerResources = offerResourcesPerNode.get(currentNode);
+      for (String currentNode : aggregatedOffersPerNode.keySet()) {
+        AggregatedOffers aggregatedOffers = aggregatedOffersPerNode.get(currentNode);
 
         boolean supervisorExists = nodesWithExistingSupervisors.contains(currentNode);
 
-        if (!offerResources.isFit(mesosStormConf, topologyDetails, supervisorExists)) {
+        if (!aggregatedOffers.isFit(mesosStormConf, topologyDetails, supervisorExists)) {
           log.info("{} is not a fit for {} requestedWorkerCpu: {} requestedWorkerMem: {}",
-                   offerResources.toString(), topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMem);
+                   aggregatedOffers.toString(), topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMem);
           continue;
         }
 
-        log.info("{} is a fit for {} requestedWorkerCpu: {} requestedWorkerMem: {}", offerResources.toString(),
+        log.info("{} is a fit for {} requestedWorkerCpu: {} requestedWorkerMem: {}", aggregatedOffers.toString(),
                  topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMem);
         MesosWorkerSlot mesosWorkerSlot;
         try {
-          mesosWorkerSlot = SchedulerUtils.createMesosWorkerSlot(mesosStormConf, offerResources, topologyDetails, supervisorExists);
+          mesosWorkerSlot = SchedulerUtils.createMesosWorkerSlot(mesosStormConf, aggregatedOffers, topologyDetails, supervisorExists);
         } catch (ResourceNotAvailableException rexp) {
           log.warn(rexp.getMessage());
           continue;
@@ -130,7 +130,7 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
     log.info("Topologies that need assignments: {}", topologiesMissingAssignments.toString());
 
     List<WorkerSlot> allSlots = new ArrayList<>();
-    Map<String, OfferResources> offerResourcesPerNode = MesosCommon.getConsolidatedOfferResourcesPerNode(offers);
+    Map<String, AggregatedOffers> aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(offers);
 
     for (String currentTopology : topologiesMissingAssignments) {
       TopologyDetails topologyDetails = topologies.getById(currentTopology);
@@ -142,13 +142,13 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
       }
 
       Set<String> nodesWithExistingSupervisors = new HashSet<>();
-      for (String currentNode : offerResourcesPerNode.keySet()) {
+      for (String currentNode : aggregatedOffersPerNode.keySet()) {
         if (SchedulerUtils.supervisorExists(currentNode, existingSupervisors, currentTopology)) {
           nodesWithExistingSupervisors.add(currentNode);
         }
       }
 
-      List<MesosWorkerSlot> mesosWorkerSlotList = getMesosWorkerSlots(offerResourcesPerNode, nodesWithExistingSupervisors, topologyDetails);
+      List<MesosWorkerSlot> mesosWorkerSlotList = getMesosWorkerSlots(aggregatedOffersPerNode, nodesWithExistingSupervisors, topologyDetails);
       for (MesosWorkerSlot mesosWorkerSlot : mesosWorkerSlotList) {
         String slotId = String.format("%s:%s", mesosWorkerSlot.getNodeId(), mesosWorkerSlot.getPort());
         mesosWorkerSlotMap.put(slotId, mesosWorkerSlot);

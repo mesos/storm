@@ -23,7 +23,7 @@ import com.google.common.base.Optional;
 import org.apache.mesos.Protos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.mesos.resources.OfferResources;
+import storm.mesos.resources.AggregatedOffers;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -138,25 +138,25 @@ public class MesosCommon {
     return port;
   }
 
-  public static Map<String, OfferResources> getConsolidatedOfferResourcesPerNode(RotatingMap<Protos.OfferID, Protos.Offer> offers) {
-    Map<String, OfferResources> offerResourcesPerNode = new HashMap<>();
+  public static Map<String, AggregatedOffers> getAggregatedOffersPerNode(RotatingMap<Protos.OfferID, Protos.Offer> offers) {
+    Map<String, AggregatedOffers> aggregatedOffersPerNode = new HashMap<>();
 
     for (Protos.Offer offer : offers.values()) {
       String hostName = offer.getHostname();
 
-      OfferResources offerResources = offerResourcesPerNode.get(hostName);
-      if (offerResources == null) {
-        offerResources = new OfferResources(offer);
-        offerResourcesPerNode.put(hostName, offerResources);
+      AggregatedOffers aggregatedOffers = aggregatedOffersPerNode.get(hostName);
+      if (aggregatedOffers == null) {
+        aggregatedOffers = new AggregatedOffers(offer);
+        aggregatedOffersPerNode.put(hostName, aggregatedOffers);
       } else {
-        offerResources.add(offer);
+        aggregatedOffers.add(offer);
       }
     }
 
-    for (OfferResources offerResources : offerResourcesPerNode.values()) {
-      LOG.info("Available resources at {}: {}", offerResources.getHostName(), offerResources.toString());
+    for (AggregatedOffers aggregatedOffers : aggregatedOffersPerNode.values()) {
+      LOG.info("Available resources at {}: {}", aggregatedOffers.getHostName(), aggregatedOffers.toString());
     }
-    return offerResourcesPerNode;
+    return aggregatedOffersPerNode;
   }
 
   public static int getSuicideTimeout(Map conf) {
