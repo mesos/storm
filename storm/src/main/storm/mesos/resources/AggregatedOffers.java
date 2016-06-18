@@ -29,7 +29,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-// TODO(ksoundararaj): a better name? - OfferAggregator?
 public class AggregatedOffers {
 
   private final Logger log = LoggerFactory.getLogger(AggregatedOffers.class);
@@ -98,11 +97,11 @@ public class AggregatedOffers {
     }
   }
 
-  public boolean isAvaliable(ResourceType resourceType, ResourceEntry<?> resource) {
+  public boolean isAvailable(ResourceType resourceType, ResourceEntry<?> resource) {
     return availableResources.get(resourceType).isAvailable(resource);
   }
 
-  public boolean isAvaliable(ResourceType resourceType, ReservationType reservationType, ResourceEntry<?> resource) {
+  public boolean isAvailable(ResourceType resourceType, ReservationType reservationType, ResourceEntry<?> resource) {
     return availableResources.get(resourceType).isAvailable(resource, reservationType);
   }
 
@@ -166,8 +165,8 @@ public class AggregatedOffers {
     requestedWorkerCpu += supervisorExists ? 0 : MesosCommon.executorCpu(mesosStormConf);
     requestedWorkerMem += supervisorExists ? 0 : MesosCommon.executorMem(mesosStormConf);
 
-    return (isAvaliable(ResourceType.CPU, new ResourceEntries.ScalarResourceEntry(requestedWorkerCpu)) &&
-            isAvaliable(ResourceType.MEM, new ResourceEntries.ScalarResourceEntry(requestedWorkerMem)) &&
+    return (isAvailable(ResourceType.CPU, new ResourceEntries.ScalarResourceEntry(requestedWorkerCpu)) &&
+            isAvailable(ResourceType.MEM, new ResourceEntries.ScalarResourceEntry(requestedWorkerMem)) &&
             !getAllAvailableResources(ResourceType.PORTS).isEmpty());
   }
 
@@ -179,9 +178,9 @@ public class AggregatedOffers {
     requestedWorkerCpu += supervisorExists ? 0 : MesosCommon.executorCpu(mesosStormConf);
     requestedWorkerMem += supervisorExists ? 0 : MesosCommon.executorMem(mesosStormConf);
 
-    return (isAvaliable(ResourceType.CPU, new ResourceEntries.ScalarResourceEntry(requestedWorkerCpu)) &&
-            isAvaliable(ResourceType.MEM, new ResourceEntries.ScalarResourceEntry(requestedWorkerMem)) &&
-            isAvaliable(ResourceType.PORTS, new ResourceEntries.RangeResourceEntry(port, port)));
+    return (isAvailable(ResourceType.CPU, new ResourceEntries.ScalarResourceEntry(requestedWorkerCpu)) &&
+            isAvailable(ResourceType.MEM, new ResourceEntries.ScalarResourceEntry(requestedWorkerMem)) &&
+            isAvailable(ResourceType.PORTS, new ResourceEntries.RangeResourceEntry(port, port)));
   }
 }
 
