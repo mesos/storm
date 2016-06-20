@@ -35,6 +35,7 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
   public final ResourceType resourceType;
   private final Map<ReservationType, List<RangeResourceEntry>> availableResourcesByReservationType;
 
+  // XXX(eweathers): this is *so* close to the implementation in ScalarResource constructor.  I feel like there should be a better way of handling this.
   public RangeResource(ResourceType resourceType) {
     this.resourceType = resourceType;
     availableResourcesByReservationType = new TreeMap<>(new DefaultReservationTypeComparator());
@@ -195,11 +196,11 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
         rangeStrings.add(String.format("%s-%s", beginStr, endStr));
       }
     }
-    return String.format("[%s]", StringUtils.join(rangeStrings, ","));
+    return String.format("%s: [%s]", resourceType.toString(), StringUtils.join(rangeStrings, ","));
   }
 
   public String toString(ReservationType reservationType) {
-    return String.format("%s : %s", reservationType, toString(availableResourcesByReservationType.get(reservationType)));
+    return String.format("%s: %s", reservationType, toString(availableResourcesByReservationType.get(reservationType)));
   }
 
   public String toString() {

@@ -35,7 +35,7 @@ public class AggregatedOffersTest {
   @Test
   public void testToIgnoreDynamicResources() {
     ScalarResource scalarResource = new ScalarResource(ResourceType.CPU);
-    scalarResource.add(new ResourceEntries.ScalarResourceEntry(100.0), ReservationType.STATICALLY_RESERVED);
+    scalarResource.add(new ResourceEntries.ScalarResourceEntry(100.0), ReservationType.STATIC);
     scalarResource.toString();
 
     // Note that buidOffer adds

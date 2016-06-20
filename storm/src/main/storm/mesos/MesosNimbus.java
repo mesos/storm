@@ -477,7 +477,7 @@ public class MesosNimbus implements INimbus {
                                                  .setName(resourceType.toString())
                                                  .setType(Protos.Value.Type.SCALAR)
                                                  .setScalar(Scalar.newBuilder().setValue(scalarResourceEntry.getValue()));
-      if (resourceEntry.getReservationType() != null && resourceEntry.getReservationType().equals(ReservationType.STATICALLY_RESERVED)) {
+      if (resourceEntry.getReservationType() != null && resourceEntry.getReservationType().equals(ReservationType.STATIC)) {
         resourceBuilder.setRole(MesosCommon.getRole(mesosStormConf));
       }
       retVal.add(resourceBuilder.build());
@@ -496,7 +496,7 @@ public class MesosNimbus implements INimbus {
                                                .setName(resourceType.toString())
                                                .setType(Protos.Value.Type.RANGES)
                                                .setRanges(rangesBuilder.build());
-    if (rangeResourceEntry.getReservationType() != null && rangeResourceEntry.getReservationType().equals(ReservationType.STATICALLY_RESERVED)) {
+    if (rangeResourceEntry.getReservationType() != null && rangeResourceEntry.getReservationType().equals(ReservationType.STATIC)) {
       resourceBuilder.setRole(MesosCommon.getRole(mesosStormConf));
     }
     return resourceBuilder.build();

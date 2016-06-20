@@ -348,12 +348,12 @@ public class MesosCommonTest {
     AggregatedOffers aggregatedOffers = aggregatedOffersPerNode.get("h1");
     assertEquals(210, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.CPU), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
     assertEquals(3000, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.MEM), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
-    assertEquals(200, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.CPU, ReservationType.STATICALLY_RESERVED), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
-    assertEquals(2000, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.MEM, ReservationType.STATICALLY_RESERVED), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
-    assertEquals(0, TestUtils.calculateAllAvailableRangeResources(aggregatedOffers, ResourceType.PORTS, ReservationType.STATICALLY_RESERVED).size(), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(200, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.CPU, ReservationType.STATIC), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(2000, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.MEM, ReservationType.STATIC), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(0, TestUtils.calculateAllAvailableRangeResources(aggregatedOffers, ResourceType.PORTS, ReservationType.STATIC).size(), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
     aggregatedOffers = aggregatedOffersPerNode.get("h2");
-    assertEquals(0, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.CPU, ReservationType.STATICALLY_RESERVED), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
-    assertEquals(0, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.MEM, ReservationType.STATICALLY_RESERVED), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(0, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.CPU, ReservationType.STATIC), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
+    assertEquals(0, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.MEM, ReservationType.STATIC), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
     assertEquals(100, TestUtils.calculateAllAvailableRangeResources(aggregatedOffers, ResourceType.PORTS, ReservationType.UNRESERVED).size(), MesosCommonTest.DELTA_FOR_DOUBLE_COMPARISON);
   }
 }

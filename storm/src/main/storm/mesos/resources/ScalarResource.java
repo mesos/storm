@@ -39,7 +39,6 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
   public ScalarResource(ResourceType resourceType) {
     this.resourceType = resourceType;
     availableResourcesByReservationType = new TreeMap<>(new DefaultReservationTypeComparator());
-
     for (ReservationType reservationType : ReservationType.values()) {
       availableResourcesByReservationType.put(reservationType, new ScalarResourceEntry(reservationType, 0.0));
     }
@@ -129,10 +128,10 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
   public String toString() {
     List<String> availableResourcesByResourceTypeList = new ArrayList<>();
     for (Map.Entry<ReservationType, ScalarResourceEntry> entry: availableResourcesByReservationType.entrySet()) {
-      availableResourcesByResourceTypeList.add(String.format("%s : %s", entry.getKey(), entry.getValue().getValue()));
+      availableResourcesByResourceTypeList.add(String.format("%s: %f", entry.getKey(), entry.getValue().getValue()));
     }
-    String tmp = StringUtils.join(", ", availableResourcesByResourceTypeList);
-    return String.format("Resource %s - Total available : %f Total available by reservation type : [ %s ]", resourceType.toString(), totalAvailableResource, tmp);
+    String tmp = StringUtils.join(availableResourcesByResourceTypeList, ", ");
+    return String.format("%s: %f (%s)", resourceType.toString(), totalAvailableResource, tmp);
   }
 
   private List<ResourceEntry> removeAndGet(ScalarResourceEntry scalarResourceEntry, Collection<ReservationType> reservationTypesListByPriority) throws

@@ -69,7 +69,7 @@ public class AggregatedOffers {
     for (Protos.Resource r : offer.getResourcesList()) {
       ResourceType resourceType = ResourceType.of(r.getName());
       ReservationType reservationType = (r.getRole().equals("*")) ?
-                                        ReservationType.UNRESERVED : ReservationType.STATICALLY_RESERVED;
+                                        ReservationType.UNRESERVED : ReservationType.STATIC;
 
       if (r.hasReservation()) {
         // skip resources with dynamic reservations
@@ -152,8 +152,10 @@ public class AggregatedOffers {
 
   @Override
   public String toString() {
-    return String.format("cpu : %s, memory: %s, ports : %s", availableResources.get(ResourceType.CPU),
-                         availableResources.get(ResourceType.MEM), availableResources.get(ResourceType.PORTS));
+    return String.format("%s, %s, %s",
+                         availableResources.get(ResourceType.CPU),
+                         availableResources.get(ResourceType.MEM),
+                         availableResources.get(ResourceType.PORTS));
   }
 
 
