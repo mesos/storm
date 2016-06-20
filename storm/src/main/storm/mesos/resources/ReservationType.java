@@ -19,6 +19,10 @@ package storm.mesos.resources;
 
 public enum ReservationType {
   UNRESERVED,
-  STATICALLY_RESERVED,
-  DYNAMICALLY_RESERVED;
+  STATIC,
+  DYNAMIC;
+
+  public String toString() {
+    return name().toLowerCase();
+  }
 }

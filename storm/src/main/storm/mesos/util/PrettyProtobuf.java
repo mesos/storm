@@ -243,6 +243,6 @@ public class PrettyProtobuf {
 
   public static String offerIDListToString(List<OfferID> offerIDList) {
     List<String> offerIDsAsStrings = Lists.transform(offerIDList, offerIDToStringTransform);
-    return String.format("[ %s ]", StringUtils.join(offerIDsAsStrings, ", "));
+    return String.format("[%s]", StringUtils.join(offerIDsAsStrings, ", "));
   }
 }
