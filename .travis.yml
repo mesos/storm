@@ -5,14 +5,14 @@ cache:
   directories:
   - $HOME/.m2/repository
 services:
-  - docker
+- docker
 env:
   global:
-    - TRAVIS_DOCKER_VERSION=1.10.3-0~trusty
-    - DOCKER_REPO=$TRAVIS_REPO_SLUG
+  - TRAVIS_DOCKER_VERSION=1.10.3-0~trusty
+  - DOCKER_REPO=$TRAVIS_REPO_SLUG
 before_install:
-  - apt-cache madison docker-engine
-  - travis_retry sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-engine=${TRAVIS_DOCKER_VERSION}
+- apt-cache madison docker-engine
+- travis_retry sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-engine=${TRAVIS_DOCKER_VERSION}
 
 install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true
 script:
@@ -29,13 +29,12 @@ matrix:
   - env: STORM_RELEASE="0.9.6" MESOS_RELEASE="0.28.2" STORM_URL="https://github.com/erikdw/storm/releases/download/v0.9.6-storm-mesos2/apache-storm-0.9.6-storm-mesos2.tar.gz"
   - env: STORM_RELEASE="0.9.6" MESOS_RELEASE="0.27.2" STORM_URL="https://github.com/erikdw/storm/releases/download/v0.9.6-storm-mesos2/apache-storm-0.9.6-storm-mesos2.tar.gz"
 before_deploy:
-  - travis_retry make images
-  - travis_retry make images JAVA_PRODUCT_VERSION=8
-  - docker images
-  - travis_retry docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-  - travis_retry make push
-  - travis_retry make push JAVA_PRODUCT_VERSION=8
-# Deploy archives to GitHub release tags
+- travis_retry make images
+- travis_retry make images JAVA_PRODUCT_VERSION=8
+- docker images
+- travis_retry docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+- travis_retry make push
+- travis_retry make push JAVA_PRODUCT_VERSION=8
 deploy:
   provider: releases
   api_key:
