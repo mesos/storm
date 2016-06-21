@@ -1,6 +1,8 @@
 Storm on Mesos
 ---------------
 
+[![Join the chat at https://gitter.im/mesos/storm](https://badges.gitter.im/mesos/storm.svg)](https://gitter.im/mesos/storm?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![Build Status](https://travis-ci.org/mesos/storm.svg?branch=master)](https://travis-ci.org/mesos/storm)
 
 # Overview
@@ -69,7 +71,7 @@ In order to build the storm-mesos docker image, or a docker image ready to be us
 
 ```shell
 make help
-make images STORM_RELEASE=0.X.X MESOS_RELEASE=0.Y.Y DOCKER_REPO=mesos
+make images STORM_RELEASE=0.X.X MESOS_RELEASE=0.Y.Y DOCKER_REPO=mesos/storm
 ```
 
 Where 0.X.X and 0.Y.Y are the respective versions of Storm and Mesos you wish to build against.  This will build a docker image containing a Mesos executor package. The resulting docker images are the following:
@@ -84,7 +86,7 @@ mesos/storm               0.1.0-0.X.X-0.Y.Y-jdk7-onbuild         e7eb52b3eb9f   
 In order to use JDK 8 while building the docker image, run the following:
 
 ```shell
-make images STORM_RELEASE=0.X.X MESOS_RELEASE=0.Y.Y DOCKER_REPO=mesos JAVA_PRODUCT_VERSION=8
+make images STORM_RELEASE=0.X.X MESOS_RELEASE=0.Y.Y DOCKER_REPO=mesos/storm JAVA_PRODUCT_VERSION=8
 ```
 
 A custom image could be built from the onbuild tagged docker image. It is based on the dockerfile ``onbuild/Dockerfile``
