@@ -25,7 +25,7 @@ STORM_URL=${STORM_URL:-''}
 
 MIRROR=${MIRROR:-"http://www.gtlib.gatech.edu/pub"}
 
-DOCKER_REPO=${DOCKER_REPO:-"mesos"}
+DOCKER_REPO=${DOCKER_REPO:-"mesos/storm"}
 
 JAVA_PRODUCT_VERSION=${JAVA_PRODUCT_VERSION:-`java -version 2>&1 | awk '/version/{print $NF}' | sed -E 's|[0-9].([0-9]).[0-9]_[0-9]+|\1|' | sed -e 's/^"//'  -e 's/"$//'`}
 
