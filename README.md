@@ -1,6 +1,8 @@
 Storm on Mesos
 ---------------
 
+[![Join the chat at https://gitter.im/mesos/storm](https://badges.gitter.im/mesos/storm.svg)](https://gitter.im/mesos/storm?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 [![Build Status](https://travis-ci.org/mesos/storm.svg?branch=master)](https://travis-ci.org/mesos/storm)
 
 # Overview
