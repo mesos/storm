@@ -599,8 +599,8 @@ public class MesosNimbus implements INimbus {
         String extraConfig = "";
 
         if (!aggregatedOffers.isFit(mesosStormConf, topologyDetails, workerPort, hostsWithSupervisors.contains(workerHost))) {
-          LOG.error(String.format("Unable to launch worker %s. Required cpu: %f, Required mem: %f. Available aggregatedOffers : %s",
-                                  workerHost, requiredCpu, requiredMem, aggregatedOffers));
+          LOG.error(String.format("Unable to launch worker %s. Required cpu: %f, Required mem: %f, Required port: %d. Available aggregatedOffers : %s",
+                                  workerHost, requiredCpu, requiredMem, workerPort, aggregatedOffers));
           continue;
         }
 
@@ -633,8 +633,8 @@ public class MesosNimbus implements INimbus {
             workerResources.add(createMesosRangeResource(ResourceType.PORTS, (RangeResourceEntry) resourceEntry));
           }
         } catch (ResourceNotAvailableException rexp) {
-          LOG.warn("Unable to launch worker %s. Required cpu: %f, Required mem: %f. Available aggregatedOffers : %s",
-                   workerHost, requiredCpu, requiredMem, aggregatedOffers);
+          LOG.warn("Unable to launch worker %s. Required cpu: %f, Required mem: %f, Required port: %d. Available aggregatedOffers : %s",
+                   workerHost, requiredCpu, requiredMem, workerPort, aggregatedOffers);
           continue;
         }
 
