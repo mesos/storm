@@ -64,6 +64,8 @@ public class AggregatedOffers {
   }
 
   public void add(Protos.Offer offer) {
+    // We are unable to aggregate offers if they are from different workers
+    assert offer.getSlaveId().equals(slaveID) && offer.getHostname().equals(hostName);
     offerList.add(offer);
 
     for (Protos.Resource r : offer.getResourcesList()) {
