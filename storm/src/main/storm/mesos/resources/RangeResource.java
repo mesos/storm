@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -149,31 +150,31 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
   }
 
   private List<ResourceEntry> removeAndGet(Collection<ReservationType> reservationTypes, RangeResourceEntry desiredRange) {
-    List<ResourceEntry> removedResources = new ArrayList<>();
-    Long desiredBegin = desiredRange.getBegin();
-    Long desiredEnd = desiredRange.getEnd();
+    // Because of the way Storm does assignments, we will only ever need a single port at a time, bail out if this is not the case
+    assert desiredRange.getBegin() == desiredRange.getEnd();
 
+    List<ResourceEntry> removedResources = new ArrayList<>();
+    Long desiredPort = desiredRange.getBegin();
+
+    // Iterate over all of the available resources
     for (ReservationType reservationType : reservationTypes) {
       List<RangeResourceEntry> availableRanges = availableResourcesByReservationType.get(reservationType);
-      for (int i = 0; i < availableRanges.size(); i++) {
-        RangeResourceEntry availableRange = availableRanges.get(i);
-        if (desiredBegin >= availableRange.getBegin() && desiredEnd <= availableRange.getEnd()) {
-          availableRanges.remove(i);
-          // If this is exactly the ranges we were looking for, then we can use them
-          if (availableRange.getBegin().equals(availableRange.getEnd()) || (availableRange.getBegin().equals(desiredBegin) && availableRange.getEnd().equals(desiredEnd))) {
-            removedResources.add(availableRange);
-            return removedResources;
+      ListIterator<RangeResourceEntry> iterator = availableRanges.listIterator();
+      while (iterator.hasNext()) {
+        RangeResourceEntry availableRange = iterator.next();
+        if (desiredPort >= availableRange.getBegin() && desiredPort <= availableRange.getEnd()) {
+          iterator.remove();
+          // Salvage resources before the beginning of the requested port
+          if (availableRange.getBegin() < desiredPort) {
+            iterator.add(new RangeResourceEntry(reservationType, availableRange.getBegin(), desiredPort - 1));
           }
-          // Salvage resources before the beginning of the requested range
-          if (availableRange.getBegin() < desiredBegin) {
-            availableRanges.add(new RangeResourceEntry(reservationType, availableRange.getBegin(), desiredBegin - 1));
-          }
-          // Salvage resources after the end of the requested range
-          if (availableRange.getEnd() > desiredEnd) {
-            availableRanges.add(new RangeResourceEntry(reservationType, desiredEnd + 1, availableRange.getEnd()));
+          // Salvage resources after the end of the requested port
+          if (availableRange.getEnd() > desiredPort) {
+            iterator.add(new RangeResourceEntry(reservationType, desiredPort + 1, availableRange.getEnd()));
           }
           // Now that we've salvaged all available resources, add the resources for the specifically requested range
-          removedResources.add(new RangeResourceEntry(reservationType, desiredBegin, desiredEnd));
+          removedResources.add(new RangeResourceEntry(reservationType, desiredPort, desiredPort));
+          break;
         }
       }
     }
