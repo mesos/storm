@@ -393,7 +393,7 @@ public class MesosNimbus implements INimbus {
    *  This method is invoked after IScheduler.schedule assigns the worker slots to the topologies that need assignments
    *
    *  @param topologies                             - Information about all topologies
-   *  @param slotsForTopologiesNeedingAssignments   - A map of topology name and collection of worker slots that are assigned to the topology
+   *  @param slotsForTopologiesNeedingAssignments   - A map of topology name and collection of worker slots that are assigned to the topologies
    *                                                  that need assignments
    */
   @Override
@@ -565,12 +565,13 @@ public class MesosNimbus implements INimbus {
       TopologyDetails topologyDetails = topologies.getById(topologyId);
       Set<String> hostsWithSupervisors = new HashSet<>();
 
-      double workerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
-      double workerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
       double executorCpu = MesosCommon.executorCpu(mesosStormConf);
       double executorMem = MesosCommon.executorMem(mesosStormConf);
+      double workerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
+      double workerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
 
       for (WorkerSlot slot : slotList) {
+        // for this task we start with the assumption that we only need the worker resources, we'll add the executor resources later if needed.
         double requiredCpu = workerCpu;
         double requiredMem = workerMem;
 
@@ -583,6 +584,7 @@ public class MesosNimbus implements INimbus {
           workerPrefix = MesosCommon.getWorkerPrefix(mesosStormConf, topologyDetails);
         }
 
+        // Account for executor resources only the first time we see this host for this topology
         if (!hostsWithSupervisors.contains(workerHost)) {
           requiredCpu += executorCpu;
           requiredMem += executorMem;
@@ -608,13 +610,19 @@ public class MesosNimbus implements INimbus {
         List<Resource> workerResources = new ArrayList<>();
 
         try {
+          // This list will hold CPU and MEM resources
           List<ResourceEntry> scalarResourceEntryList = null;
+          // This list will hold PORTS resources
           List<ResourceEntry> rangeResourceEntryList = null;
 
           if (hostsWithSupervisors.contains(workerHost)) {
+            // Since we already have a supervisor on this host, we don't need to account for its resources by obtaining them from
+            // an offer, but we do need to ensure that executor resources are the same for every task, or mesos rejects the task
             executorResources.add(createMesosScalarResource(ResourceType.CPU, new ScalarResourceEntry(executorCpu)));
             executorResources.add(createMesosScalarResource(ResourceType.MEM, new ScalarResourceEntry(executorMem)));
           } else {
+            // Need to account for executor resources, since this might be the first executor on this host for this topology
+            // (we have no way to tell this without some state reconciliation or storage).
             scalarResourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.CPU, new ScalarResourceEntry(executorCpu));
             executorResources.addAll(createMesosScalarResourceList(ResourceType.CPU, scalarResourceEntryList));
             scalarResourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(executorMem));
@@ -624,16 +632,19 @@ public class MesosNimbus implements INimbus {
           String supervisorStormLocalDir = getStormLocalDirForWorkers();
           extraConfig += String.format(" -c storm.local.dir=%s", supervisorStormLocalDir);
 
+          // First add to the list of required worker resources the CPU resources we were able to secure
           scalarResourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.CPU, new ScalarResourceEntry(workerCpu));
           workerResources.addAll(createMesosScalarResourceList(ResourceType.CPU, scalarResourceEntryList));
+          // Then add to the list of required worker resources the MEM resources we were able to secure
           scalarResourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(workerMem));
           workerResources.addAll(createMesosScalarResourceList(ResourceType.MEM, scalarResourceEntryList));
+          // Finally add to the list of required worker resources the PORTS resources we were able to secure (which we expect to be a single port)
           rangeResourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.PORTS, new RangeResourceEntry(workerPort, workerPort));
           for (ResourceEntry resourceEntry : rangeResourceEntryList) {
             workerResources.add(createMesosRangeResource(ResourceType.PORTS, (RangeResourceEntry) resourceEntry));
           }
         } catch (ResourceNotAvailableException rexp) {
-          LOG.warn("Unable to launch worker %s. Required cpu: %f, Required mem: %f, Required port: %d. Available aggregatedOffers : %s",
+          LOG.warn("Unable to launch worker %s because some resources were unavailable. Required cpu: %f, Required mem: %f, Required port: %d. Available aggregatedOffers : %s",
                    workerHost, requiredCpu, requiredMem, workerPort, aggregatedOffers);
           continue;
         }
