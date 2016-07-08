@@ -300,7 +300,7 @@ public class MesosNimbus implements INimbus {
     }
   }
 
-  public void taskLost(final TaskID taskId) {
+  public void taskTerminated(final TaskID taskId) {
     timerScheduler.schedule(new Runnable() {
       @Override
       public void run() {
