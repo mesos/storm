@@ -116,7 +116,7 @@ public class PrettyProtobuf {
    */
   public static String taskInfoListToString(List<TaskInfo> tasks) {
     List<String> tasksAsStrings = Lists.transform(tasks, taskInfoToStringTransform);
-    return String.format("[\n%s]", StringUtils.join(tasksAsStrings, ",\n"));
+    return String.format("[%s]", StringUtils.join(tasksAsStrings, ", "));
   }
 
   /**

@@ -108,11 +108,15 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
 
 
   /**
+   * Unused Method - Exists for the purpose of facilitating support of reservations.
+   * TODO: Support reservations (https://github.com/mesos/storm/issues/148)
+   * For more information about why this unused code exists, see discussion: https://github.com/mesos/storm/pull/146#issuecomment-225496075
+   *
    * Remove/Reserve range from available ranges.
    * {@param rangeResourceEntry} range resource to removeAndGet
    * {@param reservationType} reservation type of resource that needs to be removed. If the resource represented by rangeResourceEntry
    * of the reservation type specified by this parameter is not available, then {@link ResourceNotAvailableException}
-   * is thrown
+   * is thrown.
    */
   @Override
   public List<ResourceEntry> removeAndGet(RangeResourceEntry rangeResourceEntry, ReservationType reservationType) throws ResourceNotAvailableException {
@@ -129,6 +133,10 @@ public final class RangeResource implements Resource<RangeResourceEntry> {
   }
 
   /**
+   * Unused Method - Exists for the purpose of facilitating support of reservations.
+   * TODO: Support reservations (https://github.com/mesos/storm/issues/148)
+   * For more information about why this unused code exists, see discussion: https://github.com/mesos/storm/pull/146#issuecomment-225496075
+   *
    * Remove/Reserve range from available ranges
    * {@param rangeResourceEntry} range resource to removeAndGet
    * {@param reservationTypeComparator} comparator like {@link storm.mesos.resources.DefaultReservationTypeComparator}

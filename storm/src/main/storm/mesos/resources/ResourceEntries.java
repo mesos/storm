@@ -83,6 +83,8 @@ public class ResourceEntries {
     }
 
     /**
+     * Unused Method - Exists for the sake of completeness in terms of implementing ResourceEntry<T>.
+     *
      * Lets say, we have a range [u,v]. Using this add function, we can expand the range to [w,x] if and
      * only if one of the following conditions are satisfied
      *   `w < u`
@@ -107,6 +109,9 @@ public class ResourceEntries {
       return this;
     }
 
+    /**
+     * Unused Method - Exists for the sake of completeness in terms of implementing ResourceEntry<T>.
+     */
     public RangeResourceEntry remove(ResourceEntry<Long> resourceEntry) {
       RangeResourceEntry rangeResourceEntry = (RangeResourceEntry) resourceEntry;
       if (this.begin < rangeResourceEntry.getBegin()) {

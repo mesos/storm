@@ -52,6 +52,11 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
     return (availableResourcesByReservationType.get(reservationType).getValue() >= scalarResourceEntry.getValue());
   }
 
+  /**
+   * Unused Method - Exists for the purpose of facilitating support of reservations.
+   * TODO: Support reservations (https://github.com/mesos/storm/issues/148)
+   * For more information about why this unused code exists, see discussion: https://github.com/mesos/storm/pull/146#issuecomment-225496075
+   */
   public Double getTotalAvailableResource(ReservationType reservationType) {
     return availableResourcesByReservationType.get(reservationType).getValue();
   }
@@ -80,14 +85,6 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
 
   public List<ResourceEntry> removeAndGet(ScalarResourceEntry scalarResourceEntry) throws ResourceNotAvailableException {
     return removeAndGet(scalarResourceEntry, availableResourcesByReservationType.keySet());
-  }
-
-  public List<ResourceEntry> reserveScalarResource(ResourceType resourceType, ScalarResourceEntry requiredValue) throws ResourceNotAvailableException {
-    if (totalAvailableResource < requiredValue.getValue()) {
-      throw new ResourceNotAvailableException(String.format("resourceType: {} is not available. Requested {} Available {}",
-                                                           resourceType, requiredValue, totalAvailableResource));
-    }
-    return removeAndGet(requiredValue);
   }
 
   /**
@@ -128,10 +125,10 @@ public class ScalarResource implements Resource<ScalarResourceEntry> {
   public String toString() {
     List<String> availableResourcesByResourceTypeList = new ArrayList<>();
     for (Map.Entry<ReservationType, ScalarResourceEntry> entry: availableResourcesByReservationType.entrySet()) {
-      availableResourcesByResourceTypeList.add(String.format("%s: %f", entry.getKey(), entry.getValue().getValue()));
+      availableResourcesByResourceTypeList.add(String.format("%s: %s", entry.getKey(), Double.toString(entry.getValue().getValue())));
     }
     String tmp = StringUtils.join(availableResourcesByResourceTypeList, ", ");
-    return String.format("%s: %f (%s)", resourceType.toString(), totalAvailableResource, tmp);
+    return String.format("%s: %s (%s)", resourceType.toString(), Double.toString(totalAvailableResource), tmp);
   }
 
   private List<ResourceEntry> removeAndGet(ScalarResourceEntry scalarResourceEntry, Collection<ReservationType> reservationTypesListByPriority) throws
