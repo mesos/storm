@@ -93,6 +93,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static storm.mesos.util.PrettyProtobuf.offerIDListToString;
+import static storm.mesos.util.PrettyProtobuf.offerToString;
 import static storm.mesos.util.PrettyProtobuf.offerMapToString;
 import static storm.mesos.util.PrettyProtobuf.taskInfoListToString;
 
@@ -308,16 +309,14 @@ public class MesosNimbus implements INimbus {
       for (Protos.Offer offer : offers) {
         if (isHostAccepted(offer.getHostname())) {
           // TODO(ksoundararaj): Should we record the following as info instead of debug
-          LOG.debug("resourceOffers: Recording offer from host: {}, offerId: {}",
-                    offer.getHostname(), offer.getId().getValue());
+          LOG.info("resourceOffers: Recording offer: {}", offerToString(offer));
           _offers.put(offer.getId(), offer);
         } else {
-          LOG.debug("resourceOffers: Declining offer from host: {}, offerId: {}",
-                    offer.getHostname(), offer.getId().getValue());
+          LOG.info("resourceOffers: Declining offer: {}", offerToString(offer));
           driver.declineOffer(offer.getId());
         }
       }
-      LOG.debug("resourceOffers: After processing offers, now have {} offers buffered: {}",
+      LOG.info("resourceOffers: After processing offers, now have {} offers buffered: {}",
                 _offers.size(), offerMapToString(_offers));
     }
   }
@@ -385,10 +384,6 @@ public class MesosNimbus implements INimbus {
     }
   }
 
-  private String getLogViewerConfig() {
-    return String.format(" -c %s=true", MesosCommon.AUTO_START_LOGVIEWER_CONF);
-  }
-
   /**
    *  This method is invoked after IScheduler.schedule assigns the worker slots to the topologies that need assignments
    *
@@ -399,17 +394,22 @@ public class MesosNimbus implements INimbus {
   @Override
   public void assignSlots(Topologies topologies, Map<String, Collection<WorkerSlot>> slotsForTopologiesNeedingAssignments) {
     if (slotsForTopologiesNeedingAssignments.isEmpty()) {
-      LOG.debug("assignSlots: no slots passed in, nothing to do");
+      LOG.info("assignSlots: no slots passed in, nothing to do");
       return;
     }
 
     // This is purely to print the debug information. Otherwise, the following for loop is unnecessary.
     for (Map.Entry<String, Collection<WorkerSlot>> topologyToSlots : slotsForTopologiesNeedingAssignments.entrySet()) {
       String topologyId = topologyToSlots.getKey();
+      List<String> topologySlotAssignmentStrings = new ArrayList<String>();
+      String info = "assignSlots: " + topologyId + " being assigned to " + topologyToSlots.getValue().size() + " slots (worker:port, cpu, mem) as follows: ";
       for (WorkerSlot slot : topologyToSlots.getValue()) {
         TopologyDetails details = topologies.getById(topologyId);
-        LOG.debug("assignSlots: topologyId: {} worker being assigned to slot: {} with workerCpu: {} workerMem: {}",
-                  topologyId, slot, MesosCommon.topologyWorkerCpu(mesosStormConf, details), MesosCommon.topologyWorkerMem(mesosStormConf, details));
+        topologySlotAssignmentStrings.add("(" + slot + ", " + MesosCommon.topologyWorkerCpu(mesosStormConf, details) + ", " + MesosCommon.topologyWorkerMem(mesosStormConf, details) + ")");
+      }
+      if (!topologyToSlots.getValue().isEmpty()) {
+        info += StringUtils.join(topologySlotAssignmentStrings, ", ");
+        LOG.info(info);
       }
     }
 
@@ -427,7 +427,7 @@ public class MesosNimbus implements INimbus {
         List<OfferID> offerIDList = aggregatedOffersPerNode.get(node).getOfferIDList();
         List<TaskInfo> taskInfoList = tasksToLaunchPerNode.get(node);
 
-        LOG.info("Using offerIDs: " + offerIDListToString(offerIDList) + " on host: " + node + " to launch tasks: " + taskInfoListToString(taskInfoList));
+        LOG.info("Using offerIDs: {} on host: {} to launch tasks: {}", offerIDListToString(offerIDList), node, taskInfoListToString(taskInfoList));
 
         _driver.launchTasks(offerIDList, taskInfoList);
         for (OfferID offerID: offerIDList) {
@@ -601,8 +601,8 @@ public class MesosNimbus implements INimbus {
         String extraConfig = "";
 
         if (!aggregatedOffers.isFit(mesosStormConf, topologyDetails, workerPort, hostsWithSupervisors.contains(workerHost))) {
-          LOG.error(String.format("Unable to launch worker %s. Required cpu: %f, Required mem: %f, Required port: %d. Available aggregatedOffers : %s",
-                                  workerHost, requiredCpu, requiredMem, workerPort, aggregatedOffers));
+          LOG.error(String.format("Unable to launch worker %s for topology %s. Required cpu: %f, Required mem: %f, Required port: %d. Available aggregatedOffers : %s",
+                                  workerHost, topologyDetails.getId(), requiredCpu, requiredMem, workerPort, aggregatedOffers));
           continue;
         }
 

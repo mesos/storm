@@ -17,6 +17,9 @@
  */
 package storm.mesos.schedulers;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import backtype.storm.scheduler.SupervisorDetails;
 import backtype.storm.scheduler.TopologyDetails;
 import storm.mesos.resources.AggregatedOffers;
@@ -34,6 +37,8 @@ import static storm.mesos.resources.ResourceEntries.ScalarResourceEntry;
 
 public class SchedulerUtils {
 
+  private static final Logger log = LoggerFactory.getLogger(SchedulerUtils.class);
+
   public static List<RangeResourceEntry> getPorts(AggregatedOffers aggregatedOffers, int requiredCount) {
     List<RangeResourceEntry> retVal = new ArrayList<>();
     List<RangeResourceEntry> resourceEntryList = aggregatedOffers.getAllAvailableResources(ResourceType.PORTS);
@@ -45,6 +50,9 @@ public class SchedulerUtils {
         retVal.add(new RangeResourceEntry(begin, begin));
         ++begin;
         --requiredCount;
+      }
+      if (requiredCount <= 0) {
+        break;
       }
     }
     return retVal;
@@ -70,7 +78,7 @@ public class SchedulerUtils {
     }
     aggregatedOffers.reserve(ResourceType.PORTS, ports.get(0));
 
-    return new MesosWorkerSlot(aggregatedOffers.getHostName(), ports.get(0).getBegin(), topologyDetails.getId());
+    return new MesosWorkerSlot(aggregatedOffers.getHostname(), ports.get(0).getBegin(), topologyDetails.getId());
   }
 
   /**

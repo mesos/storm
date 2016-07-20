@@ -154,7 +154,7 @@ public class MesosCommon {
     }
 
     for (AggregatedOffers aggregatedOffers : aggregatedOffersPerNode.values()) {
-      LOG.info("Available resources at {}: {}", aggregatedOffers.getHostName(), aggregatedOffers.toString());
+      LOG.info("Available resources at {}: {}", aggregatedOffers.getHostname(), aggregatedOffers.toString());
     }
     return aggregatedOffersPerNode;
   }

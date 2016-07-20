@@ -45,14 +45,14 @@ public class AggregatedOffersTest {
     assertEquals(0, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.CPU), DELTA_FOR_DOUBLE_COMPARISON);
     assertEquals(0, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.MEM), DELTA_FOR_DOUBLE_COMPARISON);
 
-    assertTrue(aggregatedOffers.getHostName().equals(offer.getHostname()));
+    assertTrue(aggregatedOffers.getHostname().equals(offer.getHostname()));
     assertTrue(aggregatedOffers.getSlaveID().equals(offer.getSlaveId()));
 
     offer = TestUtils.buildOfferWithReservation("offer1", "h1", 2, 1000, 6, 1000);
     aggregatedOffers = new AggregatedOffers(offer);
     assertEquals(8, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.CPU), DELTA_FOR_DOUBLE_COMPARISON);
     assertEquals(2000, TestUtils.calculateAllAvailableScalarResources(aggregatedOffers, ResourceType.MEM), DELTA_FOR_DOUBLE_COMPARISON);
-    assertTrue(aggregatedOffers.getHostName().equals(offer.getHostname()));
+    assertTrue(aggregatedOffers.getHostname().equals(offer.getHostname()));
     assertTrue(aggregatedOffers.getSlaveID().equals(offer.getSlaveId()));
 
     offer = TestUtils.buildOfferWithPorts("offer1", "h1", 2.0, 2000, 3000, 3100);
