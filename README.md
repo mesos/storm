@@ -93,6 +93,18 @@ A custom image could be built from the onbuild tagged docker image. It is based 
 
 Images are also published to Docker Hub under the image `mesos/storm` at <https://hub.docker.com/r/mesos/storm/>.
 
+# Releasing New Version
+
+If you are a committer for this repo, then you merely need to run the following command to generate a new release:
+
+```
+mvn release:clean release:prepare
+```
+
+This will automatically update the version fields and push tags that in turn kick off a travis-ci build.  This travis-ci build automatically uploads the resultant artifacts to both [GitHub](https://github.com/mesos/storm/releases) and [DockerHub](https://hub.docker.com/r/mesos/storm/tags/).
+
+Note that normally your local repo should be synced to the HEAD of github.com:mesos/storm's master branch.  However it is possible that you're working from a different branch and doing releases for an earlier numbered version.  [That variant process](https://github.com/mesos/storm/issues/128#issuecomment-209251763) will soon exist as part of [supporting both storm-0.x and storm-1.x+](https://github.com/mesos/storm/issues/128#issuecomment-222835660), but needs to be ironed out.
+
 # Running Storm on Mesos
 Along with the Mesos master and Mesos cluster, you'll need to run the Storm master as well. Launch Nimbus with this command:
 
