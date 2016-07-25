@@ -17,11 +17,16 @@
  */
 package storm.mesos.util;
 
+import backtype.storm.Config;
 import backtype.storm.scheduler.TopologyDetails;
 import com.google.common.base.Optional;
+import org.apache.mesos.Protos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.mesos.resources.AggregatedOffers;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -35,6 +40,7 @@ public class MesosCommon {
   public static final String EXECUTOR_MEM_CONF = "topology.mesos.executor.mem.mb";
   public static final String SUICIDE_CONF = "mesos.supervisor.suicide.inactive.timeout.secs";
   public static final String SUPERVISOR_STORM_LOCAL_DIR_CONF = "mesos.supervisor.storm.local.dir";
+  public static final String CONF_MESOS_ROLE = "mesos.framework.role";
   public static final String AUTO_START_LOGVIEWER_CONF = "supervisor.autostart.logviewer";
   // Should we prefix the Worker Task ID with a configurable string (as well as the topology name)?
   public static final String WORKER_NAME_PREFIX = "topology.mesos.worker.prefix";
@@ -54,6 +60,13 @@ public class MesosCommon {
   public static final String ASSIGNMENT_ID = "assignmentid";
   public static final String DEFAULT_WORKER_NAME_PREFIX_DELIMITER = "_";
   public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = " | ";
+
+  public static String getNimbusHost(Map mesosStormConf) throws UnknownHostException {
+    Optional<String> nimbusHostFromConfig =  Optional.fromNullable((String) mesosStormConf.get(Config.NIMBUS_HOST));
+    Optional<String> nimbusHostFromEnv = Optional.fromNullable(System.getenv("MESOS_NIMBUS_HOST"));
+
+    return nimbusHostFromConfig.or(nimbusHostFromEnv).or(InetAddress.getLocalHost().getCanonicalHostName());
+  }
 
   public static String hostFromAssignmentId(String assignmentId, String delimiter) {
     final int last = assignmentId.lastIndexOf(delimiter);
@@ -94,7 +107,7 @@ public class MesosCommon {
     return String.format("%s-%s", nodeid, topologyId);
   }
 
-  public static boolean startLogViewer(Map conf) {
+  public static boolean autoStartLogViewer(Map conf) {
     return Optional.fromNullable((Boolean) conf.get(AUTO_START_LOGVIEWER_CONF)).or(true);
   }
 
@@ -123,6 +136,27 @@ public class MesosCommon {
     }
 
     return port;
+  }
+
+  public static Map<String, AggregatedOffers> getAggregatedOffersPerNode(RotatingMap<Protos.OfferID, Protos.Offer> offers) {
+    Map<String, AggregatedOffers> aggregatedOffersPerNode = new HashMap<>();
+
+    for (Protos.Offer offer : offers.values()) {
+      String hostName = offer.getHostname();
+
+      AggregatedOffers aggregatedOffers = aggregatedOffersPerNode.get(hostName);
+      if (aggregatedOffers == null) {
+        aggregatedOffers = new AggregatedOffers(offer);
+        aggregatedOffersPerNode.put(hostName, aggregatedOffers);
+      } else {
+        aggregatedOffers.add(offer);
+      }
+    }
+
+    for (AggregatedOffers aggregatedOffers : aggregatedOffersPerNode.values()) {
+      LOG.info("Available resources at {}: {}", aggregatedOffers.getHostName(), aggregatedOffers.toString());
+    }
+    return aggregatedOffersPerNode;
   }
 
   public static int getSuicideTimeout(Map conf) {
@@ -184,4 +218,9 @@ public class MesosCommon {
     return Optional.fromNullable((Number) conf.get(EXECUTOR_MEM_CONF))
         .or(DEFAULT_EXECUTOR_MEM_MB).doubleValue();
   }
+
+  public static String getRole(Map conf) {
+    return Optional.fromNullable((String) conf.get(CONF_MESOS_ROLE)).or("*");
+  }
+
 }

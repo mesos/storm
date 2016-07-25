@@ -230,4 +230,19 @@ public class PrettyProtobuf {
     }
     return map;
   }
+
+  /**
+   * Wrapper around getTrimmedString which allows using gauva's transform utility.
+   */
+  private static Function<OfferID, String> offerIDToStringTransform =
+      new Function<OfferID, String>() {
+        public String apply(OfferID o) {
+          return o.getValue().toString();
+        }
+      };
+
+  public static String offerIDListToString(List<OfferID> offerIDList) {
+    List<String> offerIDsAsStrings = Lists.transform(offerIDList, offerIDToStringTransform);
+    return String.format("[ %s ]", StringUtils.join(offerIDsAsStrings, ", "));
+  }
 }

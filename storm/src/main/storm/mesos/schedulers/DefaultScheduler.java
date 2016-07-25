@@ -27,7 +27,8 @@ import backtype.storm.scheduler.WorkerSlot;
 import org.apache.mesos.Protos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.mesos.MesosNimbus;
+import storm.mesos.resources.AggregatedOffers;
+import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.util.MesosCommon;
 import storm.mesos.util.RotatingMap;
 
@@ -45,7 +46,7 @@ import java.util.Set;
  *  Default Scheduler used by mesos-storm framework.
  */
 public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
-  private final Logger log = LoggerFactory.getLogger(MesosNimbus.class);
+  private final Logger log = LoggerFactory.getLogger(DefaultScheduler.class);
   private Map mesosStormConf;
   private final Map<String, MesosWorkerSlot> mesosWorkerSlotMap = new HashMap<>();
 
@@ -54,6 +55,51 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
     mesosStormConf = conf;
   }
 
+  private List<MesosWorkerSlot> getMesosWorkerSlots(Map<String, AggregatedOffers> aggregatedOffersPerNode,
+                                                    Collection<String> nodesWithExistingSupervisors,
+                                                    TopologyDetails topologyDetails) {
+
+    double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
+    double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
+
+    List<MesosWorkerSlot> mesosWorkerSlots = new ArrayList<>();
+    boolean slotFound = false;
+    int slotsNeeded = topologyDetails.getNumWorkers();
+
+    do {
+      slotFound = false;
+      for (String currentNode : aggregatedOffersPerNode.keySet()) {
+        AggregatedOffers aggregatedOffers = aggregatedOffersPerNode.get(currentNode);
+
+        boolean supervisorExists = nodesWithExistingSupervisors.contains(currentNode);
+
+        if (!aggregatedOffers.isFit(mesosStormConf, topologyDetails, supervisorExists)) {
+          log.info("{} is not a fit for {} requestedWorkerCpu: {} requestedWorkerMem: {}",
+                   aggregatedOffers.toString(), topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMem);
+          continue;
+        }
+
+        log.info("{} is a fit for {} requestedWorkerCpu: {} requestedWorkerMem: {}", aggregatedOffers.toString(),
+                 topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMem);
+        MesosWorkerSlot mesosWorkerSlot;
+        try {
+          mesosWorkerSlot = SchedulerUtils.createMesosWorkerSlot(mesosStormConf, aggregatedOffers, topologyDetails, supervisorExists);
+        } catch (ResourceNotAvailableException rexp) {
+          log.warn(rexp.getMessage());
+          continue;
+        }
+
+        nodesWithExistingSupervisors.add(currentNode);
+        mesosWorkerSlots.add(mesosWorkerSlot);
+        slotFound = true;
+        if (--slotsNeeded == 0) {
+          break;
+        }
+      }
+    } while (slotFound && slotsNeeded > 0);
+
+    return mesosWorkerSlots;
+  }
   /*
    * Different topologies have different resource requirements in terms of cpu and memory. So when Mesos asks
    * this scheduler for a list of available worker slots, we create "MesosWorkerSlot" and store them into mesosWorkerSlotMap.
@@ -76,94 +122,43 @@ public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
                                                          Topologies topologies, Set<String> topologiesMissingAssignments) {
     if (topologiesMissingAssignments.isEmpty()) {
       log.info("Declining all offers that are currently buffered because no topologies need assignments");
+      // TODO(ksoundararaj): Do we need to clear offers not that consolidate resources?
       offers.clear();
       return new ArrayList<>();
     }
 
     log.info("Topologies that need assignments: {}", topologiesMissingAssignments.toString());
 
-    // Decline those offers that cannot be used for any of the topologies that need assignments.
-    for (Protos.Offer offer : offers.newestValues()) {
-      boolean isOfferUseful = false;
-      for (String currentTopology : topologiesMissingAssignments) {
-        boolean supervisorExists = SchedulerUtils.supervisorExists(offer.getHostname(), existingSupervisors, currentTopology);
-        TopologyDetails topologyDetails = topologies.getById(currentTopology);
-        if (SchedulerUtils.isFit(mesosStormConf, offer, topologyDetails, supervisorExists)) {
-          isOfferUseful = true;
-          break;
-        }
-      }
-      if (!isOfferUseful) {
-        log.info("Declining Offer {} because it does not fit any of the topologies that need assignments", offer.getId().getValue());
-        offers.clearKey(offer.getId());
-      }
-    }
-
     List<WorkerSlot> allSlots = new ArrayList<>();
-
-    Map<String, List<OfferResources>> offerResourcesListPerNode = SchedulerUtils.getOfferResourcesListPerNode(offers);
+    Map<String, AggregatedOffers> aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(offers);
 
     for (String currentTopology : topologiesMissingAssignments) {
       TopologyDetails topologyDetails = topologies.getById(currentTopology);
       int slotsNeeded = topologyDetails.getNumWorkers();
 
-      double requestedWorkerCpu = MesosCommon.topologyWorkerCpu(mesosStormConf, topologyDetails);
-      double requestedWorkerMem = MesosCommon.topologyWorkerMem(mesosStormConf, topologyDetails);
-
       log.info("Trying to find {} slots for {}", slotsNeeded, topologyDetails.getId());
-      if (slotsNeeded == 0) {
+      if (slotsNeeded <= 0) {
         continue;
       }
 
       Set<String> nodesWithExistingSupervisors = new HashSet<>();
-      for (String currentNode : offerResourcesListPerNode.keySet()) {
+      for (String currentNode : aggregatedOffersPerNode.keySet()) {
         if (SchedulerUtils.supervisorExists(currentNode, existingSupervisors, currentTopology)) {
           nodesWithExistingSupervisors.add(currentNode);
         }
       }
 
-      Boolean slotFound;
-      do {
-        slotFound = false;
-        for (String currentNode : offerResourcesListPerNode.keySet()) {
-          boolean supervisorExists = nodesWithExistingSupervisors.contains(currentNode);
-          if (slotsNeeded == 0) {
-            break;
-          }
+      List<MesosWorkerSlot> mesosWorkerSlotList = getMesosWorkerSlots(aggregatedOffersPerNode, nodesWithExistingSupervisors, topologyDetails);
+      for (MesosWorkerSlot mesosWorkerSlot : mesosWorkerSlotList) {
+        String slotId = String.format("%s:%s", mesosWorkerSlot.getNodeId(), mesosWorkerSlot.getPort());
+        mesosWorkerSlotMap.put(slotId, mesosWorkerSlot);
+        allSlots.add(mesosWorkerSlot);
+      }
 
-          for (OfferResources resources : offerResourcesListPerNode.get(currentNode)) {
-            boolean isFit = SchedulerUtils.isFit(mesosStormConf, resources, topologyDetails, supervisorExists);
-            if (isFit) {
-              log.info("{} is a fit for {} requestedWorkerCpu: {} requestedWorkerMem: {}", resources.toString(),
-                       topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMem);
-              nodesWithExistingSupervisors.add(currentNode);
-              MesosWorkerSlot mesosWorkerSlot = SchedulerUtils.createWorkerSlotFromOfferResources(mesosStormConf, resources, topologyDetails, supervisorExists);
-              if (mesosWorkerSlot == null) {
-                continue;
-              }
-              String slotId = String.format("%s:%s", mesosWorkerSlot.getNodeId(), mesosWorkerSlot.getPort());
-              mesosWorkerSlotMap.put(slotId, mesosWorkerSlot);
-              // Place this offer in the first bucket of the RotatingMap so that it is less likely to get rotated out
-              offers.put(resources.getOfferId(), resources.getOffer());
-              allSlots.add(mesosWorkerSlot);
-              slotsNeeded--;
-              slotFound = true;
-            } else {
-              log.info("{} is not a fit for {} requestedWorkerCpu: {} requestedWorkerMem: {}",
-                       resources.toString(), topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMem);
-            }
-          }
-        }
-      } while (slotFound == true && slotsNeeded > 0);
       log.info("Number of available slots for {} : {}", topologyDetails.getId(), allSlots.size());
     }
 
     log.info("Number of available slots: {}", allSlots.size());
-    if (log.isDebugEnabled()) {
-      for (WorkerSlot slot : allSlots) {
-        log.debug("available slot: {}", slot);
-      }
-    }
     return allSlots;
   }
 

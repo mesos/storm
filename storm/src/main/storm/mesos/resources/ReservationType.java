@@ -15,36 +15,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package storm.mesos;
+package storm.mesos.resources;
 
-import org.apache.mesos.Protos.Offer;
-import org.apache.mesos.Protos.Resource;
-import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import static org.junit.Assert.assertEquals;
-
-public class OfferRoleComparatorTest {
-
-
-
-  @Test
-  public void testCompare() throws Exception {
-    List<Resource> aggregatedOffers = new ArrayList<>();
-    Offer offer = TestUtils.buildOffer();
-    aggregatedOffers.addAll(offer.getResourcesList());
-    Collections.sort(aggregatedOffers, new ResourceRoleComparator());
-
-    assertEquals(
-        "*",
-        aggregatedOffers.get(5).getRole()
-    );
-    assertEquals(
-        "*",
-        aggregatedOffers.get(4).getRole()
-    );
-  }
+public enum ReservationType {
+  UNRESERVED,
+  STATICALLY_RESERVED,
+  DYNAMICALLY_RESERVED;
 }
