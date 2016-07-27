@@ -95,10 +95,14 @@ function package {(
 
   # for development builds, create a tarball of the source and copy into the package
   if [[ "${RELEASE}" == *"SNAPSHOT"* ]]; then
-    local stashRef=`git stash create`
-    local srcTarballDir=storm-mesos-src-${stashRef}
+    local stashRef=$(git stash create)
+    local archiveRef=${stashRef}
+    if [ -z ${stashRef} ]; then
+      archiveRef=HEAD
+    fi
+    local srcTarballDir=storm-mesos-src-${archiveRef}
     local srcTarball=${srcTarballDir}.tgz
-    git archive --format=tar.gz -o ${srcTarball} --prefix ${srcTarballDir}/ ${stashRef}
+    git archive --format=tar.gz -o ${srcTarball} --prefix ${srcTarballDir}/ ${archiveRef}
     echo "Copying ${srcTarball} to $stormDir/."
     cp ${srcTarball} $stormDir/.
   fi
