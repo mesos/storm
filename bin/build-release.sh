@@ -93,6 +93,16 @@ function package {(
   local stormDir=`find _release -maxdepth 1 -type d -name "*storm*"`
   _rm $stormDir/*.jar
 
+  # for development builds, create a tarball of the source and copy into the package
+  if [[ "${RELEASE}" == *"SNAPSHOT"* ]]; then
+    local stashRef=`git stash create`
+    local srcTarballDir=storm-mesos-src-${stashRef}
+    local srcTarball=${srcTarballDir}.tgz
+    git archive --format=tar.gz -o ${srcTarball} --prefix ${srcTarballDir}/ ${stashRef}
+    echo "Copying ${srcTarball} to $stormDir/."
+    cp ${srcTarball} $stormDir/.
+  fi
+
   # copies storm-mesos jar over
   # We only want the shaded jar. Its important to remove the original
   # jar so we dont have both shaded as well as original jar in the classpath
