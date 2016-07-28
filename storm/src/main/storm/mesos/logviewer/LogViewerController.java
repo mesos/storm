@@ -21,6 +21,7 @@ import backtype.storm.Config;
 import com.google.common.base.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.mesos.util.MesosCommon;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,10 +35,12 @@ public class LogViewerController {
   protected Process process;
   protected SocketUrlDetection urlDetector;
   protected Integer port;
+  protected String logDir;
 
   public LogViewerController(Map conf) {
     port = Optional.fromNullable((Number) conf.get(Config.LOGVIEWER_PORT)).or(8000).intValue();
     setUrlDetector(new SocketUrlDetection(port));
+    logDir = MesosCommon.getStormLogDir(conf, System.getenv("MESOS_SANDBOX") + "/logs");
   }
 
   /**
@@ -96,17 +99,17 @@ public class LogViewerController {
         Paths.get(System.getProperty("user.dir"), "/bin/storm").toString(),
         "logviewer",
         "-c",
-        "storm.log.dir=" + System.getenv("MESOS_SANDBOX") + "/logs",
+        "storm.log.dir=" + logDir,
         "-c",
         Config.LOGVIEWER_PORT + "=" + port
     );
 
     // If anything goes wrong at startup we want to see it.
-    Path logPath = Paths.get(System.getenv("MESOS_SANDBOX"), "/logs");
+    Path logPath = Paths.get(logDir);
     if (!logPath.toFile().exists() && !logPath.toFile().mkdirs()) {
       throw new RuntimeException("Couldn't create log directory");
     }
-    File log = Paths.get(System.getenv("MESOS_SANDBOX"), "/logs/logviewer-startup.log").toFile();
+    File log = Paths.get(logDir, "/logviewer-startup.log").toFile();
     pb.redirectErrorStream(true);
     pb.redirectOutput(Redirect.appendTo(log));
     return pb;

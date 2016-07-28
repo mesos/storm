@@ -16,12 +16,17 @@
  * limitations under the License.
  */
 package storm.mesos.shims;
+
+import storm.mesos.util.MesosCommon;
+
 import java.util.Map;
 
 public class DockerCommandLineShim implements ICommandLineShim {
+  Map stormConf;
   String extraConfig;
 
-  public DockerCommandLineShim(String extraConfig) {
+  public DockerCommandLineShim(Map stormConf, String extraConfig) {
+    this.stormConf = stormConf;
     this.extraConfig = extraConfig;
   }
 
@@ -34,8 +39,11 @@ public class DockerCommandLineShim implements ICommandLineShim {
         " && export STORM_SUPERVISOR_LOG_FILE=%s-supervisor.log" +
         " && /bin/cp $MESOS_SANDBOX/storm.yaml conf " +
         " && /usr/bin/python bin/storm.py supervisor storm.mesos.MesosSupervisor " +
-        "-c storm.log.dir=$MESOS_SANDBOX/logs%s",
-        javaLibPath, topologyId, extraConfig);
+        "-c storm.log.dir=%s%s",
+        javaLibPath,
+        topologyId,
+        MesosCommon.getStormLogDir(stormConf, "$MESOS_SANDBOX/logs"),
+        extraConfig);
   }
 
 }

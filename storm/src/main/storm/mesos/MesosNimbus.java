@@ -803,7 +803,7 @@ public class MesosNimbus implements INimbus {
         if (executorPortsResources != null) {
           executorInfoBuilder.addAllResources(executorPortsResources);
         }
-        ICommandLineShim commandLineShim = CommandLineShimFactory.makeCommandLineShim(_container.isPresent(), extraConfig);
+        ICommandLineShim commandLineShim = CommandLineShimFactory.makeCommandLineShim(_conf, _container.isPresent(), extraConfig);
         if (_container.isPresent()) {
           executorInfoBuilder
               .setCommand(CommandInfo.newBuilder()
