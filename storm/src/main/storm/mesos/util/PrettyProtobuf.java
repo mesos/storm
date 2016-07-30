@@ -116,7 +116,7 @@ public class PrettyProtobuf {
    */
   public static String taskInfoListToString(List<TaskInfo> tasks) {
     List<String> tasksAsStrings = Lists.transform(tasks, taskInfoToStringTransform);
-    return String.format("[\n%s]", StringUtils.join(tasksAsStrings, ",\n"));
+    return String.format("[%s]", StringUtils.join(tasksAsStrings, ", "));
   }
 
   /**
@@ -229,5 +229,20 @@ public class PrettyProtobuf {
       map.put(name, value);
     }
     return map;
+  }
+
+  /**
+   * Wrapper around getTrimmedString which allows using gauva's transform utility.
+   */
+  private static Function<OfferID, String> offerIDToStringTransform =
+      new Function<OfferID, String>() {
+        public String apply(OfferID o) {
+          return o.getValue().toString();
+        }
+      };
+
+  public static String offerIDListToString(List<OfferID> offerIDList) {
+    List<String> offerIDsAsStrings = Lists.transform(offerIDList, offerIDToStringTransform);
+    return String.format("[%s]", StringUtils.join(offerIDsAsStrings, ", "));
   }
 }
