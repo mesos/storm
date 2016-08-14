@@ -43,7 +43,7 @@ public class LocalFileServer {
 
   public static void main(String[] args) throws Exception {
 
-    URI url = new LocalFileServer().serveDir("/tmp2", "/tmp", Optional.<Integer>absent());
+    URI url = new LocalFileServer().serveDir("/tmp2", "/tmp", getHost(), Optional.<Integer>absent());
     System.out.println("************ " + url);
 
   }
@@ -57,7 +57,7 @@ public class LocalFileServer {
    * @return Full URI including server, port and path of baselevel dir. Please note that the ancient Jetty 6.1 Storm uses can't be configured to return directory listings AFAIK.
    * @throws Exception
    */
-  public URI serveDir(String uriPath, String filePath, Optional<Integer> port) throws Exception {
+  public URI serveDir(String uriPath, String filePath, String host, Optional<Integer> port) throws Exception {
 
     if (port.isPresent()) {
       LOG.info("Starting local file server on port: {}", port.get());
@@ -81,12 +81,12 @@ public class LocalFileServer {
     _server.setHandler(handlers);
     _server.start();
 
-    // get the connector once it is init so we can get the actual host & port it bound to.
+    // get the connector once it is init so we can get the actual port it bound to.
     Connector initConn = _server.getConnectors()[0];
-    return new URI("http", null, getHost(), initConn.getLocalPort(), uriPath, null, null);
+    return new URI("http", null, host, initConn.getLocalPort(), uriPath, null, null);
   }
 
-  private String getHost() throws Exception {
+  private static String getHost() throws Exception {
     return Optional.fromNullable((String) System.getenv("MESOS_NIMBUS_HOST"))
         .or(InetAddress.getLocalHost().getCanonicalHostName());
   }
