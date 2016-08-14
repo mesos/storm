@@ -344,7 +344,7 @@ public class MesosNimbus implements INimbus {
 
   private void setupHttpServer() throws Exception {
     _httpServer = new LocalFileServer();
-    _configUrl = _httpServer.serveDir("/generated-conf", _generatedConfPath.toString(), _localFileServerPort);
+    _configUrl = _httpServer.serveDir("/generated-conf", _generatedConfPath.toString(), MesosCommon.getNimbusHost(mesosStormConf), _localFileServerPort);
 
     LOG.info("Started HTTP server from which config for the MesosSupervisor's may be fetched. URL: {}", _configUrl);
   }
