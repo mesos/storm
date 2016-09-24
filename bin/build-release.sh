@@ -23,7 +23,7 @@ MESOS_RELEASE=${MESOS_RELEASE:-`grep -1 -A 0 -B 0 '<mesos.default.version>' pom.
 
 STORM_URL=${STORM_URL:-''}
 
-MIRROR=${MIRROR:-"http://www.gtlib.gatech.edu/pub"}
+MIRROR=${MIRROR:-"apache.cs.utah.edu"}
 
 DOCKER_REPO=${DOCKER_REPO:-"mesos/storm"}
 
@@ -50,7 +50,7 @@ Usage: bin/build-release.sh [<storm.tar.gz>]
                       Default: ${MIRROR}
     STORM_RELEASE   The targeted release version of Storm
                       Default: ${STORM_RELEASE}
-    MESOS_RELEASE   The targeted release version of MESOS
+    MESOS_RELEASE   The targeted release version of Mesos
                       Default: ${MESOS_RELEASE}
     STORM_URL       Override the URL for downloading the storm binary
                       NOTE: ensure version matches with STORM_RELEASE
@@ -61,7 +61,7 @@ USAGE
 function downloadStormRelease {
   if [ ! -f apache-storm-${STORM_RELEASE}*.tar.gz ]; then
     if [ -z ${STORM_URL} ]; then
-      curl -L -O ${MIRROR}/apache/storm/apache-storm-${STORM_RELEASE}/apache-storm-${STORM_RELEASE}.tar.gz
+      curl -L -O ${MIRROR}/storm/apache-storm-${STORM_RELEASE}/apache-storm-${STORM_RELEASE}.tar.gz
     else
       curl -L -O ${STORM_URL}
     fi
