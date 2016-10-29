@@ -17,8 +17,9 @@
  */
 package storm.mesos;
 
-import backtype.storm.generated.StormTopology;
-import backtype.storm.scheduler.TopologyDetails;
+import org.apache.storm.Config;
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.scheduler.TopologyDetails;
 import org.apache.mesos.Protos;
 import storm.mesos.resources.AggregatedOffers;
 import storm.mesos.resources.ReservationType;
@@ -36,20 +37,19 @@ import java.util.Map;
 
 public class TestUtils {
 
+  public static Map initializeStormTopologyConfig(Map conf) {
+    conf.put(Config.TOPOLOGY_WORKER_MAX_HEAP_SIZE_MB, 768.0);
+    conf.put(Config.TOPOLOGY_PRIORITY, 0);
+    return conf;
+  }
+
   public static TopologyDetails constructTopologyDetails(String topologyName, int numWorkers) {
-    Map<String, TopologyDetails> topologyConf1 = new HashMap<>();
-
-    StormTopology stormTopology = new StormTopology();
-    TopologyDetails topologyDetails= new TopologyDetails(topologyName, topologyConf1, stormTopology, numWorkers);
-
-    return topologyDetails;
+    return new TopologyDetails(topologyName, initializeStormTopologyConfig(new HashMap<>()), new StormTopology(), numWorkers);
   }
 
   public static TopologyDetails constructTopologyDetails(String topologyName, int numWorkers, double numCpus, double memSize) {
-    Map<String, TopologyDetails> topologyConf = new HashMap<>();
+    TopologyDetails topologyDetails = constructTopologyDetails(topologyName, numWorkers);
 
-    StormTopology stormTopology = new StormTopology();
-    TopologyDetails topologyDetails= new TopologyDetails(topologyName, topologyConf, stormTopology, numWorkers);
     topologyDetails.getConf().put(MesosCommon.WORKER_CPU_CONF, Double.valueOf(numCpus));
     topologyDetails.getConf().put(MesosCommon.WORKER_MEM_CONF, Double.valueOf(memSize));
 

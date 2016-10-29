@@ -17,11 +17,12 @@
  */
 package storm.mesos.schedulers;
 
+import org.apache.mesos.Protos;
+import org.apache.storm.scheduler.SupervisorDetails;
+import org.apache.storm.scheduler.TopologyDetails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import backtype.storm.scheduler.SupervisorDetails;
-import backtype.storm.scheduler.TopologyDetails;
 import storm.mesos.resources.AggregatedOffers;
 import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.resources.ResourceType;

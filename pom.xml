@@ -18,6 +18,7 @@
     <module>storm-shim</module>
     <module>storm-shim-9x</module>
     <module>storm-shim-10x</module>
+    <module>storm-shim-1x</module>
     <module>storm</module>
   </modules>
 
@@ -30,7 +31,7 @@
     <!-- These are used by bin/build-release.sh to determine which versions
          should be used by default if MESOS_RELEASE and/or STORM_RELEASE
          are not set. -->
-    <storm.default.version>0.9.6</storm.default.version>
+    <storm.default.version>1.0.0</storm.default.version>
     <mesos.default.version>0.27.0</mesos.default.version>
     <mesos.version>0.27.0</mesos.version>
   </properties>
@@ -52,6 +53,14 @@
       <properties>
         <storm.version>0.10.1</storm.version>
         <shim>storm-shim-10x</shim>
+        <snakeyaml.scope>compile</snakeyaml.scope>
+      </properties>
+    </profile>
+    <profile>
+      <id>storm1.0</id>
+      <properties>
+        <storm.version>1.0.0</storm.version>
+        <shim>storm-shim-1x</shim>
         <snakeyaml.scope>compile</snakeyaml.scope>
       </properties>
     </profile>

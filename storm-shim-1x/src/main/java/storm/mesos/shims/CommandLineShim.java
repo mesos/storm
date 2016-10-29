@@ -15,28 +15,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package storm.mesos.schedulers;
+package storm.mesos.shims;
+import java.util.Map;
 
-import org.apache.storm.scheduler.WorkerSlot;
+public class CommandLineShim implements ICommandLineShim {
+  String extraConfig;
 
-public class MesosWorkerSlot extends WorkerSlot {
-  private String topologyId;
-
-  public MesosWorkerSlot(String nodeId, Number port, String topologyId) {
-    super(nodeId, port);
-    this.topologyId = topologyId;
+  public CommandLineShim(String extraConfig) {
+    this.extraConfig = extraConfig;
   }
 
-  public String getTopologyId() {
-    return this.topologyId;
+  public String getCommandLine(String topologyId) {
+    return String.format(
+        "export STORM_SUPERVISOR_LOG_FILE=%s-supervisor.log" +
+        " && cp storm.yaml storm-mesos*/conf" +
+        " && cd storm-mesos*" +
+        " && bin/storm supervisor storm.mesos.MesosSupervisor%s",
+        topologyId, extraConfig);
   }
 
-  public String getAssignmentAsString() {
-    return String.format("%s:%s", super.getNodeId(), super.getPort());
-  }
-
-  @Override
-  public String toString() {
-    return String.format("%s:%s topologyId: %s", super.getNodeId(), super.getPort(), topologyId);
-  }
 }

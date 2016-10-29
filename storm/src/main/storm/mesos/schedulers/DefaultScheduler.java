@@ -17,9 +17,16 @@
  */
 package storm.mesos.schedulers;
 
-import backtype.storm.scheduler.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.mesos.Protos;
+import org.apache.storm.scheduler.Cluster;
+import org.apache.storm.scheduler.ExecutorDetails;
+import org.apache.storm.scheduler.IScheduler;
+import org.apache.storm.scheduler.SchedulerAssignment;
+import org.apache.storm.scheduler.SupervisorDetails;
+import org.apache.storm.scheduler.Topologies;
+import org.apache.storm.scheduler.TopologyDetails;
+import org.apache.storm.scheduler.WorkerSlot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.mesos.resources.AggregatedOffers;
