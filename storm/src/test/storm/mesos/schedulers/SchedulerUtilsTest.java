@@ -17,7 +17,7 @@
  */
 package storm.mesos.schedulers;
 
-import backtype.storm.scheduler.SupervisorDetails;
+import org.apache.storm.scheduler.SupervisorDetails;
 import org.apache.mesos.Protos.Offer;
 import org.apache.mesos.Protos.OfferID;
 import org.junit.Before;
@@ -54,8 +54,8 @@ public class SchedulerUtilsTest {
     Collection<SupervisorDetails> existingSupervisors = new ArrayList<>();
     String hostName = "host1.east";
 
-    existingSupervisors.add(new SupervisorDetails(MesosCommon.supervisorId(hostName, "test-topology1-65-1442255385"), hostName, null));
-    existingSupervisors.add(new SupervisorDetails(MesosCommon.supervisorId(hostName, "test-topology10-65-1442255385"), hostName, null));
+    existingSupervisors.add(new SupervisorDetails(MesosCommon.supervisorId(hostName, "test-topology1-65-1442255385"), hostName));
+    existingSupervisors.add(new SupervisorDetails(MesosCommon.supervisorId(hostName, "test-topology10-65-1442255385"), hostName));
 
     assertEquals(true, SchedulerUtils.supervisorExists(hostName, existingSupervisors, "test-topology1-65-1442255385"));
     assertEquals(false, SchedulerUtils.supervisorExists(hostName, existingSupervisors, "test-topology2-65-1442255385"));

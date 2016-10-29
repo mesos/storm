@@ -15,28 +15,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package storm.mesos.schedulers;
+package storm.mesos.shims;
+import java.util.Map;
 
-import org.apache.storm.scheduler.WorkerSlot;
+public class DockerCommandLineShim implements ICommandLineShim {
+  String extraConfig;
 
-public class MesosWorkerSlot extends WorkerSlot {
-  private String topologyId;
-
-  public MesosWorkerSlot(String nodeId, Number port, String topologyId) {
-    super(nodeId, port);
-    this.topologyId = topologyId;
+  public DockerCommandLineShim(String extraConfig) {
+    this.extraConfig = extraConfig;
   }
 
-  public String getTopologyId() {
-    return this.topologyId;
+  public String getCommandLine(String topologyId) {
+    // An ugly workaround for a bug in DCOS
+    Map<String, String> env = System.getenv();
+    String javaLibPath = env.get("MESOS_NATIVE_JAVA_LIBRARY");
+    return String.format(
+        "export MESOS_NATIVE_JAVA_LIBRARY=%s" +
+        " && export STORM_SUPERVISOR_LOG_FILE=%s-supervisor.log" +
+        " && /bin/cp $MESOS_SANDBOX/storm.yaml conf " +
+        " && bin/storm supervisor storm.mesos.MesosSupervisor " +
+        "-c storm.log.dir=$MESOS_SANDBOX/logs%s",
+        javaLibPath, topologyId, extraConfig);
   }
 
-  public String getAssignmentAsString() {
-    return String.format("%s:%s", super.getNodeId(), super.getPort());
-  }
-
-  @Override
-  public String toString() {
-    return String.format("%s:%s topologyId: %s", super.getNodeId(), super.getPort(), topologyId);
-  }
 }

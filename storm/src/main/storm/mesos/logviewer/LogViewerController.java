@@ -17,7 +17,7 @@
  */
 package storm.mesos.logviewer;
 
-import backtype.storm.Config;
+import org.apache.storm.Config;
 import com.google.common.base.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -17,12 +17,13 @@
  */
 package storm.mesos.util;
 
-import backtype.storm.Config;
-import backtype.storm.scheduler.TopologyDetails;
 import com.google.common.base.Optional;
 import org.apache.mesos.Protos;
+import org.apache.storm.Config;
+import org.apache.storm.scheduler.TopologyDetails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import storm.mesos.resources.AggregatedOffers;
 
 import java.net.InetAddress;

@@ -18,6 +18,9 @@ topology.mesos.executor.cpu: 0.1
 topology.mesos.executor.mem.mb: 500 # Supervisor memory, with 20% overhead
 supervisor.childopts: "-Xmx400m"
 
+# Configs for Resource Aware Scheduler
+topology.worker.max.heap.size.mb: 768.0  # default max heap size, can be overriden in topologies' configs
+
 # The default behavior is to launch the logviewer unless autostart is false.
 # If you enable the logviewer, you'll need to add memory overhead to the
 # executor for the logviewer.
@@ -37,7 +40,7 @@ supervisor.autostart.logviewer: true
 mesos.container.docker.image: "mesosphere/storm"
 
 # Use Netty to avoid ZMQ dependencies
-storm.messaging.transport: "backtype.storm.messaging.netty.Context"
+storm.messaging.transport: "org.apache.storm.messaging.netty.Context"
 
 storm.local.dir: "storm-local"
 

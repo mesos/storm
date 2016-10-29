@@ -18,9 +18,9 @@
 package storm.mesos.schedulers;
 
 
-import backtype.storm.scheduler.SupervisorDetails;
-import backtype.storm.scheduler.Topologies;
-import backtype.storm.scheduler.WorkerSlot;
+import org.apache.storm.scheduler.SupervisorDetails;
+import org.apache.storm.scheduler.Topologies;
+import org.apache.storm.scheduler.WorkerSlot;
 import org.apache.mesos.Protos;
 import storm.mesos.util.RotatingMap;
 
