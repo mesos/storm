@@ -22,10 +22,8 @@ script:
 matrix:
   fast_finish: true
   include:
-  - env: STORM_RELEASE="0.10.1" MESOS_RELEASE="0.28.2"
-  - env: STORM_RELEASE="0.10.1" MESOS_RELEASE="0.27.2"
-  - env: STORM_RELEASE="0.9.6" MESOS_RELEASE="0.28.2" STORM_URL="https://github.com/erikdw/storm/releases/download/v0.9.6-storm-mesos2/apache-storm-0.9.6-storm-mesos2.tar.gz"
-  - env: STORM_RELEASE="0.9.6" MESOS_RELEASE="0.27.2" STORM_URL="https://github.com/erikdw/storm/releases/download/v0.9.6-storm-mesos2/apache-storm-0.9.6-storm-mesos2.tar.gz"
+  - env: STORM_RELEASE="1.0.2" MESOS_RELEASE="1.0.1"
+  - env: STORM_RELEASE="1.0.2" MESOS_RELEASE="0.28.2"
 before_deploy:
 - travis_retry make images
 - travis_retry make images JAVA_PRODUCT_VERSION=8
