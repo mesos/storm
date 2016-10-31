@@ -39,9 +39,6 @@
   <profiles>
     <profile>
       <id>storm9</id>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
       <properties>
         <storm.version>0.9.6</storm.version>
         <shim>storm-shim-9x</shim>
@@ -58,6 +55,9 @@
     </profile>
     <profile>
       <id>storm1.0</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
       <properties>
         <storm.version>1.0.0</storm.version>
         <shim>storm-shim-1x</shim>
