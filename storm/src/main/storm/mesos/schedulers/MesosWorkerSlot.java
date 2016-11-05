@@ -17,7 +17,7 @@
  */
 package storm.mesos.schedulers;
 
-import backtype.storm.scheduler.WorkerSlot;
+import org.apache.storm.scheduler.WorkerSlot;
 
 public class MesosWorkerSlot extends WorkerSlot {
   private String topologyId;

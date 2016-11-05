@@ -1,17 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+         xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.mesos</groupId>
-  <artifactId>storm-shim-9x</artifactId>
+  <artifactId>storm-shim-1x</artifactId>
   <version>0.1.8-SNAPSHOT</version>
-  <name>storm-shim-9x</name>
-  <description>0.9.x impl shim to ease Storm Version differences</description>
+  <name>storm-shim-1x</name>
+  <description>0.1.x impl shim to ease Storm Version differences</description>
 
   <scm>
     <connection>scm:git:git://github.com/mesos/storm.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/mesos/storm.git</developerConnection>
     <url>https://github.com/mesos/storm</url>
-    <tag>HEAD</tag>
   </scm>
 
   <parent>
@@ -30,8 +31,8 @@
     <dependency>
       <groupId>org.apache.storm</groupId>
       <artifactId>storm-core</artifactId>
+      <version>1.0.0</version>
       <scope>provided</scope>
-      <version>0.9.6</version>
     </dependency>
     <dependency>
       <groupId>org.apache.mesos</groupId>

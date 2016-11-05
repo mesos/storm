@@ -17,13 +17,13 @@
  */
 package storm.mesos;
 
-import backtype.storm.Config;
-import backtype.storm.scheduler.INimbus;
-import backtype.storm.scheduler.IScheduler;
-import backtype.storm.scheduler.SupervisorDetails;
-import backtype.storm.scheduler.Topologies;
-import backtype.storm.scheduler.TopologyDetails;
-import backtype.storm.scheduler.WorkerSlot;
+import org.apache.storm.Config;
+import org.apache.storm.scheduler.INimbus;
+import org.apache.storm.scheduler.IScheduler;
+import org.apache.storm.scheduler.SupervisorDetails;
+import org.apache.storm.scheduler.Topologies;
+import org.apache.storm.scheduler.TopologyDetails;
+import org.apache.storm.scheduler.WorkerSlot;
 import com.google.common.base.Optional;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.StringUtils;
@@ -152,7 +152,7 @@ public class MesosNimbus implements INimbus {
   }
 
   public static void main(String[] args) {
-    backtype.storm.daemon.nimbus.launch(new MesosNimbus());
+    org.apache.storm.daemon.nimbus.launch(new MesosNimbus());
   }
 
   private static String launchTaskListToString(List<LaunchTask> launchTasks) {

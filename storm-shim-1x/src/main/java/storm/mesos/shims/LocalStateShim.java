@@ -17,11 +17,11 @@
  */
 package storm.mesos.shims;
 
-import backtype.storm.generated.ComponentObject;
-import backtype.storm.generated.JavaObject;
-import backtype.storm.generated.JavaObjectArg;
-import backtype.storm.utils.LocalState;
-import org.apache.thrift7.TBase;
+import org.apache.storm.generated.ComponentObject;
+import org.apache.storm.generated.JavaObject;
+import org.apache.storm.generated.JavaObjectArg;
+import org.apache.storm.utils.LocalState;
+import org.apache.storm.thrift.TBase;
 
 import java.io.IOException;
 import java.util.ArrayList;
