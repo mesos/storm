@@ -93,8 +93,9 @@ function package {(
   local stormDir=`find _release -maxdepth 1 -type d -name "*storm*"`
   _rm $stormDir/*.jar
 
-  # for development builds, create a tarball of the source and copy into the package
-  if [[ "${RELEASE}" == *"SNAPSHOT"* ]]; then
+  # for non-docker development builds, create a tarball of the source and copy into the package
+  if [[ "${RELEASE}" == *"SNAPSHOT"* && ! -f /.dockerenv ]]; then
+    echo "bundling source in!!"
     local stashRef=$(git stash create)
     local archiveRef=${stashRef}
     if [ -z ${stashRef} ]; then
