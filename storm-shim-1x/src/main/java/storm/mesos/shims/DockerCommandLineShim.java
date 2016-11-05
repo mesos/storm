@@ -33,8 +33,9 @@ public class DockerCommandLineShim implements ICommandLineShim {
         "export MESOS_NATIVE_JAVA_LIBRARY=%s" +
         " && export STORM_SUPERVISOR_LOG_FILE=%s-supervisor.log" +
         " && /bin/cp $MESOS_SANDBOX/storm.yaml conf " +
-        " && /usr/bin/python bin/storm supervisor storm.mesos.MesosSupervisor " +
+        " && bin/storm supervisor storm.mesos.MesosSupervisor " +
         "-c storm.log.dir=$MESOS_SANDBOX/logs%s",
         javaLibPath, topologyId, extraConfig);
   }
+
 }

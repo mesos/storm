@@ -17,8 +17,8 @@
  */
 package storm.mesos;
 
-import backtype.storm.scheduler.ISupervisor;
-import backtype.storm.utils.Utils;
+import org.apache.storm.scheduler.ISupervisor;
+import org.apache.storm.utils.Utils;
 import clojure.lang.PersistentVector;
 import org.apache.mesos.Executor;
 import org.apache.mesos.ExecutorDriver;
@@ -60,7 +60,7 @@ public class MesosSupervisor implements ISupervisor {
   AtomicReference<Set<Integer>> _supervisorViewOfAssignedPorts = new AtomicReference<Set<Integer>>(new HashSet<Integer>());
 
   public static void main(String[] args) {
-    backtype.storm.daemon.supervisor.launch(new MesosSupervisor());
+    org.apache.storm.daemon.supervisor.launch(new MesosSupervisor());
   }
 
   @Override

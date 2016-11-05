@@ -14,7 +14,7 @@ cd /vagrant/_release/storm-mesos-${RELEASE}-*
 # kill existing MesosNimbus and storm UI processes
 kill `ps aux | grep MesosNimbu[s] | awk '{print $2}'` &> /dev/null || /bin/true
 # Grr... the below *was* working, but now the jar paths are too long with the long package version name.
-kill `ps aux | grep backtype.storm.ui.cor[e] | awk '{print $2}'` &> /dev/null || /bin/true
+kill `ps aux | grep org.apache.storm.ui.cor[e] | awk '{print $2}'` &> /dev/null || /bin/true
 # So using this more aggressive form now.
 kill `ps aux | grep stor[m] | grep -v grep | awk '{print $2}'` &> /dev/null || /bin/true
 

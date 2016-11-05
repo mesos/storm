@@ -17,8 +17,9 @@
  */
 package storm.mesos;
 
-import backtype.storm.generated.StormTopology;
-import backtype.storm.scheduler.TopologyDetails;
+import org.apache.storm.Config;
+import org.apache.storm.generated.StormTopology;
+import org.apache.storm.scheduler.TopologyDetails;
 import org.apache.mesos.Protos;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,16 +44,21 @@ public class MesosCommonTest {
   private final MesosNimbus mesosNimbus;
 
   public MesosCommonTest() {
-    Map mesosStromConfig = new HashMap();
+    Map mesosStormConfig = new HashMap<>();
     mesosNimbus = new MesosNimbus();
-    mesosNimbus.initializeMesosStormConf(mesosStromConfig, "/mock");
+    mesosNimbus.initializeMesosStormConf(mesosStormConfig, "/mock");
+  }
+
+  public void initConf() {
+    conf = new HashMap<>();
+    conf.put("topology.name", topologyName);
+    TestUtils.initializeStormTopologyConfig(conf);
   }
 
   @Before
-  public void initConf() {
-      conf = new HashMap<>();
-      conf.put("topology.name", topologyName);
-      info = new TopologyDetails("t1", conf, new StormTopology(), 1);
+  public void initTest() {
+    initConf();
+    info = new TopologyDetails("t1", conf, new StormTopology(), 1);
   }
 
   @Test
@@ -118,13 +124,13 @@ public class MesosCommonTest {
 
     // Test explicit value
     info = new TopologyDetails("t2", conf, new StormTopology(), 2);
-    conf = new HashMap<>();
+    initConf();
     result = MesosCommon.getMesosComponentNameDelimiter(conf, info);
     expectedResult = delimiter;
     assertEquals(result, expectedResult);
 
     // Test explicit value overridden in topology config
-    conf = new HashMap<>();
+    initConf();
     conf.put(MesosCommon.MESOS_COMPONENT_NAME_DELIMITER, delimiter);
     info = new TopologyDetails("t3", conf, new StormTopology(), 3);
     Map nimbusConf = new HashMap<>();
@@ -197,11 +203,13 @@ public class MesosCommonTest {
     nimbusConf.put("TEST_NIMBUS_CONFIG", 1);
     nimbusConf.put("TEST_TOPOLOGY_OVERRIDE", 2);
     Map topologyConf = new HashMap<>();
+    TestUtils.initializeStormTopologyConfig(topologyConf);
     topologyConf.put("TEST_TOPOLIGY_CONFIG", 3);
     topologyConf.put("TEST_TOPOLOGY_OVERRIDE", 4);
     TopologyDetails info = new TopologyDetails("t1", topologyConf, new StormTopology(), 2);
     Map result = MesosCommon.getFullTopologyConfig(nimbusConf, info);
     Map expectedResult = new HashMap<>();
+    TestUtils.initializeStormTopologyConfig(expectedResult);
     expectedResult.put("TEST_NIMBUS_CONFIG", 1);
     expectedResult.put("TEST_TOPOLIGY_CONFIG", 3);
     expectedResult.put("TEST_TOPOLOGY_OVERRIDE", 4);
@@ -238,7 +246,7 @@ public class MesosCommonTest {
     assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test string passed in
-    conf = new HashMap<>();
+    initConf();
     conf.put(MesosCommon.WORKER_CPU_CONF, "2");
     info = new TopologyDetails("t3", conf, new StormTopology(), 1);
     result = MesosCommon.topologyWorkerCpu(conf, info);
@@ -248,7 +256,7 @@ public class MesosCommonTest {
     // Test that this value is not overwritten by Topology config
     Map nimbusConf = new HashMap<>();
     nimbusConf.put(MesosCommon.WORKER_CPU_CONF, 2);
-    conf = new HashMap<>();
+    initConf();
     conf.put(MesosCommon.WORKER_CPU_CONF, 1.5);
     info = new TopologyDetails("t4", conf, new StormTopology(), 1);
     result = MesosCommon.topologyWorkerCpu(nimbusConf, info);
@@ -262,7 +270,7 @@ public class MesosCommonTest {
     double result = MesosCommon.topologyWorkerMem(conf, info);
     double expectedResult = MesosCommon.DEFAULT_WORKER_MEM_MB;
     assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
-    
+
     // Test what happens when config is too small
     double memConfig = MesosCommon.MESOS_MIN_MEM_MB;
     memConfig -= 1.0;

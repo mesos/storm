@@ -13,10 +13,12 @@ RELEASE=${RELEASE:-`grep -1 -A 0 -B 0 '<version>' pom.xml | head -n 1 | awk '{pr
 
 STORM_RELEASE=${STORM_RELEASE:-`grep -1 -A 0 -B 0 '<storm.default.version>' pom.xml | head -n 1 | awk '{print $1}' | sed -e 's/.*<storm.default.version>//' | sed -e 's/<\/storm.default.version>.*//'`}
 
-if [[ $STORM_RELEASE == "0.10"* ]]; then
+if [[ $STORM_RELEASE == "0.9"* ]]; then
+  PROFILE=storm9
+elif [[ $STORM_RELEASE == "0.10"* ]]; then
   PROFILE=storm10
 else
-  PROFILE=storm9
+  PROFILE=storm1.0
 fi
 
 MESOS_RELEASE=${MESOS_RELEASE:-`grep -1 -A 0 -B 0 '<mesos.default.version>' pom.xml | head -n 1 | awk '{print $1}' | sed -e 's/.*<mesos.default.version>//' | sed -e 's/<\/mesos.default.version>.*//'`}

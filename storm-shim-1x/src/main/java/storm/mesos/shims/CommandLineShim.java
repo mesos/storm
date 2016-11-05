@@ -18,24 +18,20 @@
 package storm.mesos.shims;
 import java.util.Map;
 
-public class DockerCommandLineShim implements ICommandLineShim {
+public class CommandLineShim implements ICommandLineShim {
   String extraConfig;
 
-  public DockerCommandLineShim(String extraConfig) {
+  public CommandLineShim(String extraConfig) {
     this.extraConfig = extraConfig;
   }
 
   public String getCommandLine(String topologyId) {
-    // An ugly workaround for a bug in DCOS
-    Map<String, String> env = System.getenv();
-    String javaLibPath = env.get("MESOS_NATIVE_JAVA_LIBRARY");
     return String.format(
-        "export MESOS_NATIVE_JAVA_LIBRARY=%s" +
-        " && export STORM_SUPERVISOR_LOG_FILE=%s-supervisor.log" +
-        " && /bin/cp $MESOS_SANDBOX/storm.yaml conf " +
-        " && /usr/bin/python bin/storm.py supervisor storm.mesos.MesosSupervisor " +
-        "-c storm.log.dir=$MESOS_SANDBOX/logs%s",
-        javaLibPath, topologyId, extraConfig);
+        "export STORM_SUPERVISOR_LOG_FILE=%s-supervisor.log" +
+        " && cp storm.yaml storm-mesos*/conf" +
+        " && cd storm-mesos*" +
+        " && bin/storm supervisor storm.mesos.MesosSupervisor%s",
+        topologyId, extraConfig);
   }
 
 }
