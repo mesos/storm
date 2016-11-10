@@ -108,7 +108,6 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_SECRET_FILE = "mesos.framework.secret.file";
 
   public static final String CONF_MESOS_CHECKPOINT = "mesos.framework.checkpoint";
-  public static final String CONF_MESOS_OFFER_LRU_CACHE_SIZE = "mesos.offer.lru.cache.size";
   public static final String CONF_MESOS_OFFER_FILTER_SECONDS = "mesos.offer.filter.seconds";
   public static final String CONF_MESOS_OFFER_EXPIRY_MULTIPLIER = "mesos.offer.expiry.multiplier";
   public static final String CONF_MESOS_LOCAL_FILE_SERVER_PORT = "mesos.local.file.server.port";
@@ -130,9 +129,6 @@ public class MesosNimbus implements INimbus {
   private Optional<Integer> _localFileServerPort;
   private RotatingMap<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
-  private Map<TaskID, Offer> taskIDtoOfferMap;
-  private ScheduledExecutorService timerScheduler =
-      Executors.newScheduledThreadPool(1);
   private IMesosStormScheduler _mesosStormScheduler = null;
 
   private boolean _preferReservedResources = true;
@@ -268,15 +264,6 @@ public class MesosNimbus implements INimbus {
         }
     );
 
-    Number lruCacheSize = Optional.fromNullable((Number) mesosStormConf.get(CONF_MESOS_OFFER_LRU_CACHE_SIZE)).or(1000);
-    final int intLruCacheSize = lruCacheSize.intValue();
-    taskIDtoOfferMap = Collections.synchronizedMap(new LinkedHashMap<Protos.TaskID, Protos.Offer>(intLruCacheSize + 1, .75F, true) {
-      // This method is called just after a new entry has been added
-      public boolean removeEldestEntry(Map.Entry eldest) {
-        return size() > intLruCacheSize;
-      }
-    });
-
     Number offerExpired = Optional.fromNullable((Number) mesosStormConf.get(Config.NIMBUS_MONITOR_FREQ_SECS)).or(10);
     Number expiryMultiplier = Optional.fromNullable((Number) mesosStormConf.get(CONF_MESOS_OFFER_EXPIRY_MULTIPLIER)).or(2.5);
     _timer.scheduleAtFixedRate(new TimerTask() {
@@ -325,15 +312,6 @@ public class MesosNimbus implements INimbus {
     synchronized (_offersLock) {
       _offers.remove(id);
     }
-  }
-
-  public void taskTerminated(final TaskID taskId) {
-    timerScheduler.schedule(new Runnable() {
-      @Override
-      public void run() {
-        taskIDtoOfferMap.remove(taskId);
-      }
-    }, MesosCommon.getSuicideTimeout(mesosStormConf), TimeUnit.SECONDS);
   }
 
   private void createLocalServerPort() {
