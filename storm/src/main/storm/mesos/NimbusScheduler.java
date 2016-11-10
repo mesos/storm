@@ -88,21 +88,21 @@ public class NimbusScheduler implements Scheduler {
 
   @Override
   public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
+    String msg = String.format("Received status update: %s", taskStatusToString(status));
     switch (status.getState()) {
       case TASK_STAGING:
       case TASK_STARTING:
-        LOG.debug("Received status update: {}", taskStatusToString(status));
+        LOG.debug(msg);
         break;
       case TASK_RUNNING:
-        LOG.info("Received status update: {}", taskStatusToString(status));
+        LOG.info(msg);
         break;
       case TASK_FINISHED:
       case TASK_FAILED:
       case TASK_KILLED:
       case TASK_LOST:
       case TASK_ERROR:
-        LOG.info("Received status update: {}", taskStatusToString(status));
-        mesosNimbus.taskTerminated(status.getTaskId());
+        LOG.info(msg);
         break;
       default:
         LOG.warn("Received unrecognized status update: {}", taskStatusToString(status));
