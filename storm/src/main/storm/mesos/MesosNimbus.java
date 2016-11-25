@@ -17,13 +17,6 @@
  */
 package storm.mesos;
 
-import org.apache.storm.Config;
-import org.apache.storm.scheduler.INimbus;
-import org.apache.storm.scheduler.IScheduler;
-import org.apache.storm.scheduler.SupervisorDetails;
-import org.apache.storm.scheduler.Topologies;
-import org.apache.storm.scheduler.TopologyDetails;
-import org.apache.storm.scheduler.WorkerSlot;
 import com.google.common.base.Optional;
 import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.StringUtils;
@@ -46,6 +39,16 @@ import org.apache.mesos.Protos.Value.Range;
 import org.apache.mesos.Protos.Value.Ranges;
 import org.apache.mesos.Protos.Value.Scalar;
 import org.apache.mesos.SchedulerDriver;
+import org.apache.storm.Config;
+import org.apache.storm.generated.ClusterSummary;
+import org.apache.storm.generated.NimbusSummary;
+import org.apache.storm.scheduler.INimbus;
+import org.apache.storm.scheduler.IScheduler;
+import org.apache.storm.scheduler.SupervisorDetails;
+import org.apache.storm.scheduler.Topologies;
+import org.apache.storm.scheduler.TopologyDetails;
+import org.apache.storm.scheduler.WorkerSlot;
+import org.apache.storm.utils.NimbusClient;
 import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -72,29 +75,24 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.InetAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.net.UnknownHostException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import static storm.mesos.util.PrettyProtobuf.offerIDListToString;
-import static storm.mesos.util.PrettyProtobuf.offerToString;
 import static storm.mesos.util.PrettyProtobuf.offerMapToString;
+import static storm.mesos.util.PrettyProtobuf.offerToString;
 import static storm.mesos.util.PrettyProtobuf.taskInfoListToString;
 
 public class MesosNimbus implements INimbus {
@@ -106,7 +104,6 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_ROLE = "mesos.framework.role";
   public static final String CONF_MESOS_PRINCIPAL = "mesos.framework.principal";
   public static final String CONF_MESOS_SECRET_FILE = "mesos.framework.secret.file";
-
   public static final String CONF_MESOS_CHECKPOINT = "mesos.framework.checkpoint";
   public static final String CONF_MESOS_OFFER_FILTER_SECONDS = "mesos.offer.filter.seconds";
   public static final String CONF_MESOS_OFFER_EXPIRY_MULTIPLIER = "mesos.offer.expiry.multiplier";
@@ -115,6 +112,9 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_PREFER_RESERVED_RESOURCES = "mesos.prefer.reserved.resources";
   public static final String CONF_MESOS_CONTAINER_DOCKER_IMAGE = "mesos.container.docker.image";
   public static final String CONF_MESOS_SUPERVISOR_STORM_LOCAL_DIR = "mesos.supervisor.storm.local.dir";
+  public static final String CONF_MESOS_NIMBUS_LEADER_CHECK_DELAY = "mesos.nimbus.leader.check.delay.secs";
+  public static final String CONF_MESOS_NIMBUS_LEADER_CHECK_PERIOD = "mesos.nimbus.leader.check.period.secs";
+
   public static final String FRAMEWORK_ID = "FRAMEWORK_ID";
   private static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
   private final Object _offersLock = new Object();
@@ -131,6 +131,8 @@ public class MesosNimbus implements INimbus {
   private LocalFileServer _httpServer;
   private IMesosStormScheduler _mesosStormScheduler = null;
 
+  private boolean _offersRevived = false;
+  private boolean _offersSupressed = false;
   private boolean _preferReservedResources = true;
   private Optional<String> _container = Optional.absent();
   private Path _generatedConfPath;
@@ -222,12 +224,6 @@ public class MesosNimbus implements INimbus {
       throw new RuntimeException("Couldn't create generated-conf dir, _generatedConfPath=" + _generatedConfPath.toString());
     }
 
-    try {
-      mesosStormConf.put(Config.NIMBUS_HOST, MesosCommon.getNimbusHost(mesosStormConf));
-    } catch (UnknownHostException exp) {
-      throw new RuntimeException(String.format("Exception while configuring nimbus host: %s", exp));
-    }
-
     Path pathToDumpConfig = Paths.get(_generatedConfPath.toString(), "storm.yaml");
     try {
       File generatedConf = pathToDumpConfig.toFile();
@@ -279,6 +275,63 @@ public class MesosNimbus implements INimbus {
         }
       }
     }, 0, Math.round(1000 * expiryMultiplier.doubleValue() * offerExpired.intValue()));
+
+    /**
+     * If you want to run several HA nimbus instances mesos will see them as frameworks.
+     *   Mesos master generates offers to all registered frameworks using Dominant Resource Fairness algorithm.
+     *   Offers are held by storm-mesos framework even if nimbus is not leader and this can cause resource starvation in cluster,
+     *   because remaining offers will be held by other storm frameworks.
+     *   The solution is to `suppressOffers` for non leader frameworks and `reviveOffers` only for nimbus leader.
+     *   If new nimbus leader will be elected this task would `reviveOffers` for new leader.
+     */
+    Number nimbusLeaderCheckDelay = Optional.fromNullable((Number) mesosStormConf.get(CONF_MESOS_NIMBUS_LEADER_CHECK_DELAY)).or(120 * 1000);
+    Number nimbusLeaderCheckPeriod = Optional.fromNullable((Number) mesosStormConf.get(CONF_MESOS_NIMBUS_LEADER_CHECK_PERIOD)).or(60 * 1000);
+    _timer.scheduleAtFixedRate(new TimerTask() {
+      @Override
+      public void run() {
+        if (isThisNimbusLeader()) {
+          if (!_offersRevived) {
+            LOG.info("Nimbus is leader. Reviving offers.");
+            driver.reviveOffers();
+            _offersRevived = true;
+            _offersSupressed = false;
+          }
+        } else {
+          if (!_offersSupressed) {
+            LOG.warn("Nimbus is not a leader. Suppressing offers.");
+            driver.suppressOffers();
+            declineAllOffers();
+            _offersSupressed = true;
+            _offersRevived = false;
+          }
+        }
+      }
+    }, 1000 * nimbusLeaderCheckDelay.intValue(), 1000 * nimbusLeaderCheckPeriod.intValue());
+  }
+
+  private void declineAllOffers() {
+    LOG.warn("Declining all existing offers.");
+    synchronized (_offersLock) {
+      for (int i = 0; i < _offers.size(); i++) {
+        _offers.rotate();
+      }
+    }
+  }
+
+  private Boolean isThisNimbusLeader() {
+    try {
+      ClusterSummary clusterSummary = NimbusClient.getConfiguredClient(this.mesosStormConf).getClient().getClusterInfo();
+      for (NimbusSummary nimbus : clusterSummary.get_nimbuses()) {
+        String currentHostname = InetAddress.getLocalHost().getCanonicalHostName();
+        if (nimbus.get_host().equals(currentHostname)) {
+          LOG.debug("Nimbus is running on host {}. It's leader status {}", currentHostname, nimbus.is_isLeader());
+          return nimbus.is_isLeader();
+        }
+      }
+    } catch (Throwable t) {
+      LOG.error("Received fatal error while getting nimbus leader", t);
+    }
+    return false;
   }
 
   public void shutdown() throws Exception {
