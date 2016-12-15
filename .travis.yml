@@ -22,7 +22,7 @@ script:
 matrix:
   fast_finish: true
   include:
-  - env: STORM_RELEASE="1.0.2" MESOS_RELEASE="1.0.1"
+  - env: STORM_RELEASE="1.0.2" MESOS_RELEASE="1.1.0"
   - env: STORM_RELEASE="1.0.2" MESOS_RELEASE="0.28.2"
 before_deploy:
 - travis_retry make images
