@@ -17,7 +17,6 @@
  */
 package storm.mesos;
 
-import org.apache.storm.Config;
 import org.apache.storm.generated.StormTopology;
 import org.apache.storm.scheduler.TopologyDetails;
 import org.apache.mesos.Protos;
