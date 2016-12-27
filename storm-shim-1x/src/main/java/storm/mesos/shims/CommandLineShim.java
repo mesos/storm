@@ -16,7 +16,6 @@
  * limitations under the License.
  */
 package storm.mesos.shims;
-import java.util.Map;
 
 public class CommandLineShim implements ICommandLineShim {
   String extraConfig;
