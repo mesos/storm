@@ -41,6 +41,9 @@ public final class SocketUrlDetectionTest {
      */
     private static ServerSocket serverSocket;
 
+    /**
+     * Implements server socket.
+     */
     @BeforeClass
     public static void beforeClass() {
         try {
@@ -50,6 +53,9 @@ public final class SocketUrlDetectionTest {
         }
     }
 
+    /**
+     * If connection success, return true.
+     */
     @Test
     public void isReachableTrue() {
         target = new SocketUrlDetection(serverSocket.getLocalPort());
@@ -57,6 +63,9 @@ public final class SocketUrlDetectionTest {
         assertTrue(actual);
     }
 
+    /**
+     * If connection refused, return false.
+     */
     @Test
     public void isReachableFalse() {
         target = new SocketUrlDetection(9999);
@@ -72,6 +81,9 @@ public final class SocketUrlDetectionTest {
         assertThat(actualPort, is(expectedPort));
     }
 
+    /**
+     * Close server socket connection.
+     */
     @AfterClass
     public static void afeterClass() {
         try {
