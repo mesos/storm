@@ -17,19 +17,55 @@
  */
 package storm.mesos.logviewer;
 
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.IOException;
+import java.net.ServerSocket;
+
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 public final class SocketUrlDetectionTest {
 
+    /**
+     * Test Target.
+     */
+    private SocketUrlDetection target;
+
+    /**
+     * ServerSocket.
+     */
+    private static ServerSocket serverSocket;
+
+    @BeforeClass
+    public static void beforeClass() {
+        try {
+            serverSocket = new ServerSocket(0);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Test
     public void isReachable() {
-        fail();
+        target = new SocketUrlDetection(serverSocket.getLocalPort());
+        boolean actual = target.isReachable();
+        assertTrue(actual);
     }
 
     @Test
     public void getPort() {
         fail();
+    }
+
+    @AfterClass
+    public static void afeterClass() {
+        try {
+            serverSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
