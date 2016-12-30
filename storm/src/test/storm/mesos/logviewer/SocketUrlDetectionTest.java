@@ -49,7 +49,7 @@ public final class SocketUrlDetectionTest {
     }
 
     @Test
-    public void isReachable() {
+    public void isReachableTrue() {
         target = new SocketUrlDetection(serverSocket.getLocalPort());
         boolean actual = target.isReachable();
         assertTrue(actual);
