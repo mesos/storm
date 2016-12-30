@@ -25,7 +25,9 @@ import java.io.IOException;
 import java.net.ServerSocket;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 public final class SocketUrlDetectionTest {
 
