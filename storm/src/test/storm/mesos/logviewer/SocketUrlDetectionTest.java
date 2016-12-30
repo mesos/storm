@@ -25,9 +25,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.junit.Assert.assertThat;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.Assert.*;
 
 public final class SocketUrlDetectionTest {
 
@@ -55,6 +53,13 @@ public final class SocketUrlDetectionTest {
         target = new SocketUrlDetection(serverSocket.getLocalPort());
         boolean actual = target.isReachable();
         assertTrue(actual);
+    }
+
+    @Test
+    public void isReachableFalse() {
+        target = new SocketUrlDetection(9999);
+        boolean actual = target.isReachable();
+        assertFalse(actual);
     }
 
     @Test
