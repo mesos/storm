@@ -24,6 +24,8 @@ import org.junit.Test;
 import java.io.IOException;
 import java.net.ServerSocket;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -57,7 +59,10 @@ public final class SocketUrlDetectionTest {
 
     @Test
     public void getPort() {
-        fail();
+        int expectedPort = serverSocket.getLocalPort();
+        target = new SocketUrlDetection(expectedPort);
+        int actualPort = target.getPort();
+        assertThat(actualPort, is(expectedPort));
     }
 
     @AfterClass
