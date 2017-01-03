@@ -36,9 +36,6 @@ public final class SocketUrlDetectionTest {
      */
     private SocketUrlDetection target;
 
-    /**
-     * ServerSocket.
-     */
     private static ServerSocket serverSocket;
 
     private static final Integer PORT = 9999;
