@@ -30,8 +30,8 @@ public final class CommandLineShimTest {
         String topologyId = "sample-id";
         CommandLineShim target = new CommandLineShim(extraConfig);
         String actualCmd = target.getCommandLine(topologyId);
-        String expectedCmd
-                = "export STORM_SUPERVISOR_LOG_FILE=" +
+        String expectedCmd =
+                "export STORM_SUPERVISOR_LOG_FILE=" +
                 topologyId +
                 "-supervisor.log " +
                 "&& cp storm.yaml storm-mesos*/conf " +
