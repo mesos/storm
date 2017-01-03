@@ -85,7 +85,7 @@ public final class SocketUrlDetectionTest {
      * Close server socket connection.
      */
     @AfterClass
-    public static void afeterClass() {
+    public static void afterClass() {
         try {
             serverSocket.close();
         } catch (IOException e) {
