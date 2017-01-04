@@ -38,7 +38,7 @@ public final class SocketUrlDetectionTest {
 
     private static ServerSocket serverSocket;
 
-    private static final Integer PORT = 9999;
+    private static final Integer HOPEFULLY_UNUSED_PORT = 9999;
 
     /**
      * Implements server socket.
@@ -67,7 +67,7 @@ public final class SocketUrlDetectionTest {
      */
     @Test
     public void isReachableFalse() {
-        target = new SocketUrlDetection(PORT);
+        target = new SocketUrlDetection(HOPEFULLY_UNUSED_PORT);
         boolean actual = target.isReachable();
         assertFalse(actual);
     }
