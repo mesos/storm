@@ -64,6 +64,9 @@ public final class SocketUrlDetectionTest {
 
     /**
      * If connection refused, return false.
+     * This test is assuming that nothing is listening to the chosen port
+     * on the machine where the test is run.
+     * If your machine don't listen 29999 port, the test will be successful.
      */
     @Test
     public void isReachableFalse() {
