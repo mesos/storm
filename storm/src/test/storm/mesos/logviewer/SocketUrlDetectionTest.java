@@ -38,7 +38,7 @@ public final class SocketUrlDetectionTest {
 
     private static ServerSocket serverSocket;
 
-    private static final Integer HOPEFULLY_UNUSED_PORT = 9999;
+    private static final Integer HOPEFULLY_UNUSED_PORT = 29999;
 
     /**
      * Implements server socket.
