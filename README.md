@@ -219,8 +219,11 @@ You can run this from Marathon, using the example app JSON below:
 ```
 ## Running an example topology
 
-Once Nimbus is running, you can launch one of the `storm-starter` topologies. In order to submit the topology
-to Nimbus, you'll need to know the Thrift host and API port. In the Marathon example above, the port will be the second
+Once Nimbus is running, you can launch one of the `storm-starter` topologies that is present in the `examples/` dir of the [storm release tarballs](https://storm.apache.org/downloads.html).
+So you'd download the appropriate version of storm to a machine with access to your storm cluster, then expand the tarball
+and `cd` into the resultant directory, from which you will run a command like the one below.
+
+However, first you'll need to know the Thrift host and API port. In the Marathon example above, the port will be the second
 one assigned by Marathon. For example, if the host is `10.0.0.1` and second port is `32001`, run:
 
 ```
