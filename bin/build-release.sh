@@ -126,7 +126,8 @@ function package {(
   cd _release
   # When supervisor starts up it looks for storm-mesos not apache-storm.
   mv apache-storm-${STORM_RELEASE}* ${dirName}
-  tar cvzf ${tarName} --numeric-owner --owner 0 --group 0 --exclude ${dirName}/examples ${dirName}
+  # Avoid including storm's examples and external libraries, since those are present in the normal storm releases.
+  tar cvzf ${tarName} --numeric-owner --owner 0 --group 0 --exclude ${dirName}/examples --exclude ${dirName}/external ${dirName}
   echo "Copying ${tarName} to $(cd .. && pwd)/${tarName}"
   cp ${tarName} ../
 
