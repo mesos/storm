@@ -224,7 +224,7 @@ to Nimbus, you'll need to know the Thrift host and API port. In the Marathon exa
 one assigned by Marathon. For example, if the host is `10.0.0.1` and second port is `32001`, run:
 
 ```
-$ ./bin/storm jar -c nimbus.host=10.0.0.1 -c nimbus.thrift.port=32001 examples/storm-starter/storm-starter-topologies-0.9.6.jar storm.starter.WordCountTopology word-count
+$ ./bin/storm jar -c nimbus.host=10.0.0.1 -c nimbus.thrift.port=32001 examples/storm-starter/storm-starter-topologies-1.0.2.jar org.apache.storm.starter.WordCountTopology word-count
 ```
 
 ## Running without Marathon
