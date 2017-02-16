@@ -17,20 +17,27 @@
  */
 package storm.mesos.shims;
 
-public class CommandLineShim implements ICommandLineShim {
-  String extraConfig;
+import org.junit.Test;
 
-  public CommandLineShim(String extraConfig) {
-    this.extraConfig = extraConfig;
-  }
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
 
-  public String getCommandLine(String topologyId) {
-    return String.format(
-        "export STORM_SUPERVISOR_LOG_FILE=%s-supervisor.log" +
-        " && cp storm.yaml storm-mesos*/conf" +
-        " && cd storm-mesos*" +
-        " && bin/storm supervisor storm.mesos.MesosSupervisor%s",
-        topologyId, extraConfig);
-  }
+public final class CommandLineShimTest {
 
+    @Test
+    public void getCommandLine() {
+        String extraConfig = " -c storm.local.dir=/tmp";
+        String topologyId = "sample-id";
+        CommandLineShim target = new CommandLineShim(extraConfig);
+        String actualCmd = target.getCommandLine(topologyId);
+        String expectedCmd =
+                "export STORM_SUPERVISOR_LOG_FILE=" +
+                topologyId +
+                "-supervisor.log " +
+                "&& cp storm.yaml storm-mesos*/conf " +
+                "&& cd storm-mesos* " +
+                "&& bin/storm supervisor storm.mesos.MesosSupervisor" +
+                extraConfig;
+        assertThat(actualCmd, is(expectedCmd));
+    }
 }
