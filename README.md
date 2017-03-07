@@ -156,6 +156,7 @@ For local development and familiarizing yourself with Storm/Mesos, please see th
 * `mesos.offer.expiry.multiplier`: Offer expiry multiplier for `nimbus.monitor.freq.secs`. Defaults to "2.5".
 * `mesos.local.file.server.port`: Port for the local file server to bind to. Defaults to a random port.
 * `mesos.framework.name`: Framework name. Defaults to "Storm!!!".
+* `mesos.framework.user`: Framework user to run with Mesos. Defaults to user to run with Storm on Mesos.
 * `mesos.framework.principal`: Framework principal to use to register with Mesos
 * `mesos.framework.secret.file`:  Location of file that contains the principal's secret. Secret cannot end with a NL.
 * `mesos.prefer.reserved.resources`: Prefer reserved resources over unreserved (i.e., `"*"` role). Defaults to "true".
