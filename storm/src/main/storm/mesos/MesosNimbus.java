@@ -29,6 +29,7 @@ import com.google.protobuf.ByteString;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.mesos.MesosSchedulerDriver;
 import org.apache.mesos.Protos;
+import org.apache.mesos.Protos.Attribute;
 import org.apache.mesos.Protos.CommandInfo;
 import org.apache.mesos.Protos.CommandInfo.URI;
 import org.apache.mesos.Protos.ContainerInfo;
@@ -98,6 +99,7 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MASTER_FAILOVER_TIMEOUT_SECS = "mesos.master.failover.timeout.secs";
   public static final String CONF_MESOS_ALLOWED_HOSTS = "mesos.allowed.hosts";
   public static final String CONF_MESOS_DISALLOWED_HOSTS = "mesos.disallowed.hosts";
+  public static final String CONF_MESOS_CONSTRAINTS = "mesos.constraints";
   public static final String CONF_MESOS_ROLE = "mesos.framework.role";
   public static final String CONF_MESOS_PRINCIPAL = "mesos.framework.principal";
   public static final String CONF_MESOS_SECRET_FILE = "mesos.framework.secret.file";
@@ -122,6 +124,7 @@ public class MesosNimbus implements INimbus {
   private Map mesosStormConf;
   private Set<String> _allowedHosts;
   private Set<String> _disallowedHosts;
+  private Map<String, String> _constraints = new HashMap<>();
   private Optional<Integer> _localFileServerPort;
   private RotatingMap<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
@@ -202,6 +205,10 @@ public class MesosNimbus implements INimbus {
 
     _allowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_ALLOWED_HOSTS));
     _disallowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_DISALLOWED_HOSTS));
+    Object constraints = conf.get(CONF_MESOS_CONSTRAINTS);
+    if (constraints instanceof Map) {
+      _constraints = (Map<String, String>) constraints;
+    }
     Boolean preferReservedResources = (Boolean) conf.get(CONF_MESOS_PREFER_RESERVED_RESOURCES);
     if (preferReservedResources != null) {
       _preferReservedResources = preferReservedResources;
@@ -290,7 +297,7 @@ public class MesosNimbus implements INimbus {
                 _offers.size(), (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
 
       for (Protos.Offer offer : offers) {
-        if (isHostAccepted(offer.getHostname())) {
+        if (isAccepted(offer)) {
           // TODO(ksoundararaj): Should we record the following as info instead of debug
           LOG.info("resourceOffers: Recording offer: {}", offerToString(offer));
           _offers.put(offer.getId(), offer);
@@ -336,6 +343,27 @@ public class MesosNimbus implements INimbus {
     }
 
     return driver;
+  }
+
+  private boolean isAccepted(Offer offer) {
+    return isHostAccepted(offer.getHostname())
+            && isAttributeAccepted(offer.getAttributesList());
+  }
+
+  private boolean isAttributeAccepted(List<Attribute> attributes) {
+    Map<String, String> attributeMap = new HashMap<>();
+    for (Attribute attr : attributes) {
+      if (attr.hasText()) {
+        attributeMap.put(attr.getName(), attr.getText().getValue());
+      }
+    }
+    for (Map.Entry<String, String> entry : _constraints.entrySet()) {
+      String value = attributeMap.get(entry.getKey());
+      if (value == null || !value.equals(entry.getValue())) {
+        return false;
+      }
+    }
+    return true;
   }
 
   public boolean isHostAccepted(String hostname) {
