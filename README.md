@@ -148,6 +148,7 @@ For local development and familiarizing yourself with Storm/Mesos, please see th
 * `mesos.master.failover.timeout.secs`: Framework failover timeout in second. Defaults to "24*7*3600".
 * `mesos.allowed.hosts`: Allowed hosts to run topology, which takes hostname list as a white list.
 * `mesos.disallowed.hosts`: Disallowed hosts to run topology, which takes hostname list as a back list.
+* `mesos.constraints`: Constrain slave nodes which bootstrap supervisor based on mesos-attributes.  
 * `mesos.framework.role`: Framework role to use. Defaults to "*".
 * `mesos.framework.checkpoint`: Enabled framework checkpoint or not. Defaults to false.
 * `mesos.offer.lru.cache.size`: LRU cache size. Defaults to "1000".
