@@ -297,7 +297,7 @@ public class MesosNimbus implements INimbus {
                 _offers.size(), (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
 
       for (Protos.Offer offer : offers) {
-        if (isAccepted(offer)) {
+        if (isOfferAccepted(offer)) {
           // TODO(ksoundararaj): Should we record the following as info instead of debug
           LOG.info("resourceOffers: Recording offer: {}", offerToString(offer));
           _offers.put(offer.getId(), offer);
@@ -345,28 +345,28 @@ public class MesosNimbus implements INimbus {
     return driver;
   }
 
-  private boolean isAccepted(Offer offer) {
-    return isHostAccepted(offer.getHostname())
-            && isAttributeAccepted(offer.getAttributesList());
+  private boolean isOfferAccepted(Offer offer) {
+    return isOfferHostAccepted(offer.getHostname())
+            && isOfferAttributesAccepted(offer.getAttributesList());
   }
 
-  private boolean isAttributeAccepted(List<Attribute> attributes) {
-    Map<String, String> attributeMap = new HashMap<>();
-    for (Attribute attr : attributes) {
-      if (attr.hasText()) {
-        attributeMap.put(attr.getName(), attr.getText().getValue());
+  private boolean isOfferAttributesAccepted(List<Attribute> offerAttrList) {
+    Map<String, String> offerAttrMap = new HashMap<>();
+    for (Attribute offerAttr : offerAttrList) {
+      if (offerAttr.hasText()) {
+        offerAttrMap.put(offerAttr.getName(), offerAttr.getText().getValue());
       }
     }
-    for (Map.Entry<String, String> entry : _constraints.entrySet()) {
-      String value = attributeMap.get(entry.getKey());
-      if (value == null || !value.equals(entry.getValue())) {
+    for (Map.Entry<String, String> constraint : _constraints.entrySet()) {
+      String offerAttrValue = offerAttrMap.get(constraint.getKey());
+      if (offerAttrValue == null || !offerAttrValue.equals(constraint.getValue())) {
         return false;
       }
     }
     return true;
   }
 
-  public boolean isHostAccepted(String hostname) {
+  public boolean isOfferHostAccepted(String hostname) {
     return
         (_allowedHosts == null && _disallowedHosts == null) ||
             (_allowedHosts != null && _allowedHosts.contains(hostname)) ||
