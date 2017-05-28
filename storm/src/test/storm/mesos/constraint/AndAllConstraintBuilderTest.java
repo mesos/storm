@@ -29,7 +29,7 @@ public class AndAllConstraintBuilderTest {
     public void build0Value() {
         ConstraintBuilder<Offer> constraintBuilder =
                 new AndAllConstraintBuilder<>(
-                        new TestMultiConstraintBuilder()
+                        new TestMultiConstraintBuilder<Offer>()
                 );
         Optional<Constraint<Offer>> constraintOptional
                 = constraintBuilder.build(new HashMap());
@@ -41,9 +41,9 @@ public class AndAllConstraintBuilderTest {
     public void build1Value() {
         ConstraintBuilder<Offer> constraintBuilder =
                 new AndAllConstraintBuilder<>(
-                      new TestMultiConstraintBuilder(
-                              new TestConstraint(true)
-                      )
+                        new TestMultiConstraintBuilder<>(
+                                new TestConstraint(true)
+                        )
                 );
         Optional<Constraint<Offer>> constraintOptinal
                 = constraintBuilder.build(new HashMap());
@@ -54,7 +54,7 @@ public class AndAllConstraintBuilderTest {
     public void build2Value() {
         ConstraintBuilder<Offer> constraintBuilder =
                 new AndAllConstraintBuilder<>(
-                        new TestMultiConstraintBuilder(
+                        new TestMultiConstraintBuilder<>(
                                 new TestConstraint(true),
                                 new TestConstraint(false)
                         )

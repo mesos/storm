@@ -21,21 +21,21 @@ import java.util.Map;
  *
  * @author fuji-151a
  */
-public class TestMultiConstraintBuilder implements MultiConstraintBuilder<Offer> {
+public class TestMultiConstraintBuilder<T> implements MultiConstraintBuilder<T> {
 
-    private final List<Constraint<Offer>> constraintList;
+    private final List<Constraint<T>> constraintList;
 
     public TestMultiConstraintBuilder() {
         constraintList = new ArrayList<>();
     }
 
-    public TestMultiConstraintBuilder(Constraint<Offer>... constraint) {
+    public TestMultiConstraintBuilder(Constraint<T>... constraint) {
         this.constraintList = Arrays.asList(constraint);
     }
 
     @Override
-    public List<Constraint<Offer>> build(Map conf) {
-        List<Constraint<Offer>> returnList = new ArrayList<>();
+    public List<Constraint<T>> build(Map conf) {
+        List<Constraint<T>> returnList = new ArrayList<>();
         returnList.addAll(constraintList);
         return returnList;
     }
