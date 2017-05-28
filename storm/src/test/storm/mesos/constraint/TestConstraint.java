@@ -15,7 +15,7 @@ import org.apache.mesos.Protos.Offer;
  *
  * @author fuji-151a
  */
-public class TestConstraint implements Constraint<Offer> {
+public class TestConstraint<Offer> implements Constraint<Offer> {
 
     private final boolean b;
 
