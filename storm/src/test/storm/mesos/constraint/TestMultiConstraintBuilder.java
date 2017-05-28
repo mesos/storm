@@ -25,6 +25,10 @@ public class TestMultiConstraintBuilder implements MultiConstraintBuilder<Offer>
 
     private final List<Constraint<Offer>> constraintList;
 
+    public TestMultiConstraintBuilder() {
+        constraintList = new ArrayList<>();
+    }
+
     public TestMultiConstraintBuilder(Constraint<Offer>... constraint) {
         this.constraintList = Arrays.asList(constraint);
     }
