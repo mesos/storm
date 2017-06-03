@@ -8,23 +8,19 @@
  */
 package storm.mesos.constraint;
 
-import org.apache.mesos.Protos;
-import org.apache.mesos.Protos.Offer;
-
 /**
- *
  * @author fuji-151a
  */
 public class TestConstraint<Offer> implements Constraint<Offer> {
 
-    private final boolean b;
+  private final boolean b;
 
-    public TestConstraint(boolean bool) {
-        this.b = bool;
-    }
+  public TestConstraint(boolean bool) {
+    this.b = bool;
+  }
 
-    @Override
-    public boolean isAccepted(Offer target) {
-        return b;
-    }
+  @Override
+  public boolean isAccepted(Offer target) {
+    return b;
+  }
 }

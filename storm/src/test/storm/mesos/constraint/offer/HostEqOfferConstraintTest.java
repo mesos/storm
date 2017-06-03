@@ -23,57 +23,56 @@ import java.util.Map;
 import static org.junit.Assert.*;
 
 /**
- *
  * @author fuji-151a
  */
 public class HostEqOfferConstraintTest {
 
-    @Test
-    public void isAcceptedAllowedHosts() throws Exception {
-        ConstraintBuilder<Offer> allowedHostsBuilder = new HostEqOfferConstraint.AllowedHostsBuilder();
-        Optional<Constraint<Offer>> offerConstraint
-                = allowedHostsBuilder.build(
-                        createHostsConf("mesos.allowed.hosts")
-        );
-        assertTrue(offerConstraint.get().isAccepted(TestUtils.buildOffer("id", "hostA", 1, 1)));
-    }
+  @Test
+  public void isAcceptedAllowedHosts() throws Exception {
+    ConstraintBuilder<Offer> allowedHostsBuilder = new HostEqOfferConstraint.AllowedHostsBuilder();
+    Optional<Constraint<Offer>> offerConstraint
+        = allowedHostsBuilder.build(
+        createHostsConf("mesos.allowed.hosts")
+    );
+    assertTrue(offerConstraint.get().isAccepted(TestUtils.buildOffer("id", "hostA", 1, 1)));
+  }
 
-    @Test
-    public void isNotAcceptedAllowedHosts() throws Exception {
-        ConstraintBuilder<Offer> allowedHostsBuilder = new HostEqOfferConstraint.AllowedHostsBuilder();
-        Optional<Constraint<Offer>> offerConstraint
-                = allowedHostsBuilder.build(
-                createHostsConf("mesos.allowed.hosts")
-        );
-        assertFalse(offerConstraint.get().isAccepted(TestUtils.buildOffer("id", "hostC", 1, 1)));
-    }
+  @Test
+  public void isNotAcceptedAllowedHosts() throws Exception {
+    ConstraintBuilder<Offer> allowedHostsBuilder = new HostEqOfferConstraint.AllowedHostsBuilder();
+    Optional<Constraint<Offer>> offerConstraint
+        = allowedHostsBuilder.build(
+        createHostsConf("mesos.allowed.hosts")
+    );
+    assertFalse(offerConstraint.get().isAccepted(TestUtils.buildOffer("id", "hostC", 1, 1)));
+  }
 
-    @Test
-    public void isAcceptedDisallowedHosts() throws Exception {
-        ConstraintBuilder<Offer> allowedHostsBuilder = new HostEqOfferConstraint.DisallowedHostsBuilder();
-        Optional<Constraint<Offer>> offerConstraint
-                = allowedHostsBuilder.build(
-                createHostsConf("mesos.disallowed.hosts")
-        );
-        assertFalse(offerConstraint.get().isAccepted(TestUtils.buildOffer("id", "hostA", 1, 1)));
-    }
+  @Test
+  public void isAcceptedDisallowedHosts() throws Exception {
+    ConstraintBuilder<Offer> allowedHostsBuilder = new HostEqOfferConstraint.DisallowedHostsBuilder();
+    Optional<Constraint<Offer>> offerConstraint
+        = allowedHostsBuilder.build(
+        createHostsConf("mesos.disallowed.hosts")
+    );
+    assertFalse(offerConstraint.get().isAccepted(TestUtils.buildOffer("id", "hostA", 1, 1)));
+  }
 
-    @Test
-    public void isNotAcceptedDisallowedHosts() throws Exception {
-        ConstraintBuilder<Offer> allowedHostsBuilder = new HostEqOfferConstraint.DisallowedHostsBuilder();
-        Optional<Constraint<Offer>> offerConstraint
-                = allowedHostsBuilder.build(
-                createHostsConf("mesos.disallowed.hosts")
-        );
-        assertTrue(offerConstraint.get().isAccepted(TestUtils.buildOffer("id", "hostC", 1, 1)));
-    }
+  @Test
+  public void isNotAcceptedDisallowedHosts() throws Exception {
+    ConstraintBuilder<Offer> allowedHostsBuilder = new HostEqOfferConstraint.DisallowedHostsBuilder();
+    Optional<Constraint<Offer>> offerConstraint
+        = allowedHostsBuilder.build(
+        createHostsConf("mesos.disallowed.hosts")
+    );
+    assertTrue(offerConstraint.get().isAccepted(TestUtils.buildOffer("id", "hostC", 1, 1)));
+  }
 
-    private Map<String, List<String>> createHostsConf(String key) {
-        List<String> hostList = new ArrayList<>();
-        hostList.add("hostA");
-        hostList.add("hostB");
-        Map<String, List<String>> stormConf = new HashMap<>();
-        stormConf.put(key, hostList);
-        return stormConf;
-    }
+  private Map<String, List<String>> createHostsConf(String key) {
+    List<String> hostList = new ArrayList<>();
+    hostList.add("hostA");
+    hostList.add("hostB");
+    Map<String, List<String>> stormConf = new HashMap<>();
+    stormConf.put(key, hostList);
+    return stormConf;
+  }
 }

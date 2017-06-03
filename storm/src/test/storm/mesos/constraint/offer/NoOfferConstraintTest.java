@@ -16,15 +16,14 @@ import storm.mesos.constraint.Constraint;
 import static org.junit.Assert.assertTrue;
 
 /**
- *
  * @author fuji-151a
  */
 public class NoOfferConstraintTest {
 
-    @Test
-    public void isAccepted() throws Exception {
-        Constraint<Offer> offerConstraint = new NoOfferConstraint();
-        assertTrue(offerConstraint.isAccepted(TestUtils.buildOffer()));
-    }
+  @Test
+  public void isAccepted() throws Exception {
+    Constraint<Offer> offerConstraint = new NoOfferConstraint();
+    assertTrue(offerConstraint.isAccepted(TestUtils.buildOffer()));
+  }
 
 }

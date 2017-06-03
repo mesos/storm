@@ -20,34 +20,33 @@ import java.util.Map;
 import static org.junit.Assert.*;
 
 /**
- *
  * @author fuji-151a
  */
 public class TextAttrEqConstraintTest {
 
-    @Test
-    public void isAccepted() throws Exception {
-        Map<String, String> cons = new HashMap<>();
-        cons.put("type", "host");
-        Map<String, Map> conf = new HashMap<>();
-        conf.put("mesos.constraint", cons);
-        List<Constraint<Attribute>> constraintList = new TextAttrEqConstraint.Builder().build(conf);
-        Attribute attr = TestUtils.buildTextAttribute("type", "host");
-        for (Constraint<Attribute> constraint : constraintList) {
-            assertTrue(constraint.isAccepted(attr));
-        }
+  @Test
+  public void isAccepted() throws Exception {
+    Map<String, String> cons = new HashMap<>();
+    cons.put("type", "host");
+    Map<String, Map> conf = new HashMap<>();
+    conf.put("mesos.constraint", cons);
+    List<Constraint<Attribute>> constraintList = new TextAttrEqConstraint.Builder().build(conf);
+    Attribute attr = TestUtils.buildTextAttribute("type", "host");
+    for (Constraint<Attribute> constraint : constraintList) {
+      assertTrue(constraint.isAccepted(attr));
     }
+  }
 
-    @Test
-    public void isNotAccepted() throws Exception {
-        Map<String, String> cons = new HashMap<>();
-        cons.put("type", "host");
-        Map<String, Map> conf = new HashMap<>();
-        conf.put("mesos.constraint", cons);
-        List<Constraint<Attribute>> constraintList = new TextAttrEqConstraint.Builder().build(conf);
-        Attribute attr = TestUtils.buildTextAttribute("type", "hostA");
-        for (Constraint<Attribute> constraint : constraintList) {
-            assertFalse(constraint.isAccepted(attr));
-        }
+  @Test
+  public void isNotAccepted() throws Exception {
+    Map<String, String> cons = new HashMap<>();
+    cons.put("type", "host");
+    Map<String, Map> conf = new HashMap<>();
+    conf.put("mesos.constraint", cons);
+    List<Constraint<Attribute>> constraintList = new TextAttrEqConstraint.Builder().build(conf);
+    Attribute attr = TestUtils.buildTextAttribute("type", "hostA");
+    for (Constraint<Attribute> constraint : constraintList) {
+      assertFalse(constraint.isAccepted(attr));
     }
+  }
 }

@@ -23,32 +23,31 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- *
  * @author fuji-151a
  */
 public class AttributeOfferConstraintTest {
 
-    @Test
-    public void isAccepted() {
-        ConstraintBuilder<Offer> constraintOffer
-                = new AttributeOfferConstraint.Builder(
-                        new TestMultiConstraintBuilder<>(
-                                new AttributeNameConstraint("type")
-                        )
-        );
-        Optional<Constraint<Offer>> constraintOptional = constraintOffer.build(new HashMap());
-        assertTrue(constraintOptional.get().isAccepted(TestUtils.buildOfferWithTextAttributes("test","hostA", "type", "server")));
-    }
+  @Test
+  public void isAccepted() {
+    ConstraintBuilder<Offer> constraintOffer
+        = new AttributeOfferConstraint.Builder(
+        new TestMultiConstraintBuilder<>(
+            new AttributeNameConstraint("type")
+        )
+    );
+    Optional<Constraint<Offer>> constraintOptional = constraintOffer.build(new HashMap());
+    assertTrue(constraintOptional.get().isAccepted(TestUtils.buildOfferWithTextAttributes("test", "hostA", "type", "server")));
+  }
 
-    @Test
-    public void isNotAccepted() {
-        ConstraintBuilder<Offer> constraintOffer
-                = new AttributeOfferConstraint.Builder(
-                new TestMultiConstraintBuilder<>(
-                        new AttributeNameConstraint("dummy")
-                )
-        );
-        Optional<Constraint<Offer>> constraintOptional = constraintOffer.build(new HashMap());
-        assertFalse(constraintOptional.get().isAccepted(TestUtils.buildOfferWithTextAttributes("test","hostA", "type", "server")));
-    }
+  @Test
+  public void isNotAccepted() {
+    ConstraintBuilder<Offer> constraintOffer
+        = new AttributeOfferConstraint.Builder(
+        new TestMultiConstraintBuilder<>(
+            new AttributeNameConstraint("dummy")
+        )
+    );
+    Optional<Constraint<Offer>> constraintOptional = constraintOffer.build(new HashMap());
+    assertFalse(constraintOptional.get().isAccepted(TestUtils.buildOfferWithTextAttributes("test", "hostA", "type", "server")));
+  }
 }

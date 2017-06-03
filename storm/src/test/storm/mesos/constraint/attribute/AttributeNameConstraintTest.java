@@ -17,22 +17,21 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
- *
  * @author fuji-151a
  */
 public class AttributeNameConstraintTest {
 
-    @Test
-    public void isAccepted() throws Exception {
-        Attribute attr = TestUtils.buildTextAttribute("host", "test");
-        Constraint<Attribute> constraintAttribute = new AttributeNameConstraint("host");
-        assertTrue(constraintAttribute.isAccepted(attr));
-    }
+  @Test
+  public void isAccepted() throws Exception {
+    Attribute attr = TestUtils.buildTextAttribute("host", "test");
+    Constraint<Attribute> constraintAttribute = new AttributeNameConstraint("host");
+    assertTrue(constraintAttribute.isAccepted(attr));
+  }
 
-    @Test
-    public void isNotAccepted() throws Exception {
-        Attribute attr = TestUtils.buildTextAttribute("ip", "test");
-        Constraint<Attribute> constraintAttribute = new AttributeNameConstraint("host");
-        assertFalse(constraintAttribute.isAccepted(attr));
-    }
+  @Test
+  public void isNotAccepted() throws Exception {
+    Attribute attr = TestUtils.buildTextAttribute("ip", "test");
+    Constraint<Attribute> constraintAttribute = new AttributeNameConstraint("host");
+    assertFalse(constraintAttribute.isAccepted(attr));
+  }
 }

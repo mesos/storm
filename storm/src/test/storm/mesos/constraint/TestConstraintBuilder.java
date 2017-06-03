@@ -14,14 +14,13 @@ import org.apache.mesos.Protos.Offer;
 import java.util.Map;
 
 /**
- *
  * @author fuji-151a
  */
 public class TestConstraintBuilder implements ConstraintBuilder<Offer> {
 
-    @Override
-    public Optional<Constraint<Offer>> build(Map conf) {
-        Constraint<Offer> offer = new TestConstraint<Offer>(true);
-        return Optional.of(offer);
-    }
+  @Override
+  public Optional<Constraint<Offer>> build(Map conf) {
+    Constraint<Offer> offer = new TestConstraint<Offer>(true);
+    return Optional.of(offer);
+  }
 }

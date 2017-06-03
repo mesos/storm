@@ -18,24 +18,23 @@ import static org.hamcrest.core.Is.is;
 import static org.junit.Assert.assertThat;
 
 /**
- *
  * @author fuji-151a
  */
 public class CombinedConstraintBuilderTest {
-    @Test
-    public void build() throws Exception {
-        MultiConstraintBuilder<Offer> multiCB = new CombinedConstraintBuilder<>(
-                new TestConstraintBuilder(),
-                new TestConstraintBuilder()
-        );
-        List<Constraint<Offer>> constraintOfferList = multiCB.build(new HashMap());
-        assertThat(constraintOfferList.size(), is(2));
-    }
+  @Test
+  public void build() throws Exception {
+    MultiConstraintBuilder<Offer> multiCB = new CombinedConstraintBuilder<>(
+        new TestConstraintBuilder(),
+        new TestConstraintBuilder()
+    );
+    List<Constraint<Offer>> constraintOfferList = multiCB.build(new HashMap());
+    assertThat(constraintOfferList.size(), is(2));
+  }
 
-    @Test(expected = IllegalArgumentException.class)
-    public void illegalArgumentExceptionTest() {
-        MultiConstraintBuilder<Offer> multiCB = new CombinedConstraintBuilder<>();
-        multiCB.build(new HashMap());
-    }
+  @Test(expected = IllegalArgumentException.class)
+  public void illegalArgumentExceptionTest() {
+    MultiConstraintBuilder<Offer> multiCB = new CombinedConstraintBuilder<>();
+    multiCB.build(new HashMap());
+  }
 
 }
