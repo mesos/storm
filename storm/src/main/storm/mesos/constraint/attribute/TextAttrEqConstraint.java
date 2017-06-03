@@ -17,7 +17,6 @@
  */
 package storm.mesos.constraint.attribute;
 
-import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.Attribute;
 import org.apache.storm.shade.com.google.common.base.Preconditions;
 import storm.mesos.constraint.AndConstraint;
