@@ -129,6 +129,28 @@ public class TestUtils {
                        .build();
   }
 
+  public static Protos.Attribute buildTextAttribute(String name, String value) {
+    return Protos.Attribute.newBuilder()
+            .setType(Protos.Value.Type.TEXT)
+            .setText(Protos.Value.Text.newBuilder().setValue(value).build())
+            .setName(name)
+            .build();
+  }
+
+  public static Protos.Offer buildOfferWithTextAttributes(String offerId, String hostName, String key, String value) {
+    return Protos.Offer.newBuilder()
+            .setId(Protos.OfferID.newBuilder().setValue(offerId).build())
+            .setFrameworkId(Protos.FrameworkID.newBuilder().setValue("derp").build())
+            .setSlaveId(Protos.SlaveID.newBuilder().setValue("derp").build())
+            .setHostname(hostName)
+            .addAllAttributes(
+                    Arrays.asList(
+                            buildTextAttribute(key, value)
+                    )
+            )
+            .build();
+  }
+
   public static Protos.Resource buildScalarResource(String name, double value) {
     return Protos.Resource.newBuilder()
                           .setType(Protos.Value.Type.SCALAR)

@@ -50,6 +50,14 @@ import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
+import storm.mesos.constraint.AndAllConstraintBuilder;
+import storm.mesos.constraint.CombinedConstraintBuilder;
+import storm.mesos.constraint.Constraint;
+import storm.mesos.constraint.ConstraintBuilder;
+import storm.mesos.constraint.attribute.TextAttrEqConstraint;
+import storm.mesos.constraint.offer.AttributeOfferConstraint;
+import storm.mesos.constraint.offer.HostEqOfferConstraint;
+import storm.mesos.constraint.offer.NoOfferConstraint;
 import storm.mesos.resources.AggregatedOffers;
 import storm.mesos.resources.ReservationType;
 import storm.mesos.resources.ResourceEntries.RangeResourceEntry;
@@ -96,8 +104,6 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_EXECUTOR_URI = "mesos.executor.uri";
   public static final String CONF_MASTER_URL = "mesos.master.url";
   public static final String CONF_MASTER_FAILOVER_TIMEOUT_SECS = "mesos.master.failover.timeout.secs";
-  public static final String CONF_MESOS_ALLOWED_HOSTS = "mesos.allowed.hosts";
-  public static final String CONF_MESOS_DISALLOWED_HOSTS = "mesos.disallowed.hosts";
   public static final String CONF_MESOS_ROLE = "mesos.framework.role";
   public static final String CONF_MESOS_PRINCIPAL = "mesos.framework.principal";
   public static final String CONF_MESOS_SECRET_FILE = "mesos.framework.secret.file";
@@ -120,12 +126,12 @@ public class MesosNimbus implements INimbus {
   volatile SchedulerDriver _driver;
   private Timer _timer = new Timer();
   private Map mesosStormConf;
-  private Set<String> _allowedHosts;
-  private Set<String> _disallowedHosts;
+  private Map<String, String> _constraints = new HashMap<>();
   private Optional<Integer> _localFileServerPort;
   private RotatingMap<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
   private IMesosStormScheduler _mesosStormScheduler = null;
+  private Constraint<Offer> _offerConstraint = null;
 
   private boolean _preferReservedResources = true;
   private Optional<String> _container = Optional.absent();
@@ -200,8 +206,9 @@ public class MesosNimbus implements INimbus {
       throw new RuntimeException(String.format("Encountered IOException while setting up LocalState at %s : %s", localDir, exp));
     }
 
-    _allowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_ALLOWED_HOSTS));
-    _disallowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_DISALLOWED_HOSTS));
+    ConstraintBuilder<Offer> attributeOfferCB = new AttributeOfferConstraint.Builder(new TextAttrEqConstraint.Builder());
+    ConstraintBuilder<Offer> constraintBuilder = new AndAllConstraintBuilder<>(new CombinedConstraintBuilder<>(HostEqOfferConstraint.DEFAULT_BUILDER, attributeOfferCB));
+    _offerConstraint = constraintBuilder.build(conf).or(new NoOfferConstraint());
     Boolean preferReservedResources = (Boolean) conf.get(CONF_MESOS_PREFER_RESERVED_RESOURCES);
     if (preferReservedResources != null) {
       _preferReservedResources = preferReservedResources;
@@ -290,7 +297,7 @@ public class MesosNimbus implements INimbus {
                 _offers.size(), (_offers.size() > 0 ? (":" + offerMapToString(_offers)) : ""));
 
       for (Protos.Offer offer : offers) {
-        if (isHostAccepted(offer.getHostname())) {
+        if (_offerConstraint.isAccepted(offer)) {
           // TODO(ksoundararaj): Should we record the following as info instead of debug
           LOG.info("resourceOffers: Recording offer: {}", offerToString(offer));
           _offers.put(offer.getId(), offer);
@@ -337,14 +344,6 @@ public class MesosNimbus implements INimbus {
 
     return driver;
   }
-
-  public boolean isHostAccepted(String hostname) {
-    return
-        (_allowedHosts == null && _disallowedHosts == null) ||
-            (_allowedHosts != null && _allowedHosts.contains(hostname)) ||
-            (_disallowedHosts != null && !_disallowedHosts.contains(hostname));
-  }
-
 
   @Override
   public Collection<WorkerSlot> allSlotsAvailableForScheduling(
