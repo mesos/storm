@@ -12,16 +12,17 @@ import org.apache.mesos.Protos.Attribute;
 import storm.mesos.constraint.Constraint;
 
 /**
- *
  * @author fuji-151a
  */
 public class AttributeNameConstraint implements Constraint<Attribute> {
-    private final String name;
-    public AttributeNameConstraint(final String key) {
-        this.name = key;
-    }
-    @Override
-    public boolean isAccepted(final Attribute target) {
-        return target.hasName() && name.equals(target.getName());
-    }
+  private final String name;
+
+  public AttributeNameConstraint(final String key) {
+    this.name = key;
+  }
+
+  @Override
+  public boolean isAccepted(final Attribute target) {
+    return target.hasName() && name.equals(target.getName());
+  }
 }

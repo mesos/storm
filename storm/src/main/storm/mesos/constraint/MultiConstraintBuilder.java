@@ -12,9 +12,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- *
  * @author fuji-151a
  */
 public interface MultiConstraintBuilder<T> {
-    List<Constraint<T>> build(Map conf);
+  List<Constraint<T>> build(Map conf);
 }

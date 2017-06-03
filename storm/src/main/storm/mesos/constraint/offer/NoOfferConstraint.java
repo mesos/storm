@@ -12,12 +12,11 @@ import org.apache.mesos.Protos.Offer;
 import storm.mesos.constraint.Constraint;
 
 /**
- *
  * @author fuji-151a
  */
 public class NoOfferConstraint implements Constraint<Offer> {
-    @Override
-    public boolean isAccepted(final Offer target) {
-        return true;
-    }
+  @Override
+  public boolean isAccepted(final Offer target) {
+    return true;
+  }
 }

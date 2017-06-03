@@ -13,9 +13,8 @@ import com.google.common.base.Optional;
 import java.util.Map;
 
 /**
- *
  * @author fuji-151a
  */
 public interface ConstraintBuilder<T> {
-    Optional<Constraint<T>> build(Map conf);
+  Optional<Constraint<T>> build(Map conf);
 }

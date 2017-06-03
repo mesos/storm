@@ -17,27 +17,26 @@ import java.util.List;
 import java.util.Map;
 
 /**
- *
  * @author fuji-151a
  */
 public class CombinedConstraintBuilder<T> implements MultiConstraintBuilder<T> {
 
-    private final List<ConstraintBuilder<T>> list;
+  private final List<ConstraintBuilder<T>> list;
 
-    public CombinedConstraintBuilder(ConstraintBuilder<T>... builders) {
-        Preconditions.checkArgument(builders.length > 0, "builders should not be empty!!");
-        this.list = ImmutableList.copyOf(builders);
-    }
+  public CombinedConstraintBuilder(ConstraintBuilder<T>... builders) {
+    Preconditions.checkArgument(builders.length > 0, "builders should not be empty!!");
+    this.list = ImmutableList.copyOf(builders);
+  }
 
-    @Override
-    public List<Constraint<T>> build(Map conf) {
-        List<Constraint<T>> result = Lists.newArrayList();
-        for (ConstraintBuilder<T> builder : list) {
-            Optional<Constraint<T>> constraint = builder.build(conf);
-            if (constraint.isPresent()) {
-                result.add(constraint.get());
-            }
-        }
-        return result;
+  @Override
+  public List<Constraint<T>> build(Map conf) {
+    List<Constraint<T>> result = Lists.newArrayList();
+    for (ConstraintBuilder<T> builder : list) {
+      Optional<Constraint<T>> constraint = builder.build(conf);
+      if (constraint.isPresent()) {
+        result.add(constraint.get());
+      }
     }
+    return result;
+  }
 }

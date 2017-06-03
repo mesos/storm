@@ -9,9 +9,8 @@
 package storm.mesos.constraint;
 
 /**
- *
  * @author fuji-151a
  */
 public interface Constraint<T> {
-    boolean isAccepted(T target);
+  boolean isAccepted(T target);
 }

@@ -9,16 +9,17 @@
 package storm.mesos.constraint;
 
 /**
- *
  * @author fuji-151a
  */
 public class NotConstraint<T> implements Constraint<T> {
-    private final Constraint<T> constraint;
-    public NotConstraint(final Constraint<T> rule) {
-        this.constraint = rule;
-    }
-    @Override
-    public boolean isAccepted(final T target) {
-        return !constraint.isAccepted(target);
-    }
+  private final Constraint<T> constraint;
+
+  public NotConstraint(final Constraint<T> rule) {
+    this.constraint = rule;
+  }
+
+  @Override
+  public boolean isAccepted(final T target) {
+    return !constraint.isAccepted(target);
+  }
 }

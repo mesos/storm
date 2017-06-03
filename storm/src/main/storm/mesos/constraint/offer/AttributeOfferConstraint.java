@@ -22,42 +22,43 @@ import java.util.Map;
 
 /**
  * This class receives offer and check constraint on attributes.
+ *
  * @author fuji-151a
  */
 public class AttributeOfferConstraint implements Constraint<Offer> {
-    private final Constraint<Attribute> constraint;
+  private final Constraint<Attribute> constraint;
 
-    public AttributeOfferConstraint(final Constraint<Attribute> attribute) {
-        this.constraint = attribute;
+  public AttributeOfferConstraint(final Constraint<Attribute> attribute) {
+    this.constraint = attribute;
+  }
+
+  @Override
+  public boolean isAccepted(final Offer target) {
+    for (Attribute offerAttr : target.getAttributesList()) {
+      if (constraint.isAccepted(offerAttr)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static class Builder implements ConstraintBuilder<Offer> {
+
+    private final ConstraintBuilder<Attribute> constraintBuilder;
+
+    public Builder(final MultiConstraintBuilder<Attribute> multiBuilder) {
+      this.constraintBuilder = new AndAllConstraintBuilder<>(multiBuilder);
     }
 
     @Override
-    public boolean isAccepted(final Offer target) {
-        for (Attribute offerAttr : target.getAttributesList()) {
-            if (constraint.isAccepted(offerAttr)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    public static class Builder implements ConstraintBuilder<Offer> {
-
-        private final ConstraintBuilder<Attribute> constraintBuilder;
-
-        public Builder(final MultiConstraintBuilder<Attribute> multiBuilder) {
-            this.constraintBuilder = new AndAllConstraintBuilder<>(multiBuilder);
-        }
-
+    public Optional<Constraint<Offer>> build(final Map conf) {
+      Optional<Constraint<Attribute>> result = constraintBuilder.build(conf);
+      return result.transform(new Function<Constraint<Attribute>, Constraint<Offer>>() {
         @Override
-        public Optional<Constraint<Offer>> build(final Map conf) {
-            Optional<Constraint<Attribute>> result = constraintBuilder.build(conf);
-            return result.transform(new Function<Constraint<Attribute>, Constraint<Offer>>() {
-                @Override
-                public Constraint<Offer> apply(Constraint<Attribute> attributeConstraint) {
-                    return new AttributeOfferConstraint(attributeConstraint);
-                }
-            });
+        public Constraint<Offer> apply(Constraint<Attribute> attributeConstraint) {
+          return new AttributeOfferConstraint(attributeConstraint);
         }
+      });
     }
+  }
 }
