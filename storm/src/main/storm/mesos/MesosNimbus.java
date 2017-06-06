@@ -125,7 +125,7 @@ public class MesosNimbus implements INimbus {
   private Optional<Integer> _localFileServerPort;
   private RotatingMap<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
-  private IMesosStormScheduler _mesosStormScheduler = null;
+  private IMesosStormScheduler _stormScheduler = null;
 
   private boolean _preferReservedResources = true;
   private Optional<String> _container = Optional.absent();
@@ -140,7 +140,7 @@ public class MesosNimbus implements INimbus {
   }
 
   public MesosNimbus() {
-    this._mesosStormScheduler = new StormSchedulerImpl();
+    this._stormScheduler = new StormSchedulerImpl();
   }
 
   public static void main(String[] args) {
@@ -159,7 +159,7 @@ public class MesosNimbus implements INimbus {
   @Override
   public IScheduler getForcedScheduler() {
     // TODO: Make it configurable. We should be able to specify the scheduler to use in the storm.yaml
-    return (IScheduler) _mesosStormScheduler;
+    return (IScheduler) _stormScheduler;
   }
 
   @Override
@@ -350,7 +350,7 @@ public class MesosNimbus implements INimbus {
   public Collection<WorkerSlot> allSlotsAvailableForScheduling(
           Collection<SupervisorDetails> existingSupervisors, Topologies topologies, Set<String> topologiesMissingAssignments) {
     synchronized (_offersLock) {
-      return _mesosStormScheduler.allSlotsAvailableForScheduling(
+      return _stormScheduler.allSlotsAvailableForScheduling(
               _offers,
               existingSupervisors,
               topologies,
