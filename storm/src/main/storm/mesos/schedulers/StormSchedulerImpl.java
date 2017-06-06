@@ -19,10 +19,7 @@ package storm.mesos.schedulers;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.mesos.Protos;
-<<<<<<< HEAD
-=======
 import org.apache.mesos.SchedulerDriver;
->>>>>>> Stop accumulating offers in a RotatingMap, instead suppress offers when we don't need them and revive offers when we do need them.
 import org.apache.storm.scheduler.Cluster;
 import org.apache.storm.scheduler.ExecutorDetails;
 import org.apache.storm.scheduler.IScheduler;
