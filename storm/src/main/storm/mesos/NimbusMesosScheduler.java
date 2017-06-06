@@ -35,12 +35,12 @@ import java.util.concurrent.CountDownLatch;
 
 import static storm.mesos.util.PrettyProtobuf.taskStatusToString;
 
-public class NimbusScheduler implements Scheduler {
+public class NimbusMesosScheduler implements Scheduler {
   private MesosNimbus mesosNimbus;
   private CountDownLatch _registeredLatch = new CountDownLatch(1);
   public static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
 
-  public NimbusScheduler(MesosNimbus mesosNimbus) {
+  public NimbusMesosScheduler(MesosNimbus mesosNimbus) {
     this.mesosNimbus = mesosNimbus;
   }
 

@@ -57,7 +57,7 @@ import storm.mesos.resources.ResourceEntries.ScalarResourceEntry;
 import storm.mesos.resources.ResourceEntry;
 import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.resources.ResourceType;
-import storm.mesos.schedulers.DefaultScheduler;
+import storm.mesos.schedulers.StormSchedulerImpl;
 import storm.mesos.schedulers.IMesosStormScheduler;
 import storm.mesos.shims.CommandLineShimFactory;
 import storm.mesos.shims.ICommandLineShim;
@@ -120,7 +120,7 @@ public class MesosNimbus implements INimbus {
   private final Object _offersLock = new Object();
   protected java.net.URI _configUrl;
   private LocalStateShim _state;
-  private NimbusScheduler _scheduler;
+  private NimbusMesosScheduler _mesosScheduler;
   volatile SchedulerDriver _driver;
   private Timer _timer = new Timer();
   private Map mesosStormConf;
@@ -129,7 +129,7 @@ public class MesosNimbus implements INimbus {
   private Optional<Integer> _localFileServerPort;
   private RotatingMap<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
-  private IMesosStormScheduler _mesosStormScheduler = null;
+  private IMesosStormScheduler _stormScheduler = null;
 
   private boolean _preferReservedResources = true;
   private Optional<String> _container = Optional.absent();
@@ -144,7 +144,7 @@ public class MesosNimbus implements INimbus {
   }
 
   public MesosNimbus() {
-    this._mesosStormScheduler = new DefaultScheduler();
+    this._stormScheduler = new StormSchedulerImpl();
   }
 
   public static void main(String[] args) {
@@ -163,7 +163,7 @@ public class MesosNimbus implements INimbus {
   @Override
   public IScheduler getForcedScheduler() {
     // TODO: Make it configurable. We should be able to specify the scheduler to use in the storm.yaml
-    return (IScheduler) _mesosStormScheduler;
+    return (IScheduler) _stormScheduler;
   }
 
   @Override
@@ -183,7 +183,7 @@ public class MesosNimbus implements INimbus {
 
       LOG.info("Waiting for scheduler driver to register MesosNimbus with mesos-master and complete initialization...");
 
-      _scheduler.waitUntilRegistered();
+      _mesosScheduler.waitUntilRegistered();
 
       LOG.info("Scheduler registration and initialization complete...");
 
@@ -212,7 +212,7 @@ public class MesosNimbus implements INimbus {
     }
 
     _container = Optional.fromNullable((String) conf.get(CONF_MESOS_CONTAINER_DOCKER_IMAGE));
-    _scheduler = new NimbusScheduler(this);
+    _mesosScheduler = new NimbusMesosScheduler(this);
 
     // Generate YAML to be served up to clients
     _generatedConfPath = Paths.get(
@@ -334,9 +334,9 @@ public class MesosNimbus implements INimbus {
     LOG.info(String.format("Registering framework with role '%s'", finfo.getRole()));
 
     if ((credential = getCredential(finfo)) != null) {
-      driver = new MesosSchedulerDriver(_scheduler, finfo.build(), (String) mesosStormConf.get(CONF_MASTER_URL), credential);
+      driver = new MesosSchedulerDriver(_mesosScheduler, finfo.build(), (String) mesosStormConf.get(CONF_MASTER_URL), credential);
     } else {
-      driver = new MesosSchedulerDriver(_scheduler, finfo.build(), (String) mesosStormConf.get(CONF_MASTER_URL));
+      driver = new MesosSchedulerDriver(_mesosScheduler, finfo.build(), (String) mesosStormConf.get(CONF_MASTER_URL));
     }
 
     return driver;
@@ -354,7 +354,7 @@ public class MesosNimbus implements INimbus {
   public Collection<WorkerSlot> allSlotsAvailableForScheduling(
           Collection<SupervisorDetails> existingSupervisors, Topologies topologies, Set<String> topologiesMissingAssignments) {
     synchronized (_offersLock) {
-      return _mesosStormScheduler.allSlotsAvailableForScheduling(
+      return _stormScheduler.allSlotsAvailableForScheduling(
               _offers,
               existingSupervisors,
               topologies,

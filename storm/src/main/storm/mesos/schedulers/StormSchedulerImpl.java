@@ -41,8 +41,8 @@ import java.util.Set;
 /**
  *  Default Scheduler used by mesos-storm framework.
  */
-public class DefaultScheduler implements IScheduler, IMesosStormScheduler {
-  private final Logger log = LoggerFactory.getLogger(DefaultScheduler.class);
+public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
+  private final Logger log = LoggerFactory.getLogger(StormSchedulerImpl.class);
   private Map mesosStormConf;
   private final Map<String, MesosWorkerSlot> mesosWorkerSlotMap = new HashMap<>();
 
