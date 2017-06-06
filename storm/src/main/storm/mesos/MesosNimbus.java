@@ -64,7 +64,6 @@ import storm.mesos.shims.CommandLineShimFactory;
 import storm.mesos.shims.ICommandLineShim;
 import storm.mesos.shims.LocalStateShim;
 import storm.mesos.util.MesosCommon;
-import storm.mesos.util.RotatingMap;
 import storm.mesos.util.ZKClient;
 
 import java.io.File;
@@ -129,13 +128,14 @@ public class MesosNimbus implements INimbus {
   private NimbusMesosScheduler _mesosScheduler;
   private ZKClient _zkClient;
   private String _logviewerZkDir;
-  volatile SchedulerDriver _driver;
   private Timer _timer = new Timer();
+  protected volatile SchedulerDriver _driver;
+  private volatile boolean _registeredAndInitialized = false;
   private Map mesosStormConf;
   private Set<String> _allowedHosts;
   private Set<String> _disallowedHosts;
   private Optional<Integer> _localFileServerPort;
-  private RotatingMap<OfferID, Offer> _offers;
+  private Map<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
   private IMesosStormScheduler _stormScheduler = null;
 
@@ -152,7 +152,7 @@ public class MesosNimbus implements INimbus {
   }
 
   public MesosNimbus() {
-    this._stormScheduler = new StormSchedulerImpl();
+    // This doesn't do anything since we can't make the scheduler until we've been registered
   }
 
   public static void main(String[] args) {
@@ -170,6 +170,10 @@ public class MesosNimbus implements INimbus {
 
   @Override
   public IScheduler getForcedScheduler() {
+    if (!_registeredAndInitialized) {
+      // Since this scheduler hasn't been initialized, we will return null
+      return null;
+    }
     // TODO: Make it configurable. We should be able to specify the scheduler to use in the storm.yaml
     return (IScheduler) _stormScheduler;
   }
@@ -194,6 +198,8 @@ public class MesosNimbus implements INimbus {
       _mesosScheduler.waitUntilRegistered();
 
       LOG.info("Scheduler registration and initialization complete...");
+
+      _registeredAndInitialized = true;
 
     } catch (Exception e) {
       LOG.error("Failed to prepare scheduler ", e);
@@ -273,38 +279,8 @@ public class MesosNimbus implements INimbus {
 
   public void doRegistration(final SchedulerDriver driver, Protos.FrameworkID id) {
     _driver = driver;
-    _state.put(FRAMEWORK_ID, id.getValue());
-    Number filterSeconds = Optional.fromNullable((Number) mesosStormConf.get(CONF_MESOS_OFFER_FILTER_SECONDS)).or(120);
-    final Protos.Filters filters = Protos.Filters.newBuilder()
-        .setRefuseSeconds(filterSeconds.intValue())
-        .build();
-    _offers = new RotatingMap<>(
-        new RotatingMap.ExpiredCallback<Protos.OfferID, Protos.Offer>() {
-          @Override
-          public void expire(Protos.OfferID key, Protos.Offer val) {
-            driver.declineOffer(
-                val.getId(),
-                filters
-            );
-          }
-        }
-    );
-
-    Number offerExpired = Optional.fromNullable((Number) mesosStormConf.get(Config.NIMBUS_MONITOR_FREQ_SECS)).or(10);
-    Number expiryMultiplier = Optional.fromNullable((Number) mesosStormConf.get(CONF_MESOS_OFFER_EXPIRY_MULTIPLIER)).or(2.5);
-    _timer.scheduleAtFixedRate(new TimerTask() {
-      @Override
-      public void run() {
-        try {
-          synchronized (_offersLock) {
-            _offers.rotate();
-          }
-        } catch (Throwable t) {
-          LOG.error("Received fatal error Halting process...", t);
-          Runtime.getRuntime().halt(2);
-        }
-      }
-    }, 0, Math.round(1000 * expiryMultiplier.doubleValue() * offerExpired.intValue()));
+    // Now that we've set the driver, we can create our scheduler
+    _stormScheduler = new StormSchedulerImpl(_driver);
 
     _timer.scheduleAtFixedRate(new TimerTask() {
       @Override
@@ -316,6 +292,8 @@ public class MesosNimbus implements INimbus {
         LOG.info("Performing tasking reconciliation between scheduler and master");
       }
     }, TASK_RECONCILIATION_INTERVAL, TASK_RECONCILIATION_INTERVAL); // reconciliation performed every 5 minutes
+    _state.put(FRAMEWORK_ID, id.getValue());
+    _offers = new HashMap<Protos.OfferID, Protos.Offer>();
   }
 
   public void shutdown() throws Exception {
@@ -390,6 +368,9 @@ public class MesosNimbus implements INimbus {
   @Override
   public Collection<WorkerSlot> allSlotsAvailableForScheduling(
           Collection<SupervisorDetails> existingSupervisors, Topologies topologies, Set<String> topologiesMissingAssignments) {
+    if (!_registeredAndInitialized) {
+      return new ArrayList<WorkerSlot>();
+    }
     synchronized (_offersLock) {
       if (!_container.isPresent()) {
         launchLogviewer(existingSupervisors);
