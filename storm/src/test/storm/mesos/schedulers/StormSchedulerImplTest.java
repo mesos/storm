@@ -54,10 +54,10 @@ import static storm.mesos.TestUtils.buildOffer;
 import static storm.mesos.TestUtils.buildOfferWithPorts;
 
 @RunWith(MockitoJUnitRunner.class)
-public class DefaultSchedulerTest {
+public class StormSchedulerImplTest {
 
   @Spy
-  private DefaultScheduler defaultScheduler;
+  private StormSchedulerImpl stormSchedulerImpl;
   private Map<String, MesosWorkerSlot> mesosWorkerSlotMap;
 
   private Topologies topologies;
@@ -82,7 +82,7 @@ public class DefaultSchedulerTest {
   }
 
   private void initializeMesosWorkerSlotMap(List<MesosWorkerSlot> mesosWorkerSlots) {
-    mesosWorkerSlotMap = (HashMap<String, MesosWorkerSlot>) (Whitebox.getInternalState(defaultScheduler, "mesosWorkerSlotMap"));
+    mesosWorkerSlotMap = (HashMap<String, MesosWorkerSlot>) (Whitebox.getInternalState(stormSchedulerImpl, "mesosWorkerSlotMap"));
     for (MesosWorkerSlot mesosWorkerSlot: mesosWorkerSlots) {
       mesosWorkerSlotMap.put(String.format("%s:%s", mesosWorkerSlot.getNodeId(), mesosWorkerSlot.getPort()), mesosWorkerSlot);
     }
@@ -145,9 +145,9 @@ public class DefaultSchedulerTest {
 
   @Before
   public void initialize() {
-    defaultScheduler = new DefaultScheduler();
+    stormSchedulerImpl = new StormSchedulerImpl();
     Map<String, Object> mesosStormConf = new HashMap<>();
-    defaultScheduler.prepare(mesosStormConf);
+    stormSchedulerImpl.prepare(mesosStormConf);
 
     rotatingMap = new RotatingMap<>(2);
 
@@ -173,21 +173,21 @@ public class DefaultSchedulerTest {
     /* Offer with no ports but enough memory and cpu*/
     Offer offer = buildOffer("offer1", sampleHost, 10, 20000);
     rotatingMap.put(offer.getId(), offer);
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies, topologiesMissingAssignments);
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies, topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(), 0);
 
 
     /* Offer with no cpu but enough ports and cpu */
     offer = buildOfferWithPorts("offer1", sampleHost, 0.0, 1000, samplePort, samplePort + 1);
     rotatingMap.put(offer.getId(), offer);
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies, topologiesMissingAssignments);
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies, topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(),0);
 
 
     /* Offer with no memory but enough ports and cpu */
     offer = buildOfferWithPorts("offer1", sampleHost, 0.0, 1000, samplePort, samplePort + 1);
     rotatingMap.put(offer.getId(), offer);
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies, topologiesMissingAssignments);
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies, topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(),0);
 
 
@@ -196,7 +196,7 @@ public class DefaultSchedulerTest {
     /* XXX(erikdw): Intentionally disabled until we fix https://github.com/mesos/storm/issues/160
     offer = buildOfferWithPorts("offer1", sampleHost, 0.1, 200, samplePort, samplePort + 1);
     rotatingMap.put(offer.getId(), offer);
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies,
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies,
                                                                                         topologiesMissingAssignments);
     assertEquals(1, workerSlotsAvailableForScheduling.size());
     */
@@ -204,7 +204,7 @@ public class DefaultSchedulerTest {
     /* Case 2 - Supervisor does not exists for topology test-topology1-65-1442255385 on the host */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.example.org", 0.1, 200, samplePort, samplePort + 1);
     rotatingMap.put(offer.getId(), offer);
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies,
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies,
                                                                                         topologiesMissingAssignments);
     assertEquals(0, workerSlotsAvailableForScheduling.size());
 
@@ -212,7 +212,7 @@ public class DefaultSchedulerTest {
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.example.org", 0.1 + MesosCommon.DEFAULT_EXECUTOR_CPU, 200 + MesosCommon.DEFAULT_EXECUTOR_MEM_MB,
                                 3100, 3101);
     rotatingMap.put(offer.getId(), offer);
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies,
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies,
                                                                                         topologiesMissingAssignments);
     assertEquals(1, workerSlotsAvailableForScheduling.size());
 
@@ -222,8 +222,8 @@ public class DefaultSchedulerTest {
     rotatingMap.put(offer.getId(), offer);
     TopologyDetails topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 1);
     topologyMap.put(sampleTopologyId, topologyDetails);
-    defaultScheduler.prepare(topologyDetails.getConf());
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    stormSchedulerImpl.prepare(topologyDetails.getConf());
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(1, workerSlotsAvailableForScheduling.size());
 
@@ -234,8 +234,8 @@ public class DefaultSchedulerTest {
     rotatingMap.put(offer.getId(), offer);
     topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 10);
     topologyMap.put(sampleTopologyId, topologyDetails);
-    defaultScheduler.prepare(topologyDetails.getConf());
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    stormSchedulerImpl.prepare(topologyDetails.getConf());
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(2, workerSlotsAvailableForScheduling.size());
 
@@ -245,8 +245,8 @@ public class DefaultSchedulerTest {
     rotatingMap.put(offer.getId(), offer);
     topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 10);
     topologyMap.put(sampleTopologyId, topologyDetails);
-    defaultScheduler.prepare(topologyDetails.getConf());
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    stormSchedulerImpl.prepare(topologyDetails.getConf());
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(2, workerSlotsAvailableForScheduling.size());
 
@@ -256,8 +256,8 @@ public class DefaultSchedulerTest {
     rotatingMap.put(offer.getId(), offer);
     topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 10);
     topologyMap.put(sampleTopologyId, topologyDetails);
-    defaultScheduler.prepare(topologyDetails.getConf());
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    stormSchedulerImpl.prepare(topologyDetails.getConf());
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(2, workerSlotsAvailableForScheduling.size());
 
@@ -267,8 +267,8 @@ public class DefaultSchedulerTest {
     rotatingMap.put(offer.getId(), offer);
     topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 10);
     topologyMap.put(sampleTopologyId, topologyDetails);
-    defaultScheduler.prepare(topologyDetails.getConf());
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    stormSchedulerImpl.prepare(topologyDetails.getConf());
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(10, workerSlotsAvailableForScheduling.size());
   }
@@ -320,9 +320,9 @@ public class DefaultSchedulerTest {
      *  storm/src/test/storm/mesos/MesosNimbusTest.java:    assertEquals(TestUtils.calculateAllAvailableScalarResources(aggregatedOffersPerNode.get("h1"), ResourceType.MEM), 100f, 0.01f);
      *  storm/src/test/storm/mesos/MesosNimbusTest.java:    offer = TestUtils.buildOffer("O-H1-2", "h1", 3.21, 0);
      *  storm/src/test/storm/mesos/MesosNimbusTest.java:    offer = TestUtils.buildOffer("O-H2-2", "h2", 3.21, 0);
-     *  storm/src/test/storm/mesos/schedulers/DefaultSchedulerTest.java:     * all of this project's tests that have y.x1 (e.g., 0.01, 0.91, etc.).
-     *  storm/src/test/storm/mesos/schedulers/DefaultSchedulerTest.java:    offers.add(buildOffer("offer9", sampleHost, 0.01, 0));
-     *  storm/src/test/storm/mesos/schedulers/DefaultSchedulerTest.java:    offers.add(buildOffer("offer12", sampleHost2, 0.01, 10));
+     *  storm/src/test/storm/mesos/schedulers/StormSchedulerImplTest.java:     * all of this project's tests that have y.x1 (e.g., 0.01, 0.91, etc.).
+     *  storm/src/test/storm/mesos/schedulers/StormSchedulerImplTest.java:    offers.add(buildOffer("offer9", sampleHost, 0.01, 0));
+     *  storm/src/test/storm/mesos/schedulers/StormSchedulerImplTest.java:    offers.add(buildOffer("offer12", sampleHost2, 0.01, 10));
      */
     offers.add(buildOffer("offer9", sampleHost, 0.01, 0));
     offers.add(buildOffer("offer12", sampleHost2, 0.01, 10));
@@ -334,9 +334,9 @@ public class DefaultSchedulerTest {
     topologyMap.clear();
     topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 10);
     topologyMap.put(sampleTopologyId, topologyDetails);
-    defaultScheduler.prepare(topologyDetails.getConf());
+    stormSchedulerImpl.prepare(topologyDetails.getConf());
 
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(5, workerSlotsAvailableForScheduling.size());
 
@@ -348,9 +348,9 @@ public class DefaultSchedulerTest {
     topologyMap.clear();
     topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 10);
     topologyMap.put(sampleTopologyId, topologyDetails);
-    defaultScheduler.prepare(topologyDetails.getConf());
+    stormSchedulerImpl.prepare(topologyDetails.getConf());
 
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(), 3);
 
@@ -360,7 +360,7 @@ public class DefaultSchedulerTest {
     offer = buildOffer("offer7", sampleHost, 3 * DEFAULT_WORKER_CPU, 0);
     rotatingMap.put(offer.getId(), offer);
 
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors,
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors,
                                                                                         new Topologies(topologyMap), topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(), 4);
 
@@ -372,7 +372,7 @@ public class DefaultSchedulerTest {
     offer = buildOffer("offer8", sampleHost, 0, 2 * DEFAULT_WORKER_MEM);
     rotatingMap.put(offer.getId(), offer);
 
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors,
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors,
                                                                                         new Topologies(topologyMap), topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(), 3);
 
@@ -387,7 +387,7 @@ public class DefaultSchedulerTest {
     offers.add(buildOfferWithPorts("offer9", sampleHost2, 0, 0, samplePort, samplePort + 10));
     addToRotatingMap(offers);
 
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors,
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors,
                                                                                         new Topologies(topologyMap), topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(), 10);
   }
@@ -405,7 +405,7 @@ public class DefaultSchedulerTest {
     topologyMap.clear();
     topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 10);
     topologyMap.put(sampleTopologyId, topologyDetails);
-    defaultScheduler.prepare(topologyDetails.getConf());
+    stormSchedulerImpl.prepare(topologyDetails.getConf());
 
     /* 10 worker slots are available but offers are fragmented on one host */
     List<Offer> offers = new ArrayList<>();
@@ -417,7 +417,7 @@ public class DefaultSchedulerTest {
 
 
     // Make sure that the obtained worker slots are evenly spread across the available resources
-    workerSlotsAvailableForScheduling = defaultScheduler.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
 
     Integer[] expectedWorkerCountPerHost = {3, 3, 1, 3};
@@ -445,7 +445,7 @@ public class DefaultSchedulerTest {
     doReturn(workerSlotList).when(spyCluster).getAvailableSlots();
     doReturn(executorsToAssign).when(spyCluster).getUnassignedExecutors(any(TopologyDetails.class));
 
-    defaultScheduler.schedule(topologies, spyCluster);
+    stormSchedulerImpl.schedule(topologies, spyCluster);
 
     Set<ExecutorDetails> assignedExecutors = spyCluster.getAssignmentById(sampleTopologyId).getExecutors();
     assertEquals(executorsToAssign, assignedExecutors);
@@ -454,7 +454,7 @@ public class DefaultSchedulerTest {
   @Test
   public void testScheduleWithMultipleSlotsOnSameHost() {
     Cluster spyCluster = this.getSpyCluster(3, 3);
-    defaultScheduler.schedule(topologies, spyCluster);
+    stormSchedulerImpl.schedule(topologies, spyCluster);
     SchedulerAssignment schedulerAssignment = spyCluster.getAssignments()
                                                          .get(sampleTopologyId);
     Map<ExecutorDetails, WorkerSlot> executorDetailsWorkerSlotMap = schedulerAssignment.getExecutorToSlot();
@@ -464,7 +464,7 @@ public class DefaultSchedulerTest {
     assertEquals(executorDetailsWorkerSlotMap.values().size(), 3);
 
     spyCluster = this.getSpyCluster(3, 6);
-    defaultScheduler.schedule(topologies, spyCluster);
+    stormSchedulerImpl.schedule(topologies, spyCluster);
     executorDetailsWorkerSlotMap = spyCluster.getAssignments()
                                               .get(sampleTopologyId)
                                               .getExecutorToSlot();
