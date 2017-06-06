@@ -57,7 +57,7 @@ import storm.mesos.resources.ResourceEntries.ScalarResourceEntry;
 import storm.mesos.resources.ResourceEntry;
 import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.resources.ResourceType;
-import storm.mesos.schedulers.DefaultScheduler;
+import storm.mesos.schedulers.StormSchedulerImpl;
 import storm.mesos.schedulers.IMesosStormScheduler;
 import storm.mesos.shims.CommandLineShimFactory;
 import storm.mesos.shims.ICommandLineShim;
@@ -116,7 +116,7 @@ public class MesosNimbus implements INimbus {
   private final Object _offersLock = new Object();
   protected java.net.URI _configUrl;
   private LocalStateShim _state;
-  private NimbusScheduler _scheduler;
+  private NimbusMesosScheduler _scheduler;
   volatile SchedulerDriver _driver;
   private Timer _timer = new Timer();
   private Map mesosStormConf;
@@ -140,7 +140,7 @@ public class MesosNimbus implements INimbus {
   }
 
   public MesosNimbus() {
-    this._mesosStormScheduler = new DefaultScheduler();
+    this._mesosStormScheduler = new StormSchedulerImpl();
   }
 
   public static void main(String[] args) {
@@ -208,7 +208,7 @@ public class MesosNimbus implements INimbus {
     }
 
     _container = Optional.fromNullable((String) conf.get(CONF_MESOS_CONTAINER_DOCKER_IMAGE));
-    _scheduler = new NimbusScheduler(this);
+    _scheduler = new NimbusMesosScheduler(this);
 
     // Generate YAML to be served up to clients
     _generatedConfPath = Paths.get(
