@@ -17,15 +17,22 @@
  */
 package storm.mesos.schedulers;
 
-import backtype.storm.scheduler.*;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.mesos.Protos;
+import org.apache.mesos.SchedulerDriver;
+import backtype.storm.scheduler.Cluster;
+import backtype.storm.scheduler.ExecutorDetails;
+import backtype.storm.scheduler.IScheduler;
+import backtype.storm.scheduler.SchedulerAssignment;
+import backtype.storm.scheduler.SupervisorDetails;
+import backtype.storm.scheduler.Topologies;
+import backtype.storm.scheduler.TopologyDetails;
+import backtype.storm.scheduler.WorkerSlot;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.mesos.resources.AggregatedOffers;
 import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.util.MesosCommon;
-import storm.mesos.util.RotatingMap;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -45,6 +52,16 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
   private final Logger log = LoggerFactory.getLogger(StormSchedulerImpl.class);
   private Map mesosStormConf;
   private final Map<String, MesosWorkerSlot> mesosWorkerSlotMap = new HashMap<>();
+  private volatile boolean offersSuppressed = false;
+  private SchedulerDriver driver;
+
+  private StormSchedulerImpl() {
+    // We make this constructor private so that calling it results in a compile time error
+  }
+
+  public StormSchedulerImpl(final SchedulerDriver driver) {
+    this.driver = driver;
+  }
 
   @Override
   public void prepare(Map conf) {
@@ -127,13 +144,30 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
    *    passes a recreated version of WorkerSlot to schedule method instead of passing the WorkerSlot returned by this method as is.
     */
   @Override
-  public List<WorkerSlot> allSlotsAvailableForScheduling(RotatingMap<Protos.OfferID, Protos.Offer> offers,
+  public List<WorkerSlot> allSlotsAvailableForScheduling(Map<Protos.OfferID, Protos.Offer> offers,
                                                          Collection<SupervisorDetails> existingSupervisors,
                                                          Topologies topologies, Set<String> topologiesMissingAssignments) {
     if (topologiesMissingAssignments.isEmpty()) {
       log.info("Declining all offers that are currently buffered because no topologies need assignments");
-      // TODO(ksoundararaj): Do we need to clear offers not that consolidate resources?
+      for (Protos.OfferID offerId : offers.keySet()) {
+        driver.declineOffer(offerId);
+      }
       offers.clear();
+      // Since we don't have any topologies that need assignments, we will suppress Offers from Mesos as we do not need more
+      if (!offersSuppressed) {
+        driver.suppressOffers();
+        offersSuppressed = true;
+      }
+      return new ArrayList<>();
+    }
+
+    if (offers.isEmpty()) {
+      if (offersSuppressed) {
+        // Since we had previously suppressed Offers, and we now have topologies needing assignment, we will revive offers from Mesos
+        driver.reviveOffers();
+        offersSuppressed = false;
+      }
+      // Note: We still have the offersLock at this point, so we return the empty ArrayList so that we can release the lock and acquire new offers
       return new ArrayList<>();
     }
 
