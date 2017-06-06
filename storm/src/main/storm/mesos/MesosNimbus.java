@@ -116,7 +116,7 @@ public class MesosNimbus implements INimbus {
   private final Object _offersLock = new Object();
   protected java.net.URI _configUrl;
   private LocalStateShim _state;
-  private NimbusMesosScheduler _scheduler;
+  private NimbusMesosScheduler _mesosScheduler;
   volatile SchedulerDriver _driver;
   private Timer _timer = new Timer();
   private Map mesosStormConf;
@@ -179,7 +179,7 @@ public class MesosNimbus implements INimbus {
 
       LOG.info("Waiting for scheduler driver to register MesosNimbus with mesos-master and complete initialization...");
 
-      _scheduler.waitUntilRegistered();
+      _mesosScheduler.waitUntilRegistered();
 
       LOG.info("Scheduler registration and initialization complete...");
 
@@ -208,7 +208,7 @@ public class MesosNimbus implements INimbus {
     }
 
     _container = Optional.fromNullable((String) conf.get(CONF_MESOS_CONTAINER_DOCKER_IMAGE));
-    _scheduler = new NimbusMesosScheduler(this);
+    _mesosScheduler = new NimbusMesosScheduler(this);
 
     // Generate YAML to be served up to clients
     _generatedConfPath = Paths.get(
@@ -330,9 +330,9 @@ public class MesosNimbus implements INimbus {
     LOG.info(String.format("Registering framework with role '%s'", finfo.getRole()));
 
     if ((credential = getCredential(finfo)) != null) {
-      driver = new MesosSchedulerDriver(_scheduler, finfo.build(), (String) mesosStormConf.get(CONF_MASTER_URL), credential);
+      driver = new MesosSchedulerDriver(_mesosScheduler, finfo.build(), (String) mesosStormConf.get(CONF_MASTER_URL), credential);
     } else {
-      driver = new MesosSchedulerDriver(_scheduler, finfo.build(), (String) mesosStormConf.get(CONF_MASTER_URL));
+      driver = new MesosSchedulerDriver(_mesosScheduler, finfo.build(), (String) mesosStormConf.get(CONF_MASTER_URL));
     }
 
     return driver;
