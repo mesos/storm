@@ -150,10 +150,11 @@ public class MesosCommonTest {
 
   @Test
   public void testSupervisorId() throws Exception {
+    String frameworkName = "Storm!!!";
     String nodeid = "nodeID1";
     String topologyid = "t1";
-    String result = MesosCommon.supervisorId(nodeid, topologyid);
-    String expectedResult = nodeid + "-" + topologyid;
+    String result = MesosCommon.supervisorId(frameworkName, nodeid, topologyid);
+    String expectedResult = frameworkName + "|" + nodeid + "|" + topologyid;
     assertEquals(result, expectedResult);
   }
 
