@@ -129,7 +129,7 @@ public class PrettyProtobuf {
    * TODO:(erikdw): figure out a design better that removes the need
    * for external callers to lock before calling this method.
    */
-  public static String offerMapToString(RotatingMap<OfferID, Offer> offers) {
+  public static String offerMapToString(Map<OfferID, Offer> offers) {
     List<String> offersAsStrings = Lists.transform(new ArrayList<Offer>(offers.values()),
                                                    offerToStringTransform);
     return String.format("[\n%s]", StringUtils.join(offersAsStrings, ",\n"));
