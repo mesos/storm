@@ -163,10 +163,6 @@ For local development and familiarizing yourself with Storm/Mesos, please see th
 * `mesos.disallowed.hosts`: Disallowed hosts to run topology, which takes hostname list as a back list.
 * `mesos.framework.role`: Framework role to use. Defaults to "*".
 * `mesos.framework.checkpoint`: Enabled framework checkpoint or not. Defaults to false.
-* `mesos.offer.lru.cache.size`: LRU cache size. Defaults to "1000".
-* `mesos.offer.filter.seconds`: Number of seconds to filter unused Mesos offers. These offers may be revived by
-  the framework when needed. Defaults to "120".
-* `mesos.offer.expiry.multiplier`: Offer expiry multiplier for `nimbus.monitor.freq.secs`. Defaults to "2.5".
 * `mesos.local.file.server.port`: Port for the local file server to bind to. Defaults to a random port.
 * `mesos.framework.name`: Framework name. Defaults to "Storm!!!".
 * `mesos.framework.user`: Framework user to run with Mesos. Defaults to user to run with Storm on Mesos.

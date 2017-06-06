@@ -104,8 +104,6 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_SECRET_FILE = "mesos.framework.secret.file";
 
   public static final String CONF_MESOS_CHECKPOINT = "mesos.framework.checkpoint";
-  public static final String CONF_MESOS_OFFER_FILTER_SECONDS = "mesos.offer.filter.seconds";
-  public static final String CONF_MESOS_OFFER_EXPIRY_MULTIPLIER = "mesos.offer.expiry.multiplier";
   public static final String CONF_MESOS_LOCAL_FILE_SERVER_PORT = "mesos.local.file.server.port";
   public static final String CONF_MESOS_FRAMEWORK_NAME = "mesos.framework.name";
   public static final String CONF_MESOS_FRAMEWORK_USER = "mesos.framework.user";
