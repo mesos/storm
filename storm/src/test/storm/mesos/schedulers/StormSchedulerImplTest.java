@@ -27,6 +27,7 @@ import org.apache.storm.scheduler.TopologyDetails;
 import org.apache.storm.scheduler.WorkerSlot;
 import org.apache.mesos.Protos.Offer;
 import org.apache.mesos.Protos.OfferID;
+import org.apache.mesos.SchedulerDriver;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -35,7 +36,6 @@ import org.mockito.internal.util.reflection.Whitebox;
 import org.mockito.runners.MockitoJUnitRunner;
 import storm.mesos.TestUtils;
 import storm.mesos.util.MesosCommon;
-import storm.mesos.util.RotatingMap;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -61,10 +61,11 @@ public class StormSchedulerImplTest {
   private Map<String, MesosWorkerSlot> mesosWorkerSlotMap;
 
   private Topologies topologies;
-  private RotatingMap<OfferID, Offer> rotatingMap;
+  private Map<OfferID, Offer> map;
   private Set<String> topologiesMissingAssignments;
   private Map<String, TopologyDetails> topologyMap;
   private Collection<SupervisorDetails> existingSupervisors;
+  private SchedulerDriver driver;
   private final String sampleTopologyId = "test-topology1-65-1442255385";
   private final String sampleHost = "host1.example.org";
   private final int samplePort = 3100;
@@ -145,11 +146,12 @@ public class StormSchedulerImplTest {
 
   @Before
   public void initialize() {
-    stormSchedulerImpl = new StormSchedulerImpl();
+    driver = null;
+    stormSchedulerImpl = new StormSchedulerImpl(driver);
     Map<String, Object> mesosStormConf = new HashMap<>();
     stormSchedulerImpl.prepare(mesosStormConf);
 
-    rotatingMap = new RotatingMap<>(2);
+    map = new HashMap<OfferID, Offer>();
 
     topologiesMissingAssignments = new HashSet<>();
     topologiesMissingAssignments.add("test-topology1-65-1442255385");
@@ -172,22 +174,22 @@ public class StormSchedulerImplTest {
 
     /* Offer with no ports but enough memory and cpu*/
     Offer offer = buildOffer("offer1", sampleHost, 10, 20000);
-    rotatingMap.put(offer.getId(), offer);
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies, topologiesMissingAssignments);
+    map.put(offer.getId(), offer);
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, topologies, topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(), 0);
 
 
     /* Offer with no cpu but enough ports and cpu */
     offer = buildOfferWithPorts("offer1", sampleHost, 0.0, 1000, samplePort, samplePort + 1);
-    rotatingMap.put(offer.getId(), offer);
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies, topologiesMissingAssignments);
+    map.put(offer.getId(), offer);
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, topologies, topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(),0);
 
 
     /* Offer with no memory but enough ports and cpu */
     offer = buildOfferWithPorts("offer1", sampleHost, 0.0, 1000, samplePort, samplePort + 1);
-    rotatingMap.put(offer.getId(), offer);
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies, topologiesMissingAssignments);
+    map.put(offer.getId(), offer);
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, topologies, topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(),0);
 
 
@@ -195,35 +197,35 @@ public class StormSchedulerImplTest {
     /* Case 1 - Supervisor exists for topology test-topology1-65-1442255385 on the host */
     /* XXX(erikdw): Intentionally disabled until we fix https://github.com/mesos/storm/issues/160
     offer = buildOfferWithPorts("offer1", sampleHost, 0.1, 200, samplePort, samplePort + 1);
-    rotatingMap.put(offer.getId(), offer);
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies,
+    map.put(offer.getId(), offer);
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, topologies,
                                                                                         topologiesMissingAssignments);
     assertEquals(1, workerSlotsAvailableForScheduling.size());
     */
 
     /* Case 2 - Supervisor does not exists for topology test-topology1-65-1442255385 on the host */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.example.org", 0.1, 200, samplePort, samplePort + 1);
-    rotatingMap.put(offer.getId(), offer);
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies,
+    map.put(offer.getId(), offer);
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, topologies,
                                                                                         topologiesMissingAssignments);
     assertEquals(0, workerSlotsAvailableForScheduling.size());
 
     /* Case 3 - Supervisor exists for topology test-topology1-65-1442255385 on the host & offer has additional resources for supervisor */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.example.org", 0.1 + MesosCommon.DEFAULT_EXECUTOR_CPU, 200 + MesosCommon.DEFAULT_EXECUTOR_MEM_MB,
                                 3100, 3101);
-    rotatingMap.put(offer.getId(), offer);
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, topologies,
+    map.put(offer.getId(), offer);
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, topologies,
                                                                                         topologiesMissingAssignments);
     assertEquals(1, workerSlotsAvailableForScheduling.size());
 
     /* Test default values for worker cpu and memory - This is to make sure that we account for default worker cpu and memory when the user does not pass MesosCommon.DEFAULT_WORKER_CPU && MesosCommon.DEFAULT_WORKER_MEM  */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.example.org", MesosCommon.DEFAULT_WORKER_CPU + MesosCommon.DEFAULT_EXECUTOR_CPU,
                                 MesosCommon.DEFAULT_WORKER_MEM_MB + MesosCommon.DEFAULT_EXECUTOR_MEM_MB, samplePort, samplePort + 1);
-    rotatingMap.put(offer.getId(), offer);
+    map.put(offer.getId(), offer);
     TopologyDetails topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 1);
     topologyMap.put(sampleTopologyId, topologyDetails);
     stormSchedulerImpl.prepare(topologyDetails.getConf());
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(1, workerSlotsAvailableForScheduling.size());
 
@@ -231,51 +233,51 @@ public class StormSchedulerImplTest {
     /* More than 1 worker slot is required - Plenty of memory & cpu is available, only two ports are available */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.example.org", 10 * MesosCommon.DEFAULT_WORKER_CPU + MesosCommon.DEFAULT_EXECUTOR_CPU,
                                 10 * MesosCommon.DEFAULT_WORKER_MEM_MB + MesosCommon.DEFAULT_EXECUTOR_MEM_MB, samplePort, samplePort + 1);
-    rotatingMap.put(offer.getId(), offer);
+    map.put(offer.getId(), offer);
     topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 10);
     topologyMap.put(sampleTopologyId, topologyDetails);
     stormSchedulerImpl.prepare(topologyDetails.getConf());
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(2, workerSlotsAvailableForScheduling.size());
 
     /* More than 1 worker slot is required - Plenty of ports & cpu is available, but memory is available for only two workers */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.example.org", 10 * MesosCommon.DEFAULT_WORKER_CPU + MesosCommon.DEFAULT_EXECUTOR_CPU,
                                 2 * MesosCommon.DEFAULT_WORKER_MEM_MB + MesosCommon.DEFAULT_EXECUTOR_MEM_MB, samplePort, samplePort + 1);
-    rotatingMap.put(offer.getId(), offer);
+    map.put(offer.getId(), offer);
     topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 10);
     topologyMap.put(sampleTopologyId, topologyDetails);
     stormSchedulerImpl.prepare(topologyDetails.getConf());
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(2, workerSlotsAvailableForScheduling.size());
 
     /* More than 1 worker slot is required - Plenty of ports & memory are available, but cpu is available for only two workers */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.example.org", 2 * MesosCommon.DEFAULT_WORKER_CPU + MesosCommon.DEFAULT_EXECUTOR_CPU,
                                 10 * MesosCommon.DEFAULT_WORKER_MEM_MB + MesosCommon.DEFAULT_EXECUTOR_MEM_MB, samplePort, samplePort + 100);
-    rotatingMap.put(offer.getId(), offer);
+    map.put(offer.getId(), offer);
     topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 10);
     topologyMap.put(sampleTopologyId, topologyDetails);
     stormSchedulerImpl.prepare(topologyDetails.getConf());
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(2, workerSlotsAvailableForScheduling.size());
 
     /* 10 worker slots are required - Plenty of cpu, memory & ports are available */
     offer = buildOfferWithPorts("offer1", "host-without-supervisor.example.org", 20 * MesosCommon.DEFAULT_WORKER_CPU + MesosCommon.DEFAULT_EXECUTOR_CPU,
                                 20 * MesosCommon.DEFAULT_WORKER_MEM_MB + MesosCommon.DEFAULT_EXECUTOR_MEM_MB, samplePort, samplePort + 100);
-    rotatingMap.put(offer.getId(), offer);
+    map.put(offer.getId(), offer);
     topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 10);
     topologyMap.put(sampleTopologyId, topologyDetails);
     stormSchedulerImpl.prepare(topologyDetails.getConf());
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(10, workerSlotsAvailableForScheduling.size());
   }
 
-  private void addToRotatingMap(List<Offer> offers) {
+  private void addToMap(List<Offer> offers) {
      for (Offer offer:offers) {
-       rotatingMap.put(offer.getId(), offer);
+       map.put(offer.getId(), offer);
      }
   }
 
@@ -327,7 +329,7 @@ public class StormSchedulerImplTest {
     offers.add(buildOffer("offer9", sampleHost, 0.01, 0));
     offers.add(buildOffer("offer12", sampleHost2, 0.01, 10));
 
-    addToRotatingMap(offers);
+    addToMap(offers);
 
     // sampleHost  - We have enough resources for 4 workers
     // sampleHost2 - We have enough resources for 1 worker
@@ -336,43 +338,43 @@ public class StormSchedulerImplTest {
     topologyMap.put(sampleTopologyId, topologyDetails);
     stormSchedulerImpl.prepare(topologyDetails.getConf());
 
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(5, workerSlotsAvailableForScheduling.size());
 
     // Scenario : Cpu & Mem are available for 5 workers but ports are available only for 3 workers.
     // Reduce the number of ports on sampleHost to 2
     offer = buildOfferWithPorts("offer6", sampleHost, 0, 0, samplePort, samplePort + 1);
-    rotatingMap.put(offer.getId(), offer);
+    map.put(offer.getId(), offer);
     // We now only have resources for 3 workers
     topologyMap.clear();
     topologyDetails = TestUtils.constructTopologyDetails(sampleTopologyId, 10);
     topologyMap.put(sampleTopologyId, topologyDetails);
     stormSchedulerImpl.prepare(topologyDetails.getConf());
 
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(), 3);
 
     // Scenario:  Mem & Ports are available for 5 workers but cpu is available only for 3 workers.
     offer = buildOfferWithPorts("offer6", sampleHost, 0, 0, samplePort, samplePort + 5);
-    rotatingMap.put(offer.getId(), offer);
+    map.put(offer.getId(), offer);
     offer = buildOffer("offer7", sampleHost, 3 * DEFAULT_WORKER_CPU, 0);
-    rotatingMap.put(offer.getId(), offer);
+    map.put(offer.getId(), offer);
 
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors,
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors,
                                                                                         new Topologies(topologyMap), topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(), 4);
 
     // Scenario:  Cpu & Ports are available for 5 workers but Mem is available only for 3 workers.
     offer = buildOfferWithPorts("offer6", sampleHost, 0, 0, samplePort, samplePort + 5);
-    rotatingMap.put(offer.getId(), offer);
+    map.put(offer.getId(), offer);
     offer = buildOffer("offer7", sampleHost, 4 * DEFAULT_WORKER_CPU, 0);
-    rotatingMap.put(offer.getId(), offer);
+    map.put(offer.getId(), offer);
     offer = buildOffer("offer8", sampleHost, 0, 2 * DEFAULT_WORKER_MEM);
-    rotatingMap.put(offer.getId(), offer);
+    map.put(offer.getId(), offer);
 
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors,
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors,
                                                                                         new Topologies(topologyMap), topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(), 3);
 
@@ -385,9 +387,9 @@ public class StormSchedulerImplTest {
     offers.add(buildOffer("offer3", sampleHost2, 10 * DEFAULT_WORKER_CPU + DEFAULT_EXECUTOR_CPU, 0));
     offers.add(buildOffer("offer4", sampleHost2, 0, 10 * DEFAULT_WORKER_MEM + DEFAULT_EXECUTOR_MEM));
     offers.add(buildOfferWithPorts("offer9", sampleHost2, 0, 0, samplePort, samplePort + 10));
-    addToRotatingMap(offers);
+    addToMap(offers);
 
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors,
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors,
                                                                                         new Topologies(topologyMap), topologiesMissingAssignments);
     assertEquals(workerSlotsAvailableForScheduling.size(), 10);
   }
@@ -413,11 +415,11 @@ public class StormSchedulerImplTest {
     offers.add(buildOfferWithPorts("offer2", "1", 10 * DEFAULT_WORKER_CPU + DEFAULT_WORKER_CPU, 10 * DEFAULT_WORKER_MEM + DEFAULT_EXECUTOR_MEM, samplePort, samplePort + 1000));
     offers.add(buildOfferWithPorts("offer3", "2", 1 * DEFAULT_WORKER_CPU + DEFAULT_WORKER_CPU, 10 * DEFAULT_WORKER_MEM + DEFAULT_EXECUTOR_MEM, samplePort, samplePort + 1000));
     offers.add(buildOfferWithPorts("offer4", "3", 10 * DEFAULT_WORKER_CPU + DEFAULT_WORKER_CPU, 10 * DEFAULT_WORKER_MEM + DEFAULT_EXECUTOR_MEM, samplePort, samplePort + 1000));
-    addToRotatingMap(offers);
+    addToMap(offers);
 
 
     // Make sure that the obtained worker slots are evenly spread across the available resources
-    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(rotatingMap, existingSupervisors, new Topologies(topologyMap),
+    workerSlotsAvailableForScheduling = stormSchedulerImpl.allSlotsAvailableForScheduling(map, existingSupervisors, new Topologies(topologyMap),
                                                                                         topologiesMissingAssignments);
 
     Integer[] expectedWorkerCountPerHost = {3, 3, 1, 3};

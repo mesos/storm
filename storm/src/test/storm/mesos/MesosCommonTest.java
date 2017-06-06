@@ -26,7 +26,6 @@ import storm.mesos.resources.AggregatedOffers;
 import storm.mesos.resources.ReservationType;
 import storm.mesos.resources.ResourceType;
 import storm.mesos.util.MesosCommon;
-import storm.mesos.util.RotatingMap;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -338,7 +337,7 @@ public class MesosCommonTest {
 
   @Test
   public void aggregatedOffersPerNode() {
-    RotatingMap<Protos.OfferID, Protos.Offer> r = new RotatingMap(2);
+    Map<Protos.OfferID, Protos.Offer> r = new HashMap<Protos.OfferID, Protos.Offer>();
     Protos.Offer offer = TestUtils.buildOffer("0-1", "h1", 0, 0);
     r.put(offer.getId(), offer);
     offer = TestUtils.buildOffer("0-2", "h1", 10, 1000);
