@@ -37,6 +37,8 @@ import storm.mesos.resources.AggregatedOffers;
 import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.util.MesosCommon;
 
+import static storm.mesos.util.PrettyProtobuf.offerMapKeySetToString;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -151,30 +153,33 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
                                                          Collection<SupervisorDetails> existingSupervisors,
                                                          Topologies topologies, Set<String> topologiesMissingAssignments) {
     if (topologiesMissingAssignments.isEmpty()) {
-      log.info("Declining all offers that are currently buffered because no topologies need assignments");
-      for (Protos.OfferID offerId : offers.keySet()) {
-        driver.declineOffer(offerId);
+      if (!offers.isEmpty()) {
+        log.info("Declining all offers that are currently buffered because no topologies need assignments. Declined offer ids: {}", offerMapKeySetToString(offers));
+        for (Protos.OfferID offerId : offers.keySet()) {
+          driver.declineOffer(offerId);
+        }
+        offers.clear();
       }
-      offers.clear();
-      // Since we don't have any topologies that need assignments, we will suppress Offers from Mesos as we do not need more
       if (!offersSuppressed) {
+        log.info("Suppressing offers since we don't have any topologies that need assignments.");
         driver.suppressOffers();
         offersSuppressed = true;
       }
       return new ArrayList<>();
     }
 
+    log.info("Topologies that need assignments: {}", topologiesMissingAssignments.toString());
+
     if (offers.isEmpty()) {
       if (offersSuppressed) {
-        // Since we had previously suppressed Offers, and we now have topologies needing assignment, we will revive offers from Mesos
+        log.info("There are no offers available to make slots on, so we are reviving suppressed offers since we now have topologies " +
+                 "that need assignments.");
         driver.reviveOffers();
         offersSuppressed = false;
       }
       // Note: We still have the offersLock at this point, so we return the empty ArrayList so that we can release the lock and acquire new offers
       return new ArrayList<>();
     }
-
-    log.info("Topologies that need assignments: {}", topologiesMissingAssignments.toString());
 
     List<WorkerSlot> allSlots = new ArrayList<>();
     Map<String, AggregatedOffers> aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(offers);
@@ -245,12 +250,14 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
     if (slotsRequested == slotsAssigned) {
       if (executors.isEmpty()) {
         // TODO: print executors list cleanly in a single line
-        String msg = String.format("executorsPerWorkerList: for %s, slotsRequested: %d == slotsAssigned: %d, BUT there are unassigned executors which is nonsensical",
-                                   topologyId, slotsRequested, slotsAssigned);
+        String msg = String.format("executorsPerWorkerList: for %s, slotsRequested: %d == slotsAssigned: %d, BUT there are " +
+                     "unassigned executors which is nonsensical",
+                     topologyId, slotsRequested, slotsAssigned);
         log.error(msg);
         throw new RuntimeException(msg);
       }
-      log.debug("executorsPerWorkerList: for {}, slotsRequested: {} == slotsAssigned: {}, so no need to schedule any executors", topologyId, slotsRequested, slotsAssigned);
+      log.debug("executorsPerWorkerList: for {}, slotsRequested: {} == slotsAssigned: {}, so no need to schedule any executors",
+                topologyId, slotsRequested, slotsAssigned);
       return null;
     }
 
@@ -265,11 +272,13 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
         // Un-assign them
         int slotsFreed = schedulerAssignment.getSlots().size();
         cluster.freeSlots(schedulerAssignment.getSlots());
-        log.info("executorsPerWorkerList: for {}, slotsAvailable: {}, slotsAssigned: {}, slotsFreed: {}", topologyId, slotsAvailable, slotsAssigned, slotsFreed);
+        log.info("executorsPerWorkerList: for {}, slotsAvailable: {}, slotsAssigned: {}, slotsFreed: {}",
+                 topologyId, slotsAvailable, slotsAssigned, slotsFreed);
         executors = cluster.getUnassignedExecutors(topologyDetails);
         slotsToUse = slotsAvailable;
       } else {
-        log.info("All executors are already assigned for {}. Not going to redistribute work because slotsAvailable is {} and slotsAssigned is {}", topologyId, slotsAvailable, slotsAssigned);
+        log.info("All executors are already assigned for {}. Not going to redistribute work because slotsAvailable is {} and slotsAssigned is {}",
+                 topologyId, slotsAvailable, slotsAssigned);
         return null;
       }
     } else {
@@ -347,6 +356,10 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
     log.info(info);
 
     Map<String, List<MesosWorkerSlot>> perTopologySlotList = getMesosWorkerSlotPerTopology(workerSlots);
+    if (perTopologySlotList.isEmpty()) {
+      log.info("No slots for any topologies, scheduling completed");
+      return;
+    }
     info = "Schedule the per-topology slots:";
     for (String topo : perTopologySlotList.keySet()) {
       List<String> mwsAssignments = new ArrayList<>();
