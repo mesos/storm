@@ -136,6 +136,25 @@ public class PrettyProtobuf {
   }
 
   /**
+   * Pretty-print the key set of the Offer map used in MesosNimbus.
+   * <p/>
+   * Callers must ensure they have locked the Map first, else they could
+   * have inconsistent output since the _offers map is touched from both
+   * mesos-driven events and storm-driven calls.
+   * <p/>
+   * TODO:(erikdw): implement same fix as required for offerMapToString.
+   */
+  public static String offerMapKeySetToString(Map<OfferID, Offer> offers) {
+    ArrayList<String> offerIdList = new ArrayList<String>();
+    for (OfferID offerId : offers.keySet()) {
+      offerIdList.add(offerId.getValue());
+    }
+    return String.format("[%s]", StringUtils.join(offerIdList, ", "));
+  }
+
+
+
+  /**
    * Wrapper around offerToString which allows using gauva's transform utility.
    */
   private static Function<Offer, String> offerToStringTransform =
