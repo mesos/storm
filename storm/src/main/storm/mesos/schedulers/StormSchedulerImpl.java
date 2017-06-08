@@ -161,7 +161,7 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
         offers.clear();
       }
       if (!offersSuppressed) {
-        log.info("Suppressing offers since we don't have any topologies that need assignments.");
+        log.info("(SUPPRESS OFFERS) We don't have any topologies that need assignments, but offers are still flowing. Suppressing offers.");
         driver.suppressOffers();
         offersSuppressed = true;
       }
@@ -172,8 +172,7 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
 
     if (offers.isEmpty()) {
       if (offersSuppressed) {
-        log.info("There are no offers available to make slots on, so we are reviving suppressed offers since we now have topologies " +
-                 "that need assignments.");
+        log.info("(REVIVE OFFERS) We have topologies that need assignments, but offers are currently suppressed. Reviving offers.");
         driver.reviveOffers();
         offersSuppressed = false;
       }
@@ -343,21 +342,20 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
   @Override
   public void schedule(Topologies topologies, Cluster cluster) {
     List<WorkerSlot> workerSlots = cluster.getAvailableSlots();
-    String info = "Scheduling the following worker slots from cluster.getAvailableSlots: ";
-    if (workerSlots.isEmpty()) {
-      info += "[]";
-    } else {
+    String info = "";
+
+    if (!workerSlots.isEmpty()) {
+      info = "Scheduling the following worker slots from cluster.getAvailableSlots: ";
       List<String> workerSlotsStrings = new ArrayList<String>();
       for (WorkerSlot ws : workerSlots) {
         workerSlotsStrings.add(ws.toString());
       }
       info += String.format("[%s]", StringUtils.join(workerSlotsStrings, ", "));
+      log.info(info);
     }
-    log.info(info);
 
     Map<String, List<MesosWorkerSlot>> perTopologySlotList = getMesosWorkerSlotPerTopology(workerSlots);
     if (perTopologySlotList.isEmpty()) {
-      log.info("No slots for any topologies, scheduling completed");
       return;
     }
     info = "Schedule the per-topology slots:";
