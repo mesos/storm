@@ -66,7 +66,6 @@ public class ZKClientTest {
   @Test
   public void testCreateNodeGetDataThenDelete() {
     boolean success = false;
-    String pathName = "/test4";
     String initialString = "test";
 
     success = target.createNode(pathName, initialString);
