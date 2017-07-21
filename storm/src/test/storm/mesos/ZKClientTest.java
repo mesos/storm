@@ -34,64 +34,69 @@ public class ZKClientTest {
   @Test
   public void testCreateNodeThenDelete() {
     boolean success = false;
+    String pathName = "/test1";
 
-    success = target.createNode("/test1");
+    success = target.createNode(pathName);
     assertTrue("Couldn't create node", success);
 
-    target.deleteNode("/test1");
-    assertFalse("Node unsuccessfully deleted", target.nodeExists("/test1"));
+    target.deleteNode(pathName);
+    assertFalse("Node unsuccessfully deleted", target.nodeExists(pathName));
   }
 
   @Test
   public void testCreateNodeCheckExistenceThenDelete() {
     boolean success = false;
+    String pathName = "/test2";
 
-    success = target.createNode("/test2");
+    success = target.createNode(pathName);
     assertTrue("Couldn't create node", success);
 
-    assertTrue("Node created but doesn't exist", target.nodeExists("/test2"));
+    assertTrue("Node created but doesn't exist", target.nodeExists(pathName));
 
-    target.deleteNode("/test2");
-    assertFalse("Node unsuccessfully deleted", target.nodeExists("/test2"));
+    target.deleteNode(pathName);
+    assertFalse("Node unsuccessfully deleted", target.nodeExists(pathName));
   }
 
   @Test
   public void testCheckExistenceOfNonexistentNode() {
-      assertFalse("Nonexistent node exists for some reason", target.nodeExists("/test3"));
+    String pathName = "/test3";
+    assertFalse("Nonexistent node exists for some reason", target.nodeExists(pathName));
   }
 
   @Test
   public void testCreateNodeGetDataThenDelete() {
     boolean success = false;
+    String pathName = "/test4";
     String initialString = "test";
 
-    success = target.createNode("/test4", initialString);
+    success = target.createNode(pathName, initialString);
     assertTrue("Couldn't create node", success);
 
-    String returnedString = target.getNodeData("/test4");
+    String returnedString = target.getNodeData(pathName);
     assertTrue("Data retrieved doesn't match initial data", initialString.equals(returnedString));
 
-    target.deleteNode("/test4");
-    assertFalse("Node unsuccessfully deleted", target.nodeExists("/test4"));
+    target.deleteNode(pathName);
+    assertFalse("Node unsuccessfully deleted", target.nodeExists(pathName));
   }
 
   @Test
   public void testCreateNodeUpdateDataThenDelete() {
     boolean success = false;
+    String pathName = "/test5";
     String initialString = "test";
 
-    success = target.createNode("/test5", initialString);
+    success = target.createNode(pathName, initialString);
     assertTrue("Couldn't create node", success);
 
     String updatedString = "updated";
-    success = target.updateNodeData("/test5", updatedString);
+    success = target.updateNodeData(pathName, updatedString);
     assertTrue("Couldn't update node data", success);
 
-    String returnedString = target.getNodeData("/test5");
+    String returnedString = target.getNodeData(pathName);
     assertTrue("Data retrieved doesn't match updated data", updatedString.equals(returnedString));
 
-    target.deleteNode("/test5");
-    assertFalse("Node unsuccessfully deleted", target.nodeExists("/test5"));
+    target.deleteNode(pathName);
+    assertFalse("Node unsuccessfully deleted", target.nodeExists(pathName));
   }
 
   @After
