@@ -197,6 +197,16 @@
       <artifactId>storm-shim</artifactId>
       <version>${project.parent.version}</version>
     </dependency>
-
+    <dependency>
+      <groupId>org.apache.curator</groupId>
+      <artifactId>curator-recipes</artifactId>
+      <version>3.3.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.curator</groupId>
+      <artifactId>curator-test</artifactId>
+      <version>3.3.0</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 </project>
