@@ -17,21 +17,23 @@ import org.slf4j.LoggerFactory;
 public class ZKClient {
   CuratorFramework _client;
   public static final Logger LOG = LoggerFactory.getLogger(ZKClient.class);
+  private static final int BASE_SLEEP_TIME_MS = 1000;
+  private static final int MAX_RETRIES = 3;
 
   public ZKClient() {
-    ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(1000, 3);
+    ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(BASE_SLEEP_TIME_MS, MAX_RETRIES);
     _client = CuratorFrameworkFactory.newClient("localhost:2181", retryPolicy);
     _client.start();
   }
 
   public ZKClient(String connectionString) {
-    ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(1000, 3);
+    ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(BASE_SLEEP_TIME_MS, MAX_RETRIES);
     _client = CuratorFrameworkFactory.newClient(connectionString, retryPolicy);
     _client.start();
   }
 
   public ZKClient(String connectionString, int connectionTimeout, int sessionTimeout) {
-    ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(1000, 3);
+    ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(BASE_SLEEP_TIME_MS, MAX_RETRIES);
     _client = CuratorFrameworkFactory.builder()
                                      .connectString(connectionString)
                                      .retryPolicy(retryPolicy)
