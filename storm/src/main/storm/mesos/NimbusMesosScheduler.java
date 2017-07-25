@@ -109,6 +109,45 @@ public class NimbusMesosScheduler implements Scheduler {
     }
   }
 
+  private void updateLogviewerState(TaskStatus status) {
+    String taskId = status.getTaskId().getValue();
+    if (!taskId.contains(MesosCommon.MESOS_COMPONENT_ID_DELIMITER)) {
+      LOG.error("updateLogviewerState: taskId for logviewer, {}, isn't formatted correctly", taskId);
+      return;
+    }
+    String nodeId = taskId.split("\\" + MesosCommon.MESOS_COMPONENT_ID_DELIMITER)[1];
+    String logviewerZKPath = String.format("%s/%s", logviewerZkDir, nodeId);
+    switch (status.getState()) {
+      case TASK_STAGING:
+        checkRunningLogviewerState(logviewerZKPath);
+        return;
+      case TASK_STARTING:
+        checkRunningLogviewerState(logviewerZKPath);
+        return;
+      case TASK_RUNNING:
+        checkRunningLogviewerState(logviewerZKPath);
+        return;
+      default:
+    }
+    // explicitly kill the logviewer task to ensure logviewer is terminated
+    mesosNimbus._driver.killTask(status.getTaskId());
+    // if it gets to this point it means logviewer terminated; update ZK with new logviewer state
+    if (zkClient.nodeExists(logviewerZKPath)) {
+      LOG.info("updateLogviewerState: Remove logviewer state in zk at {} for logviewer task {}", logviewerZKPath, taskId);
+      zkClient.deleteNode(logviewerZKPath);
+      LOG.info("updateLogviewerState: Add offer request for logviewer");
+      StormSchedulerImpl stormScheduler = (StormSchedulerImpl) mesosNimbus.getForcedScheduler();
+      stormScheduler.addOfferRequest(MesosCommon.LOGVIEWER_OFFERS_REQUEST_KEY);
+    }
+  }
+
+  private void checkRunningLogviewerState(String logviewerZKPath) {
+    if (!zkClient.nodeExists(logviewerZKPath)) {
+      LOG.error("checkRunningLogviewerState: Running mesos logviewer task exists for logviewer that isn't tracked in ZooKeeper");
+      zkClient.createNode(logviewerZKPath);
+    }
+  }
+
   @Override
   public void frameworkMessage(SchedulerDriver driver, ExecutorID executorId, SlaveID slaveId, byte[] data) {
   }
