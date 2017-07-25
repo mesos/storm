@@ -27,12 +27,14 @@ public class ZKClient {
   }
 
   public ZKClient(String connectionString) {
+    LOG.info("Attempting to connect to following ZooKeeper servers: {}", connectionString);
     ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(BASE_SLEEP_TIME_MS, MAX_RETRIES);
     _client = CuratorFrameworkFactory.newClient(connectionString, retryPolicy);
     _client.start();
   }
 
   public ZKClient(String connectionString, int connectionTimeout, int sessionTimeout) {
+    LOG.info("Attempting to connect to following ZooKeeper servers: {}", connectionString);
     ExponentialBackoffRetry retryPolicy = new ExponentialBackoffRetry(BASE_SLEEP_TIME_MS, MAX_RETRIES);
     _client = CuratorFrameworkFactory.builder()
                                      .connectString(connectionString)

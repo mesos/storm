@@ -28,6 +28,7 @@ import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.mesos.util.ZKClient;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -36,11 +37,13 @@ import static storm.mesos.util.PrettyProtobuf.taskStatusToString;
 
 public class NimbusMesosScheduler implements Scheduler {
   private MesosNimbus mesosNimbus;
+  private ZKClient zkClient;
   private CountDownLatch _registeredLatch = new CountDownLatch(1);
   public static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
 
-  public NimbusMesosScheduler(MesosNimbus mesosNimbus) {
+  public NimbusMesosScheduler(MesosNimbus mesosNimbus, ZKClient zkClient) {
     this.mesosNimbus = mesosNimbus;
+    this.zkClient = zkClient;
   }
 
   public void waitUntilRegistered() throws InterruptedException {
@@ -88,6 +91,9 @@ public class NimbusMesosScheduler implements Scheduler {
   @Override
   public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
     String msg = String.format("Received status update: %s", taskStatusToString(status));
+    if (status.getTaskId().getValue().contains("logviewer")) {
+      updateLogviewerState(status);
+    }
     switch (status.getState()) {
       case TASK_STAGING:
       case TASK_STARTING:
@@ -106,6 +112,23 @@ public class NimbusMesosScheduler implements Scheduler {
       default:
         LOG.warn("Received unrecognized status update: {}", taskStatusToString(status));
         break;
+    }
+  }
+
+  private void updateLogviewerState(TaskStatus status) {
+    String nodeId = status.getTaskId().getValue().split("-")[0];
+    switch (status.getState()) {
+      case TASK_STAGING: return;
+      case TASK_STARTING: return;
+      case TASK_RUNNING: return;
+      default:
+    }
+    // if it gets to this point it means logviewer terminated; update ZK with new logviewer state
+    String logviewerZKPath = String.format("/logviewers/%s", nodeId);
+    if (zkClient.nodeExists(logviewerZKPath)) {
+      zkClient.deleteNode(logviewerZKPath);
+    } else {
+      LOG.error("Task exists for logviewer that isn't tracked in ZooKeeper");
     }
   }
 
