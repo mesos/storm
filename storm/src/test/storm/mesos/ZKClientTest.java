@@ -99,6 +99,28 @@ public class ZKClientTest {
     assertFalse("Node unsuccessfully deleted", target.nodeExists(pathName));
   }
 
+  @Test
+  public void testCreateNestedNodeThenDelete() {
+    boolean success = false;
+    String parentPath = "/parent";
+    String childPath = "/parent/child";
+
+    success = target.createNode(childPath);
+    assertFalse("Somehow created child node without parent's existence", success);
+
+    success = target.createNode(parentPath);
+    assertTrue("Failed to create parent node", success);
+
+    success = target.createNode(childPath);
+    assertTrue("Failed to create child node", success);
+
+    target.deleteNode(childPath);
+    assertFalse("Child node unsuccessfully deleted", target.nodeExists(childPath));
+
+    target.deleteNode(parentPath);
+    assertFalse("Parent node unsuccessfully deleted", target.nodeExists(parentPath));
+  }
+
   @After
   public void closeConnection() {
     target.close();
