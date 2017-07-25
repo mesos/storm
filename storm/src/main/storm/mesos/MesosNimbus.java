@@ -832,4 +832,8 @@ public class MesosNimbus implements INimbus {
     }
     return credential;
   }
+
+  private void createLogviewer() {
+
+  }
 }
