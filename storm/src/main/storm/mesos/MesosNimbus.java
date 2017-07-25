@@ -42,6 +42,7 @@ import org.apache.mesos.Protos.OfferID;
 import org.apache.mesos.Protos.Resource;
 import org.apache.mesos.Protos.TaskID;
 import org.apache.mesos.Protos.TaskInfo;
+import org.apache.mesos.Protos.TaskStatus;
 import org.apache.mesos.Protos.Value.Range;
 import org.apache.mesos.Protos.Value.Ranges;
 import org.apache.mesos.Protos.Value.Scalar;
@@ -213,11 +214,16 @@ public class MesosNimbus implements INimbus {
 
     Set<String> zooKeeperServers = listIntoSet((List<String>) conf.get(CONF_ZOOKEEPER_SERVERS));
     String zooKeeperPort = (String) conf.get(CONF_ZOOKEEPER_PORT);
-    String connectionString = "";
-    for (String server : zooKeeperServers) {
-      connectionString += server + ":" + zooKeeperPort + ",";
+    if (zooKeeperPort == null || zooKeeperServers == null) {
+      _zkClient = new ZKClient();
+    } else {
+      String connectionString = "";
+      for (String server : zooKeeperServers) {
+        connectionString += server + ":" + zooKeeperPort + ",";
+      }
+      _zkClient = new ZKClient(connectionString.substring(0, connectionString.length() - 1));
     }
-    _zkClient = new ZKClient(connectionString.substring(0, connectionString.length() - 1));
+    _zkClient.createNode("/logviewers");
 
     Boolean preferReservedResources = (Boolean) conf.get(CONF_MESOS_PREFER_RESERVED_RESOURCES);
     if (preferReservedResources != null) {
@@ -225,7 +231,7 @@ public class MesosNimbus implements INimbus {
     }
 
     _container = Optional.fromNullable((String) conf.get(CONF_MESOS_CONTAINER_DOCKER_IMAGE));
-    _mesosScheduler = new NimbusMesosScheduler(this);
+    _mesosScheduler = new NimbusMesosScheduler(this, _zkClient);
 
     // Generate YAML to be served up to clients
     _generatedConfPath = Paths.get(
@@ -265,6 +271,16 @@ public class MesosNimbus implements INimbus {
 
     _state.put(FRAMEWORK_ID, id.getValue());
     _offers = new HashMap<Protos.OfferID, Protos.Offer>();
+
+    _timer.scheduleAtFixedRate(new TimerTask() {
+      @Override
+      public void run() {
+        // performing "implicit" reconciliation; master will respond with the latest state for all currently known
+        // non-terminal tasks
+        Collection<TaskStatus> taskStatuses = new ArrayList<TaskStatus>();
+        _driver.reconcileTasks(taskStatuses);
+      }
+    }, 900000, 900000); // reconciliation performed every 15 minutes
   }
 
   public void shutdown() throws Exception {
@@ -343,7 +359,9 @@ public class MesosNimbus implements INimbus {
       return new ArrayList<WorkerSlot>();
     }
     synchronized (_offersLock) {
-      launchLogviewer(existingSupervisors);
+      if (!_container.isPresent()) {
+        launchLogviewer(existingSupervisors);
+      }
       return _stormScheduler.allSlotsAvailableForScheduling(
               _offers,
               existingSupervisors,
@@ -795,9 +813,5 @@ public class MesosNimbus implements INimbus {
       credential = credentialBuilder.build();
     }
     return credential;
-  }
-
-  private void createLogviewer() {
-
   }
 }
