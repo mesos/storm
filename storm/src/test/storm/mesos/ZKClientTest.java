@@ -21,7 +21,7 @@ public class ZKClientTest {
    * Setup testing target & sample data.
    */
   public ZKClientTest() {
-    String connString = "localhost";
+    String connString = "localhost:2181";
     try {
       TestingServer server = new TestingServer(true);
       connString = server.getConnectString();

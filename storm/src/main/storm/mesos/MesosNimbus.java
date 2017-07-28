@@ -211,17 +211,19 @@ public class MesosNimbus implements INimbus {
     _disallowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_DISALLOWED_HOSTS));
 
     Set<String> zooKeeperServers = listIntoSet((List<String>) conf.get(CONF_ZOOKEEPER_SERVERS));
-    String zooKeeperPort = (String) conf.get(CONF_ZOOKEEPER_PORT);
+    String zooKeeperPort = String.valueOf(conf.get(CONF_ZOOKEEPER_PORT));
     if (zooKeeperPort == null || zooKeeperServers == null) {
-      _zkClient = new ZKClient();
+      LOG.error("ZooKeeper configs are not found in storm.yaml");
     } else {
       String connectionString = "";
       for (String server : zooKeeperServers) {
         connectionString += server + ":" + zooKeeperPort + ",";
       }
       _zkClient = new ZKClient(connectionString.substring(0, connectionString.length() - 1));
+      if (!_zkClient.nodeExists("/logviewers")) {
+        _zkClient.createNode("/logviewers");
+      }
     }
-    _zkClient.createNode("/logviewers");
 
     Boolean preferReservedResources = (Boolean) conf.get(CONF_MESOS_PREFER_RESERVED_RESOURCES);
     if (preferReservedResources != null) {
@@ -401,28 +403,33 @@ public class MesosNimbus implements INimbus {
     String supervisorStormLocalDir = getStormLocalDirForWorkers();
     String configUri = getFullConfigUri();
     String logviewerCommand = String.format(
-            " && cp storm.yaml storm-mesos*/conf" +
+                    "cp storm.yaml storm-mesos*/conf" +
                     " && cd storm-mesos*" +
                     " && python bin/storm logviewer" +
                     " -c storm.local.dir=%s", supervisorStormLocalDir);
 
-    // Go through each existing supervisor and:
-    //    1. Check ZK if logviewer already exists on worker host, if not then continue
-    //    2. Look in the aggregratedOffersPerNode and check the node for offers, if there are offers then continue
-    //    3. Create a TaskInfo for the logviewer corresponding to the correct Offers and launch the task
-    //    4. Update ZK to reflect the existence of new logviewer on worker host
+    /**
+     *  Go through each existing supervisor and:
+     *    1. Check ZK if logviewer already exists on worker host, if not then continue
+     *    2. Look in the aggregratedOffersPerNode and check the node for offers, if there are offers then continue
+     *    3. Create a TaskInfo for the logviewer corresponding to the correct Offers and launch the task
+     *    4. Update ZK to reflect the existence of new logviewer on worker host
+     */
 
     for (SupervisorDetails supervisor : existingSupervisors) {
       List<TaskInfo> logviewerTask = new ArrayList<TaskInfo>();
+      LOG.info("launchLogviewer: Supervisor ID: {}", supervisor.getId());
 
-      String nodeId = supervisor.getHost();
+      String nodeId = supervisor.getId().split("|")[0];
 
       if (_zkClient.nodeExists(String.format("/logviewers/%s", nodeId))) {
+        LOG.info("launchLogviewer: Logviewer already exists on this host: {}", nodeId);
         continue;
       }
 
       AggregatedOffers aggregatedOffers = aggregatedOffersPerNode.get(nodeId);
       if (aggregatedOffers == null) {
+        LOG.info("launchLogviewer: No offers for this host: {}", nodeId);
         continue;
       }
 
@@ -437,7 +444,7 @@ public class MesosNimbus implements INimbus {
         resourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(logviewerMem));
         resources.addAll(createMesosScalarResourceList(ResourceType.MEM, resourceEntryList));
       } catch (ResourceNotAvailableException e) {
-        LOG.warn("Unable to launch logviewer because some resources were unavailable. Available aggregatedOffers: %s", aggregatedOffers);
+        LOG.warn("launchLogviewer: Unable to launch logviewer because some resources were unavailable. Available aggregatedOffers: %s", aggregatedOffers);
         continue;
       }
 
@@ -460,14 +467,16 @@ public class MesosNimbus implements INimbus {
 
       logviewerTask.add(task);
 
-      LOG.info("Using offerIDs: {} on host: {} to launch logviewer", offerIDListToString(offerIDList), nodeId);
+      LOG.info("launchLogviewer: Using offerIDs: {} on host: {} to launch logviewer", offerIDListToString(offerIDList), nodeId);
 
       _driver.launchTasks(offerIDList, logviewerTask);
       for (OfferID offerID : offerIDList) {
         _offers.remove(offerID);
       }
 
-      _zkClient.createNode(String.format("/logviewers/%s", nodeId));
+      String logviewerZKNodeName = String.format("/logviewers/%s", nodeId));
+      _zkClient.createNode(logviewerZKNodeName);
+      LOG.info("launchLogviewer: Updating logviewer state in zk: {}", logviewerZKNodeName);
     }
   }
 
