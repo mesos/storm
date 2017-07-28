@@ -126,6 +126,7 @@ public class NimbusMesosScheduler implements Scheduler {
     // if it gets to this point it means logviewer terminated; update ZK with new logviewer state
     String logviewerZKPath = String.format("/logviewers/%s", nodeId);
     if (zkClient.nodeExists(logviewerZKPath)) {
+      LOG.info("updateLogviewerState: Remove logviewer state in zk: {}", logviewerZKPath);
       zkClient.deleteNode(logviewerZKPath);
     } else {
       LOG.error("Task exists for logviewer that isn't tracked in ZooKeeper");
