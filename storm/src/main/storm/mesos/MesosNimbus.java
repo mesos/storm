@@ -474,9 +474,9 @@ public class MesosNimbus implements INimbus {
         _offers.remove(offerID);
       }
 
-      String logviewerZKNodeName = String.format("/logviewers/%s", nodeId);
-      _zkClient.createNode(logviewerZKNodeName);
-      LOG.info("launchLogviewer: Updating logviewer state in zk: {}", logviewerZKNodeName);
+      String logviewerZKPath = String.format("/logviewers/%s", nodeId);
+      _zkClient.createNode(logviewerZKPath);
+      LOG.info("launchLogviewer: Create logviewer state in zk: {}", logviewerZKPath);
     }
   }
 
