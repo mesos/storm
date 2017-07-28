@@ -159,7 +159,7 @@ public class MesosCommonTest {
     String nodeid = "nodeID1";
     String topologyid = "t1";
     String result = MesosCommon.supervisorId(nodeid, topologyid);
-    String expectedResult = nodeid + "-" + topologyid;
+    String expectedResult = nodeid + "|" + topologyid;
     assertEquals(result, expectedResult);
   }
 
