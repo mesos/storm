@@ -105,7 +105,7 @@ public class MesosCommon {
   }
 
   public static String supervisorId(String nodeid, String topologyId) {
-    return String.format("%s-%s", nodeid, topologyId);
+    return String.format("%s|%s", nodeid, topologyId);
   }
 
   public static boolean autoStartLogViewer(Map conf) {
