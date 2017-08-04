@@ -428,7 +428,7 @@ public class MesosNimbus implements INimbus {
       List<TaskInfo> logviewerTask = new ArrayList<TaskInfo>();
       LOG.info("launchLogviewer: Supervisor ID: {}", supervisor.getId());
 
-      String nodeId = supervisor.getId().split("\\|")[0];
+      String nodeId = supervisor.getId().split("\\" + DEFAULT_MESOS_COMPONENT_NAME_DELIMITER)[0];
 
       if (_zkClient.nodeExists(String.format("%s/%s", _logviewerZkDir, nodeId))) {
         LOG.info("launchLogviewer: Logviewer already exists on this host: {}", nodeId);
