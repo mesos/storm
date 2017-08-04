@@ -60,7 +60,7 @@ public class MesosCommon {
   public static final String SUPERVISOR_ID = "supervisorid";
   public static final String ASSIGNMENT_ID = "assignmentid";
   public static final String DEFAULT_WORKER_NAME_PREFIX_DELIMITER = "_";
-  public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = " | ";
+  public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = "|";
 
   public static String getNimbusHost(Map mesosStormConf) throws UnknownHostException {
     Optional<String> nimbusHostFromConfig =  Optional.fromNullable((String) mesosStormConf.get(Config.NIMBUS_HOST));
@@ -105,7 +105,7 @@ public class MesosCommon {
   }
 
   public static String supervisorId(String nodeid, String topologyId) {
-    return String.format("%s|%s", nodeid, topologyId);
+    return String.format("%s%s%s", nodeid, DEFAULT_MESOS_COMPONENT_NAME_DELIMITER, topologyId);
   }
 
   public static boolean autoStartLogViewer(Map conf) {

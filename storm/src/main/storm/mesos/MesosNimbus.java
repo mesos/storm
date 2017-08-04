@@ -114,9 +114,13 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_CONTAINER_DOCKER_IMAGE = "mesos.container.docker.image";
   public static final String CONF_MESOS_SUPERVISOR_STORM_LOCAL_DIR = "mesos.supervisor.storm.local.dir";
   public static final String FRAMEWORK_ID = "FRAMEWORK_ID";
+  public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = "|";
 
   public static final String CONF_ZOOKEEPER_SERVERS = "storm.zookeeper.servers";
   public static final String CONF_ZOOKEEPER_PORT = "storm.zookeeper.port";
+  public static final String CONF_STORM_LOGVIEWER_ZK_DIR = "storm.logviewer.zookeeper.dir";
+
+  public static final int TASK_RECONCILIATION_INTERVAL = 300000; // 5 minutes
 
   private static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
   private final Object _offersLock = new Object();
@@ -124,6 +128,7 @@ public class MesosNimbus implements INimbus {
   private LocalStateShim _state;
   private NimbusMesosScheduler _mesosScheduler;
   private ZKClient _zkClient;
+  private String _logviewerZkDir;
   volatile SchedulerDriver _driver;
   private Timer _timer = new Timer();
   private Map mesosStormConf;
@@ -212,16 +217,18 @@ public class MesosNimbus implements INimbus {
 
     Set<String> zooKeeperServers = listIntoSet((List<String>) conf.get(CONF_ZOOKEEPER_SERVERS));
     String zooKeeperPort = String.valueOf(conf.get(CONF_ZOOKEEPER_PORT));
+    _logviewerZkDir = Optional.fromNullable((String) conf.get(CONF_STORM_LOGVIEWER_ZK_DIR)).or("/logviewers");
     if (zooKeeperPort == null || zooKeeperServers == null) {
       LOG.error("ZooKeeper configs are not found in storm.yaml");
     } else {
-      String connectionString = "";
+      StringBuilder connectionString = new StringBuilder();
       for (String server : zooKeeperServers) {
-        connectionString += server + ":" + zooKeeperPort + ",";
+        connectionString.append(String.format("%s:%s,", server, zooKeeperPort));
       }
       _zkClient = new ZKClient(connectionString.substring(0, connectionString.length() - 1));
-      if (!_zkClient.nodeExists("/logviewers")) {
-        _zkClient.createNode("/logviewers");
+      if (!_zkClient.nodeExists(_logviewerZkDir)) {
+        _zkClient.createNode(_logviewerZkDir);
+        LOG.info("Created general ZK directory for logviewer state at: {}", _logviewerZkDir);
       }
     }
 
@@ -231,7 +238,7 @@ public class MesosNimbus implements INimbus {
     }
 
     _container = Optional.fromNullable((String) conf.get(CONF_MESOS_CONTAINER_DOCKER_IMAGE));
-    _mesosScheduler = new NimbusMesosScheduler(this, _zkClient);
+    _mesosScheduler = new NimbusMesosScheduler(this, _zkClient, _logviewerZkDir);
 
     // Generate YAML to be served up to clients
     _generatedConfPath = Paths.get(
@@ -306,8 +313,9 @@ public class MesosNimbus implements INimbus {
         // non-terminal tasks
         Collection<TaskStatus> taskStatuses = new ArrayList<TaskStatus>();
         _driver.reconcileTasks(taskStatuses);
+        LOG.info("Performing tasking reconciliation between scheduler and master");
       }
-    }, 900000, 900000); // reconciliation performed every 15 minutes
+    }, TASK_RECONCILIATION_INTERVAL, TASK_RECONCILIATION_INTERVAL); // reconciliation performed every 5 minutes
   }
 
   public void shutdown() throws Exception {
@@ -422,7 +430,7 @@ public class MesosNimbus implements INimbus {
 
       String nodeId = supervisor.getId().split("\\|")[0];
 
-      if (_zkClient.nodeExists(String.format("/logviewers/%s", nodeId))) {
+      if (_zkClient.nodeExists(String.format("%s/%s", _logviewerZkDir, nodeId))) {
         LOG.info("launchLogviewer: Logviewer already exists on this host: {}", nodeId);
         continue;
       }
@@ -454,7 +462,7 @@ public class MesosNimbus implements INimbus {
               .setValue(logviewerCommand);
 
       TaskID taskId = TaskID.newBuilder()
-              .setValue(String.format("%s-logviewer", nodeId))
+              .setValue(String.format("%s|logviewer", nodeId))
               .build();
 
       TaskInfo task = TaskInfo.newBuilder()
@@ -474,7 +482,7 @@ public class MesosNimbus implements INimbus {
         _offers.remove(offerID);
       }
 
-      String logviewerZKPath = String.format("/logviewers/%s", nodeId);
+      String logviewerZKPath = String.format("%s/%s", _logviewerZkDir, nodeId);
       _zkClient.createNode(logviewerZKPath);
       LOG.info("launchLogviewer: Create logviewer state in zk: {}", logviewerZKPath);
     }

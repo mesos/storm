@@ -38,12 +38,14 @@ import static storm.mesos.util.PrettyProtobuf.taskStatusToString;
 public class NimbusMesosScheduler implements Scheduler {
   private MesosNimbus mesosNimbus;
   private ZKClient zkClient;
+  private String logviewerZkDir;
   private CountDownLatch _registeredLatch = new CountDownLatch(1);
   public static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
 
-  public NimbusMesosScheduler(MesosNimbus mesosNimbus, ZKClient zkClient) {
+  public NimbusMesosScheduler(MesosNimbus mesosNimbus, ZKClient zkClient, String logviewerZkDir) {
     this.mesosNimbus = mesosNimbus;
     this.zkClient = zkClient;
+    this.logviewerZkDir = logviewerZkDir;
   }
 
   public void waitUntilRegistered() throws InterruptedException {
@@ -116,7 +118,7 @@ public class NimbusMesosScheduler implements Scheduler {
   }
 
   private void updateLogviewerState(TaskStatus status) {
-    String nodeId = status.getTaskId().getValue().split("-")[0];
+    String nodeId = status.getTaskId().getValue().split("\\|")[0];
     switch (status.getState()) {
       case TASK_STAGING: return;
       case TASK_STARTING: return;
@@ -124,7 +126,7 @@ public class NimbusMesosScheduler implements Scheduler {
       default:
     }
     // if it gets to this point it means logviewer terminated; update ZK with new logviewer state
-    String logviewerZKPath = String.format("/logviewers/%s", nodeId);
+    String logviewerZKPath = String.format("%s/%s", logviewerZkDir, nodeId);
     if (zkClient.nodeExists(logviewerZKPath)) {
       LOG.info("updateLogviewerState: Remove logviewer state in zk: {}", logviewerZKPath);
       zkClient.deleteNode(logviewerZKPath);
