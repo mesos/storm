@@ -41,6 +41,7 @@ public class NimbusMesosScheduler implements Scheduler {
   private String logviewerZkDir;
   private CountDownLatch _registeredLatch = new CountDownLatch(1);
   public static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
+  public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = "|";
 
   public NimbusMesosScheduler(MesosNimbus mesosNimbus, ZKClient zkClient, String logviewerZkDir) {
     this.mesosNimbus = mesosNimbus;
@@ -118,7 +119,7 @@ public class NimbusMesosScheduler implements Scheduler {
   }
 
   private void updateLogviewerState(TaskStatus status) {
-    String nodeId = status.getTaskId().getValue().split("\\|")[0];
+    String nodeId = status.getTaskId().getValue().split("\\" + DEFAULT_MESOS_COMPONENT_NAME_DELIMITER)[0];
     switch (status.getState()) {
       case TASK_STAGING: return;
       case TASK_STARTING: return;
