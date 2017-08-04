@@ -462,7 +462,7 @@ public class MesosNimbus implements INimbus {
               .setValue(logviewerCommand);
 
       TaskID taskId = TaskID.newBuilder()
-              .setValue(String.format("%s|logviewer", nodeId))
+              .setValue(String.format("%s%slogviewer",  nodeId, DEFAULT_MESOS_COMPONENT_NAME_DELIMITER))
               .build();
 
       TaskInfo task = TaskInfo.newBuilder()
