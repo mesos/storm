@@ -135,7 +135,7 @@ public class MesosNimbus implements INimbus {
   private Optional<Integer> _localFileServerPort;
   private Map<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
-  private IMesosStormScheduler _stormScheduler = null;
+  protected IMesosStormScheduler _stormScheduler = null;
 
   private boolean _preferReservedResources = true;
   private Optional<String> _container = Optional.absent();

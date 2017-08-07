@@ -73,6 +73,14 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
     mesosStormConf = conf;
   }
 
+  public void setOffersSuppressed() {
+    offersSuppressed = true;
+  }
+
+  public void unsetOffersSuppressed() {
+    offersSuppressed = false;
+  }
+
   private List<MesosWorkerSlot> getMesosWorkerSlots(Map<String, AggregatedOffers> aggregatedOffersPerNode,
                                                     Collection<String> nodesWithExistingSupervisors,
                                                     TopologyDetails topologyDetails) {
@@ -163,7 +171,7 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
       if (!offersSuppressed) {
         log.info("(SUPPRESS OFFERS) We don't have any topologies that need assignments, but offers are still flowing. Suppressing offers.");
         driver.suppressOffers();
-        offersSuppressed = true;
+        setOffersSuppressed();
       }
       return new ArrayList<>();
     }
@@ -174,7 +182,7 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
       if (offersSuppressed) {
         log.info("(REVIVE OFFERS) We have topologies that need assignments, but offers are currently suppressed. Reviving offers.");
         driver.reviveOffers();
-        offersSuppressed = false;
+        unsetOffersSuppressed();
       }
       // Note: We still have the offersLock at this point, so we return the empty ArrayList so that we can release the lock and acquire new offers
       return new ArrayList<>();

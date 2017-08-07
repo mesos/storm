@@ -17,6 +17,7 @@
  */
 package storm.mesos;
 
+import backtype.storm.scheduler.IScheduler;
 import org.apache.mesos.Protos.ExecutorID;
 import org.apache.mesos.Protos.FrameworkID;
 import org.apache.mesos.Protos.MasterInfo;
@@ -28,6 +29,7 @@ import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.mesos.schedulers.StormSchedulerImpl;
 import storm.mesos.util.ZKClient;
 
 import java.util.List;
@@ -131,6 +133,10 @@ public class NimbusMesosScheduler implements Scheduler {
     if (zkClient.nodeExists(logviewerZKPath)) {
       LOG.info("updateLogviewerState: Remove logviewer state in zk: {}", logviewerZKPath);
       zkClient.deleteNode(logviewerZKPath);
+      LOG.info("updateLogviewerState: Reviving offers for logviewer relaunch");
+      mesosNimbus._driver.reviveOffers();
+      StormSchedulerImpl stormScheduler = (StormSchedulerImpl) mesosNimbus.getForcedScheduler();
+      stormScheduler.unsetOffersSuppressed();
     } else {
       LOG.error("Task exists for logviewer that isn't tracked in ZooKeeper");
     }
