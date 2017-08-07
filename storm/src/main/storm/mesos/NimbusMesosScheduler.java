@@ -28,6 +28,7 @@ import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.mesos.schedulers.StormSchedulerImpl;
 import storm.mesos.util.ZKClient;
 
 import java.util.List;
