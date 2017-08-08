@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import storm.mesos.logviewer.LogViewerController;
 import storm.mesos.util.MesosCommon;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -61,7 +62,11 @@ public class MesosSupervisor implements ISupervisor {
 
     try {
       Supervisor supervisor = new Supervisor(conf, null, new MesosSupervisor());
-      supervisor.launch();
+
+      // We use reflection to call the private method, 'launchDaemon', which calls 'launch'
+      Method m = Supervisor.class.getDeclaredMethod("launchDaemon");
+      m.setAccessible(true);
+      m.invoke(supervisor);
     } catch (Exception e) {
       String msg = String.format("main: Exception: %s", e.getMessage());
       LOG.error(msg);
@@ -69,6 +74,10 @@ public class MesosSupervisor implements ISupervisor {
     }
   }
 
+  /**
+   * This method is no longer called by the Supervisor since it was refactored from Clojure to Java,
+   * starting in Storm 1.0.3. Now, port changes get captured in calls to 'confirmAssigned'.
+   */
   @Override
   public void assigned(Collection<Integer> ports) {
   }
