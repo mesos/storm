@@ -126,7 +126,7 @@ public class PrettyProtobuf {
    * have inconsistent output since the _offers map is touched from both
    * mesos-driven events and storm-driven calls.
    * <p/>
-   * TODO:(erikdw): figure out a design better that removes the need
+   * TODO:(erikdw): figure out a better design that removes the need
    * for external callers to lock before calling this method.
    */
   public static String offerMapToString(Map<OfferID, Offer> offers) {
@@ -151,8 +151,6 @@ public class PrettyProtobuf {
     }
     return String.format("[%s]", StringUtils.join(offerIdList, ", "));
   }
-
-
 
   /**
    * Wrapper around offerToString which allows using gauva's transform utility.
