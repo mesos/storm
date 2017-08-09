@@ -16,7 +16,7 @@ install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true
 script:
 - jdk_switcher use oraclejdk8
 - mvn test
-- jdk_switcher use oraclejdk7
+- jdk_switcher use openjdk7
 - mvn test
 - travis_retry bin/build-release.sh
 matrix:
