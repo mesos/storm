@@ -17,7 +17,9 @@
  */
 package storm.mesos;
 
+import org.apache.storm.daemon.supervisor.Supervisor;
 import org.apache.storm.scheduler.ISupervisor;
+import org.apache.storm.utils.ConfigUtils;
 import org.apache.storm.utils.Utils;
 import clojure.lang.PersistentVector;
 import org.apache.mesos.Executor;
@@ -36,14 +38,12 @@ import org.slf4j.LoggerFactory;
 import storm.mesos.logviewer.LogViewerController;
 import storm.mesos.util.MesosCommon;
 
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.atomic.AtomicReference;
 
 public class MesosSupervisor implements ISupervisor {
   public static final Logger LOG = LoggerFactory.getLogger(MesosSupervisor.class);
@@ -56,17 +56,30 @@ public class MesosSupervisor implements ISupervisor {
   Map _conf;
   // Store state on port assignments arriving from MesosNimbus as task-launching requests.
   private static final TaskAssignments _taskAssignments = TaskAssignments.getInstance();
-  // What is the storm-core supervisor's view of the assigned ports?
-  AtomicReference<Set<Integer>> _supervisorViewOfAssignedPorts = new AtomicReference<Set<Integer>>(new HashSet<Integer>());
 
   public static void main(String[] args) {
-    org.apache.storm.daemon.supervisor.launch(new MesosSupervisor());
+    Map<String, Object> conf = ConfigUtils.readStormConfig();
+
+    try {
+      Supervisor supervisor = new Supervisor(conf, null, new MesosSupervisor());
+
+      // We use reflection to call the private method, 'launchDaemon', which calls 'launch'
+      Method m = Supervisor.class.getDeclaredMethod("launchDaemon");
+      m.setAccessible(true);
+      m.invoke(supervisor);
+    } catch (Exception e) {
+      String msg = String.format("main: Exception: %s", e.getMessage());
+      LOG.error(msg);
+      e.printStackTrace();
+    }
   }
 
+  /**
+   * This method is no longer called by the Supervisor since it was refactored from Clojure to Java,
+   * starting in Storm 1.0.3. Now, port changes get captured in calls to 'confirmAssigned'.
+   */
   @Override
   public void assigned(Collection<Integer> ports) {
-    if (ports == null) ports = new HashSet<>();
-    _supervisorViewOfAssignedPorts.set(new HashSet<>(ports));
   }
 
   @Override
@@ -254,7 +267,7 @@ public class MesosSupervisor implements ISupervisor {
       try {
         while (true) {
           long now = System.currentTimeMillis();
-          if (!_supervisorViewOfAssignedPorts.get().isEmpty()) {
+          if (!_taskAssignments.getAssignedPorts().isEmpty()) {
             _lastTime = now;
           }
           if ((now - _lastTime) > 1000L * _timeoutSecs) {
