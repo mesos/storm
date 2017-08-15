@@ -17,7 +17,6 @@
  */
 package storm.mesos;
 
-import backtype.storm.scheduler.IScheduler;
 import org.apache.mesos.Protos.ExecutorID;
 import org.apache.mesos.Protos.FrameworkID;
 import org.apache.mesos.Protos.MasterInfo;
