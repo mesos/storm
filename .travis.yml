@@ -28,7 +28,7 @@ before_deploy:
 - travis_retry make images
 - travis_retry make images JAVA_PRODUCT_VERSION=8
 - docker images
-- travis_retry docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+- travis_retry docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
 - travis_retry make push
 - travis_retry make push JAVA_PRODUCT_VERSION=8
 deploy:
