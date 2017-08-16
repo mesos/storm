@@ -85,6 +85,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import static storm.mesos.util.PrettyProtobuf.offerIDListToString;
 import static storm.mesos.util.PrettyProtobuf.offerToString;
@@ -133,7 +135,7 @@ public class MesosNimbus implements INimbus {
   private Optional<Integer> _localFileServerPort;
   private Map<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
-  protected IMesosStormScheduler _stormScheduler = null;
+  private IMesosStormScheduler _stormScheduler = null;
 
   private boolean _preferReservedResources = true;
   private Optional<String> _container = Optional.absent();
