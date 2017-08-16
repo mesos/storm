@@ -139,7 +139,7 @@ public class MesosCommon {
     return port;
   }
 
-  public static Map<String, AggregatedOffers> getAggregatedOffersPerNode(RotatingMap<Protos.OfferID, Protos.Offer> offers) {
+  public static Map<String, AggregatedOffers> getAggregatedOffersPerNode(Map<Protos.OfferID, Protos.Offer> offers) {
     Map<String, AggregatedOffers> aggregatedOffersPerNode = new HashMap<>();
 
     for (Protos.Offer offer : offers.values()) {
