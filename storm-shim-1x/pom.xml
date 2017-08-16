@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.mesos</groupId>
   <artifactId>storm-shim-1x</artifactId>
-  <version>0.2.2-SNAPSHOT</version>
+  <version>0.2.5-SNAPSHOT</version>
   <name>storm-shim-1x</name>
   <description>0.1.x impl shim to ease Storm Version differences</description>
 
@@ -17,7 +17,7 @@
   <parent>
     <artifactId>storm-parent</artifactId>
     <groupId>org.apache.mesos</groupId>
-    <version>0.2.2-SNAPSHOT</version>
+    <version>0.2.5-SNAPSHOT</version>
   </parent>
 
   <properties>
@@ -30,7 +30,7 @@
     <dependency>
       <groupId>org.apache.storm</groupId>
       <artifactId>storm-core</artifactId>
-      <version>1.0.0</version>
+      <version>1.0.3</version>
       <scope>provided</scope>
     </dependency>
     <dependency>

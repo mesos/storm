@@ -3,14 +3,14 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.mesos</groupId>
   <artifactId>storm-shim</artifactId>
-  <version>0.2.2-SNAPSHOT</version>
+  <version>0.2.5-SNAPSHOT</version>
   <name>storm-shim</name>
   <description>Shim to ease Storm Version differences</description>
 
   <parent>
     <artifactId>storm-parent</artifactId>
     <groupId>org.apache.mesos</groupId>
-    <version>0.2.2-SNAPSHOT</version>
+    <version>0.2.5-SNAPSHOT</version>
   </parent>
   <dependencies>
       <dependency>

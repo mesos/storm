@@ -111,8 +111,13 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
         boolean supervisorExists = nodesWithExistingSupervisors.contains(currentNode);
 
         if (!aggregatedOffers.isFit(mesosStormConf, topologyDetails, supervisorExists)) {
-          log.info("{} with requestedWorkerCpu {} and requestedWorkerMem {} does not fit onto {} with resources {}",
-                   topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMemInt, aggregatedOffers.getHostname(), aggregatedOffers.toString());
+          if (!supervisorExists) {
+            log.info("{} with requestedWorkerCpu {} and requestedWorkerMem {} plus the requirements to launch a supervisor does not fit onto {} with resources {}",
+                     topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMemInt, aggregatedOffers.getHostname(), aggregatedOffers.toString());
+          } else {
+            log.info("{} with requestedWorkerCpu {} and requestedWorkerMem {} does not fit onto {} with resources {}",
+                     topologyDetails.getId(), requestedWorkerCpu, requestedWorkerMemInt, aggregatedOffers.getHostname(), aggregatedOffers.toString());
+          }
           continue;
         }
 

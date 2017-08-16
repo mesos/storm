@@ -10,25 +10,25 @@ env:
   global:
   - DOCKER_REPO=$TRAVIS_REPO_SLUG
 before_install:
-- apt-cache madison docker-engine
-- travis_retry sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-engine
+- apt-cache madison docker-ce
+- travis_retry sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-ce
 install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true
 script:
 - jdk_switcher use oraclejdk8
 - mvn test
-- jdk_switcher use oraclejdk7
+- jdk_switcher use openjdk7
 - mvn test
 - travis_retry bin/build-release.sh
 matrix:
   fast_finish: true
   include:
-  - env: STORM_RELEASE="1.0.2" MESOS_RELEASE="1.1.0"
-  - env: STORM_RELEASE="1.0.2" MESOS_RELEASE="0.28.2"
+  - env: STORM_RELEASE="1.0.3" MESOS_RELEASE="1.1.0"
+  - env: STORM_RELEASE="1.0.3" MESOS_RELEASE="0.28.2"
 before_deploy:
 - travis_retry make images
 - travis_retry make images JAVA_PRODUCT_VERSION=8
 - docker images
-- travis_retry docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+- travis_retry docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
 - travis_retry make push
 - travis_retry make push JAVA_PRODUCT_VERSION=8
 deploy:

@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.mesos</groupId>
   <artifactId>storm-parent</artifactId>
-  <version>0.2.2-SNAPSHOT</version>
+  <version>0.2.5-SNAPSHOT</version>
   <name>storm-parent</name>
   <packaging>pom</packaging>
   <description>Storm integration with the Mesos cluster manager</description>
@@ -29,7 +29,7 @@
     <!-- These are used by bin/build-release.sh to determine which versions
          should be used by default if MESOS_RELEASE and/or STORM_RELEASE
          are not set. -->
-    <storm.default.version>1.0.2</storm.default.version>
+    <storm.default.version>1.0.3</storm.default.version>
     <mesos.default.version>0.27.0</mesos.default.version>
     <mesos.version>0.27.0</mesos.version>
   </properties>
@@ -41,7 +41,7 @@
         <activeByDefault>true</activeByDefault>
       </activation>
       <properties>
-        <storm.version>1.0.0</storm.version>
+        <storm.version>1.0.3</storm.version>
         <shim>storm-shim-1x</shim>
         <snakeyaml.scope>compile</snakeyaml.scope>
       </properties>

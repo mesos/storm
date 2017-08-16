@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.mesos</groupId>
   <artifactId>storm-mesos</artifactId>
-  <version>0.2.2-SNAPSHOT</version>
+  <version>0.2.5-SNAPSHOT</version>
   <name>storm-mesos</name>
   <description>Storm integration with the Mesos cluster manager</description>
   <scm>
@@ -16,7 +16,7 @@
   <parent>
     <artifactId>storm-parent</artifactId>
     <groupId>org.apache.mesos</groupId>
-    <version>0.2.2-SNAPSHOT</version>
+    <version>0.2.5-SNAPSHOT</version>
   </parent>
 
   <properties>
