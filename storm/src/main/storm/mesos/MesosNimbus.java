@@ -63,7 +63,6 @@ import storm.mesos.shims.CommandLineShimFactory;
 import storm.mesos.shims.ICommandLineShim;
 import storm.mesos.shims.LocalStateShim;
 import storm.mesos.util.MesosCommon;
-import storm.mesos.util.RotatingMap;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -86,11 +85,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import static storm.mesos.util.PrettyProtobuf.offerIDListToString;
 import static storm.mesos.util.PrettyProtobuf.offerToString;
@@ -108,8 +102,6 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_SECRET_FILE = "mesos.framework.secret.file";
 
   public static final String CONF_MESOS_CHECKPOINT = "mesos.framework.checkpoint";
-  public static final String CONF_MESOS_OFFER_FILTER_SECONDS = "mesos.offer.filter.seconds";
-  public static final String CONF_MESOS_OFFER_EXPIRY_MULTIPLIER = "mesos.offer.expiry.multiplier";
   public static final String CONF_MESOS_LOCAL_FILE_SERVER_PORT = "mesos.local.file.server.port";
   public static final String CONF_MESOS_FRAMEWORK_NAME = "mesos.framework.name";
   public static final String CONF_MESOS_PREFER_RESERVED_RESOURCES = "mesos.prefer.reserved.resources";
@@ -121,13 +113,13 @@ public class MesosNimbus implements INimbus {
   protected java.net.URI _configUrl;
   private LocalStateShim _state;
   private NimbusMesosScheduler _mesosScheduler;
-  volatile SchedulerDriver _driver;
-  private Timer _timer = new Timer();
+  protected volatile SchedulerDriver _driver;
+  private volatile boolean _registeredAndInitialized = false;
   private Map mesosStormConf;
   private Set<String> _allowedHosts;
   private Set<String> _disallowedHosts;
   private Optional<Integer> _localFileServerPort;
-  private RotatingMap<OfferID, Offer> _offers;
+  private Map<OfferID, Offer> _offers;
   private LocalFileServer _httpServer;
   private IMesosStormScheduler _stormScheduler = null;
 
@@ -144,7 +136,7 @@ public class MesosNimbus implements INimbus {
   }
 
   public MesosNimbus() {
-    this._stormScheduler = new StormSchedulerImpl();
+    // This doesn't do anything since we can't make the scheduler until we've been registered
   }
 
   public static void main(String[] args) {
@@ -162,6 +154,10 @@ public class MesosNimbus implements INimbus {
 
   @Override
   public IScheduler getForcedScheduler() {
+    if (!_registeredAndInitialized) {
+      // Since this scheduler hasn't been initialized, we will return null
+      return null;
+    }
     // TODO: Make it configurable. We should be able to specify the scheduler to use in the storm.yaml
     return (IScheduler) _stormScheduler;
   }
@@ -186,6 +182,8 @@ public class MesosNimbus implements INimbus {
       _mesosScheduler.waitUntilRegistered();
 
       LOG.info("Scheduler registration and initialization complete...");
+
+      _registeredAndInitialized = true;
 
     } catch (Exception e) {
       LOG.error("Failed to prepare scheduler ", e);
@@ -247,38 +245,11 @@ public class MesosNimbus implements INimbus {
 
   public void doRegistration(final SchedulerDriver driver, Protos.FrameworkID id) {
     _driver = driver;
-    _state.put(FRAMEWORK_ID, id.getValue());
-    Number filterSeconds = Optional.fromNullable((Number) mesosStormConf.get(CONF_MESOS_OFFER_FILTER_SECONDS)).or(120);
-    final Protos.Filters filters = Protos.Filters.newBuilder()
-        .setRefuseSeconds(filterSeconds.intValue())
-        .build();
-    _offers = new RotatingMap<>(
-        new RotatingMap.ExpiredCallback<Protos.OfferID, Protos.Offer>() {
-          @Override
-          public void expire(Protos.OfferID key, Protos.Offer val) {
-            driver.declineOffer(
-                val.getId(),
-                filters
-            );
-          }
-        }
-    );
+    // Now that we've set the driver, we can create our scheduler
+    _stormScheduler = new StormSchedulerImpl(_driver);
 
-    Number offerExpired = Optional.fromNullable((Number) mesosStormConf.get(Config.NIMBUS_MONITOR_FREQ_SECS)).or(10);
-    Number expiryMultiplier = Optional.fromNullable((Number) mesosStormConf.get(CONF_MESOS_OFFER_EXPIRY_MULTIPLIER)).or(2.5);
-    _timer.scheduleAtFixedRate(new TimerTask() {
-      @Override
-      public void run() {
-        try {
-          synchronized (_offersLock) {
-            _offers.rotate();
-          }
-        } catch (Throwable t) {
-          LOG.error("Received fatal error Halting process...", t);
-          Runtime.getRuntime().halt(2);
-        }
-      }
-    }, 0, Math.round(1000 * expiryMultiplier.doubleValue() * offerExpired.intValue()));
+    _state.put(FRAMEWORK_ID, id.getValue());
+    _offers = new HashMap<Protos.OfferID, Protos.Offer>();
   }
 
   public void shutdown() throws Exception {
@@ -353,6 +324,9 @@ public class MesosNimbus implements INimbus {
   @Override
   public Collection<WorkerSlot> allSlotsAvailableForScheduling(
           Collection<SupervisorDetails> existingSupervisors, Topologies topologies, Set<String> topologiesMissingAssignments) {
+    if (!_registeredAndInitialized) {
+      return new ArrayList<WorkerSlot>();
+    }
     synchronized (_offersLock) {
       return _stormScheduler.allSlotsAvailableForScheduling(
               _offers,
