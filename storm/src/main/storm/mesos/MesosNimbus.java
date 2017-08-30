@@ -384,6 +384,8 @@ public class MesosNimbus implements INimbus {
     final double logviewerMem = 400.0;
 
     Map<String, AggregatedOffers> aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(_offers);
+    StormSchedulerImpl stormScheduler = (StormSchedulerImpl) getForcedScheduler();
+    boolean needLogviewer = false;
 
     String supervisorStormLocalDir = getStormLocalDirForWorkers();
     String configUri = getFullConfigUri();
@@ -420,6 +422,7 @@ public class MesosNimbus implements INimbus {
       AggregatedOffers aggregatedOffers = aggregatedOffersPerNode.get(nodeId);
       if (aggregatedOffers == null) {
         LOG.info("launchLogviewer: No offers for this host: {}", nodeId);
+        needLogviewer = true;
         continue;
       }
 
@@ -480,6 +483,12 @@ public class MesosNimbus implements INimbus {
       String logviewerZKPath = String.format("%s/%s", _logviewerZkDir, nodeId);
       _zkClient.createNode(logviewerZKPath);
       LOG.info("launchLogviewer: Create logviewer state in zk: {}", logviewerZKPath);
+    }
+    if (needLogviewer) {
+      LOG.info("launchLogviewer: No offers for logviewer, requesting offers");
+      stormScheduler.addOfferRequest(MesosCommon.LOGVIEWER_OFFERS_REQUEST_KEY);
+    } else {
+      stormScheduler.removeOfferRequest(MesosCommon.LOGVIEWER_OFFERS_REQUEST_KEY);
     }
   }
 

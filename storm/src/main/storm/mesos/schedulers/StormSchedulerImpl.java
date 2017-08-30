@@ -56,6 +56,7 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
   private final Map<String, MesosWorkerSlot> mesosWorkerSlotMap = new HashMap<>();
   private volatile boolean offersSuppressed = false;
   private SchedulerDriver driver;
+  private Set<String> offersRequestTracker = new HashSet<>();
 
   private StormSchedulerImpl() {
     // We make this constructor private so that calling it results in a compile time error
@@ -70,12 +71,12 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
     mesosStormConf = conf;
   }
 
-  public void setOffersSuppressed() {
-    offersSuppressed = true;
+  public void addOfferRequest(String key) {
+    offersRequestTracker.add(key);
   }
 
-  public void unsetOffersSuppressed() {
-    offersSuppressed = false;
+  public void removeOfferRequest(String key) {
+    offersRequestTracker.remove(key);
   }
 
   private List<MesosWorkerSlot> getMesosWorkerSlots(Map<String, AggregatedOffers> aggregatedOffersPerNode,
@@ -163,17 +164,22 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
                                                          Collection<SupervisorDetails> existingSupervisors,
                                                          Topologies topologies, Set<String> topologiesMissingAssignments) {
     if (topologiesMissingAssignments.isEmpty()) {
+      removeOfferRequest(MesosCommon.TOPOLOGIES_OFFERS_REQUEST_KEY);
+    } else {
+      addOfferRequest(MesosCommon.TOPOLOGIES_OFFERS_REQUEST_KEY);
+    }
+    if (offersRequestTracker.isEmpty()) {
       if (!offers.isEmpty()) {
-        log.info("Declining all offers that are currently buffered because no topologies need assignments. Declined offer ids: {}", offerMapKeySetToString(offers));
+        log.info("Declining all offers that are currently buffered because no topologies or tasks need assignments. Declined offer ids: {}", offerMapKeySetToString(offers));
         for (Protos.OfferID offerId : offers.keySet()) {
           driver.declineOffer(offerId);
         }
         offers.clear();
       }
       if (!offersSuppressed) {
-        log.info("(SUPPRESS OFFERS) We don't have any topologies that need assignments, but offers are still flowing. Suppressing offers.");
+        log.info("(SUPPRESS OFFERS) We don't have any topologies or tasks that need assignments, but offers are still flowing. Suppressing offers.");
         driver.suppressOffers();
-        setOffersSuppressed();
+        offersSuppressed = true;
       }
       return new ArrayList<>();
     }
@@ -182,9 +188,9 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
 
     if (offers.isEmpty()) {
       if (offersSuppressed) {
-        log.info("(REVIVE OFFERS) We have topologies that need assignments, but offers are currently suppressed. Reviving offers.");
+        log.info("(REVIVE OFFERS) We have topologies or sidecar tasks that need assignments, but offers are currently suppressed. Reviving offers.");
         driver.reviveOffers();
-        unsetOffersSuppressed();
+        offersSuppressed = false;
       }
       // Note: We still have the offersLock at this point, so we return the empty ArrayList so that we can release the lock and acquire new offers
       return new ArrayList<>();

@@ -64,6 +64,9 @@ public class MesosCommon {
   public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = " | ";
   public static final String MESOS_COMPONENT_ID_DELIMITER = "|";
 
+  public static final String LOGVIEWER_OFFERS_REQUEST_KEY = "logviewer";
+  public static final String TOPOLOGIES_OFFERS_REQUEST_KEY = "topologies";
+
   public static String getMesosFrameworkName(Map mesosStormConf) {
     return Optional.fromNullable((String) mesosStormConf.get(MesosNimbus.CONF_MESOS_FRAMEWORK_NAME)).or("Storm!!!");
   }
