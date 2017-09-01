@@ -24,6 +24,7 @@ import org.apache.storm.scheduler.TopologyDetails;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import storm.mesos.MesosNimbus;
 import storm.mesos.resources.AggregatedOffers;
 
 import java.net.InetAddress;
@@ -60,7 +61,12 @@ public class MesosCommon {
   public static final String SUPERVISOR_ID = "supervisorid";
   public static final String ASSIGNMENT_ID = "assignmentid";
   public static final String DEFAULT_WORKER_NAME_PREFIX_DELIMITER = "_";
-  public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = "|";
+  public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = " | ";
+  public static final String MESOS_COMPONENT_ID_DELIMITER = "|";
+
+  public static String getMesosFrameworkName(Map mesosStormConf) {
+    return Optional.fromNullable((String) mesosStormConf.get(MesosNimbus.CONF_MESOS_FRAMEWORK_NAME)).or("Storm!!!");
+  }
 
   public static String getNimbusHost(Map mesosStormConf) throws UnknownHostException {
     Optional<String> nimbusHostFromConfig =  Optional.fromNullable((String) mesosStormConf.get(Config.NIMBUS_HOST));
@@ -104,8 +110,8 @@ public class MesosCommon {
     return String.format("%s-%d-%s", nodeid, port, timestampMillis());
   }
 
-  public static String supervisorId(String nodeid, String topologyId) {
-    return String.format("%s%s%s", nodeid, DEFAULT_MESOS_COMPONENT_NAME_DELIMITER, topologyId);
+  public static String supervisorId(String frameworkName, String nodeid, String topologyId) {
+    return String.format("%s%s%s%s%s", frameworkName, MESOS_COMPONENT_ID_DELIMITER, nodeid, MESOS_COMPONENT_ID_DELIMITER, topologyId);
   }
 
   public static boolean autoStartLogViewer(Map conf) {

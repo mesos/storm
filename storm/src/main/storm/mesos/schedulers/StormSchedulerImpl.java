@@ -204,7 +204,7 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
 
       Set<String> nodesWithExistingSupervisors = new HashSet<>();
       for (String currentNode : aggregatedOffersPerNode.keySet()) {
-        if (SchedulerUtils.supervisorExists(currentNode, existingSupervisors, currentTopology)) {
+        if (SchedulerUtils.supervisorExists(MesosCommon.getMesosFrameworkName(mesosStormConf), currentNode, existingSupervisors, currentTopology)) {
           nodesWithExistingSupervisors.add(currentNode);
         }
       }
