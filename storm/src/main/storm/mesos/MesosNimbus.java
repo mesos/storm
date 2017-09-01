@@ -112,7 +112,6 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_CONTAINER_DOCKER_IMAGE = "mesos.container.docker.image";
   public static final String CONF_MESOS_SUPERVISOR_STORM_LOCAL_DIR = "mesos.supervisor.storm.local.dir";
   public static final String FRAMEWORK_ID = "FRAMEWORK_ID";
-  public static final String CONF_STORM_MESOS_LOGVIEWER_ZK_DIR = "storm.mesos.logviewer.zookeeper.dir";
 
   public static final int TASK_RECONCILIATION_INTERVAL = 300000; // 5 minutes
 
@@ -285,10 +284,10 @@ public class MesosNimbus implements INimbus {
       @Override
       public void run() {
         // performing "implicit" reconciliation; master will respond with the latest state for all currently known
-        // non-terminal tasks
+        // non-terminal tasks in the framework scheduler's statusUpdate() method
         Collection<TaskStatus> taskStatuses = new ArrayList<TaskStatus>();
         _driver.reconcileTasks(taskStatuses);
-        LOG.info("Performing tasking reconciliation between scheduler and master");
+        LOG.info("Performing task reconciliation between scheduler and master");
       }
     }, TASK_RECONCILIATION_INTERVAL, TASK_RECONCILIATION_INTERVAL); // reconciliation performed every 5 minutes
   }
@@ -369,6 +368,10 @@ public class MesosNimbus implements INimbus {
       return new ArrayList<WorkerSlot>();
     }
     synchronized (_offersLock) {
+      /**
+       *  Not currently supporting automated logviewer launch for Docker containers
+       *  ISSUE #215: https://github.com/mesos/storm/issues/215
+       */
       if (!_container.isPresent()) {
         launchLogviewer(existingSupervisors);
       }
@@ -382,7 +385,7 @@ public class MesosNimbus implements INimbus {
 
   private void launchLogviewer(Collection<SupervisorDetails> existingSupervisors) {
     final double logviewerCpu = 0.5;
-    final double logviewerMem = 400.0;
+    final double logviewerMemMb = 400.0;
 
     Map<String, AggregatedOffers> aggregatedOffersPerNode = MesosCommon.getAggregatedOffersPerNode(_offers);
     StormSchedulerImpl stormScheduler = (StormSchedulerImpl) getForcedScheduler();
@@ -390,33 +393,32 @@ public class MesosNimbus implements INimbus {
 
     String supervisorStormLocalDir = getStormLocalDirForWorkers();
     String configUri = getFullConfigUri();
-    String logviewerCommand = String.format(
-                    "cp storm.yaml storm-mesos*/conf" +
-                    " && cd storm-mesos*" +
-                    " && bin/storm logviewer" +
-                    " -c storm.local.dir=%s", supervisorStormLocalDir);
+    String logviewerCommand = String.format("cp storm.yaml storm-mesos*/conf" +
+                                            " && cd storm-mesos*" +
+                                            " && bin/storm logviewer" +
+                                            " -c storm.local.dir=%s", supervisorStormLocalDir);
 
     /**
      *  Go through each existing supervisor and:
-     *    1. Check ZK if logviewer already exists on worker host, if not then continue
-     *    2. Look in the aggregratedOffersPerNode and check the node for offers, if there are offers then continue
+     *    1. Check ZK if logviewer already exists on worker host, if not then proceed
+     *    2. Look in the aggregratedOffersPerNode and check the node for offers, if there are offers then proceed
      *    3. Create a TaskInfo for the logviewer corresponding to the correct Offers and launch the task
      *    4. Update ZK to reflect the existence of new logviewer on worker host
      */
 
     for (SupervisorDetails supervisor : existingSupervisors) {
       List<TaskInfo> logviewerTask = new ArrayList<TaskInfo>();
-      LOG.info("launchLogviewer: Supervisor ID: {}", supervisor.getId());
 
       if (!supervisor.getId().contains(MesosCommon.MESOS_COMPONENT_ID_DELIMITER)) {
-        LOG.error("launchLogviewer: Supervisor ID formatting invalid, please re-launch all supervisors");
+        LOG.error("launchLogviewer: Supervisor ID, {}, formatting invalid, please re-launch all supervisors", supervisor.getId());
         continue;
       }
 
+      // No current mapping exists from supervisor ID to node ID so that information must be extracted and stored in the
+      // supervisor ID
       String nodeId = supervisor.getId().split("\\" + MesosCommon.MESOS_COMPONENT_ID_DELIMITER)[1];
 
       if (_zkClient.nodeExists(String.format("%s/%s", _logviewerZkDir, nodeId))) {
-        LOG.info("launchLogviewer: Logviewer already exists on this host: {}", nodeId);
         continue;
       }
 
@@ -435,7 +437,7 @@ public class MesosNimbus implements INimbus {
       try {
         resourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.CPU, new ScalarResourceEntry(logviewerCpu));
         resources.addAll(createMesosScalarResourceList(ResourceType.CPU, resourceEntryList));
-        resourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(logviewerMem));
+        resourceEntryList = aggregatedOffers.reserveAndGet(ResourceType.MEM, new ScalarResourceEntry(logviewerMemMb));
         resources.addAll(createMesosScalarResourceList(ResourceType.MEM, resourceEntryList));
       } catch (ResourceNotAvailableException e) {
         LOG.warn("launchLogviewer: Unable to launch logviewer because some resources were unavailable. Available aggregatedOffers: %s", aggregatedOffers);
@@ -443,9 +445,9 @@ public class MesosNimbus implements INimbus {
       }
 
       CommandInfo.Builder commandInfoBuilder = CommandInfo.newBuilder()
-              .addUris(URI.newBuilder().setValue((String) mesosStormConf.get(CONF_EXECUTOR_URI)))
-              .addUris(URI.newBuilder().setValue(configUri))
-              .setValue(logviewerCommand);
+                                                          .addUris(URI.newBuilder().setValue((String) mesosStormConf.get(CONF_EXECUTOR_URI)))
+                                                          .addUris(URI.newBuilder().setValue(configUri))
+                                                          .setValue(logviewerCommand);
 
       // i.e. "Storm!!!|worker-host4.dev|logviewer-1504045609.983"
       String id = String.format("%s%s%s%slogviewer-%s",
@@ -455,8 +457,8 @@ public class MesosNimbus implements INimbus {
                                 MesosCommon.MESOS_COMPONENT_ID_DELIMITER,
                                 MesosCommon.timestampMillis());
       TaskID taskId = TaskID.newBuilder()
-              .setValue(id)
-              .build();
+                            .setValue(id)
+                            .build();
 
       // i.e. "Storm!!! | logviewer | 8888"
       String name = String.format("%s%slogviewer%s%s",
@@ -465,16 +467,16 @@ public class MesosNimbus implements INimbus {
                                   MesosCommon.DEFAULT_MESOS_COMPONENT_NAME_DELIMITER,
                                   mesosStormConf.get(Config.LOGVIEWER_PORT));
       TaskInfo task = TaskInfo.newBuilder()
-              .setTaskId(taskId)
-              .setName(name)
-              .setSlaveId(aggregatedOffers.getSlaveID())
-              .setCommand(commandInfoBuilder.build())
-              .addAllResources(resources)
-              .build();
+                              .setTaskId(taskId)
+                              .setName(name)
+                              .setSlaveId(aggregatedOffers.getSlaveID())
+                              .setCommand(commandInfoBuilder.build())
+                              .addAllResources(resources)
+                              .build();
 
       logviewerTask.add(task);
 
-      LOG.info("launchLogviewer: Using offerIDs: {} on host: {} to launch logviewer", offerIDListToString(offerIDList), nodeId);
+      LOG.info("launchLogviewer: Using offerIDs: {} on host: {} to launch logviewer task: {}", offerIDListToString(offerIDList), nodeId, task.getTaskId().getValue());
 
       _driver.launchTasks(offerIDList, logviewerTask);
       for (OfferID offerID : offerIDList) {
@@ -489,6 +491,7 @@ public class MesosNimbus implements INimbus {
       LOG.info("launchLogviewer: No offers for logviewer, requesting offers");
       stormScheduler.addOfferRequest(MesosCommon.LOGVIEWER_OFFERS_REQUEST_KEY);
     } else {
+      LOG.info("launchLogviewer: Logviewer already running on all hosts containing storm bits");
       stormScheduler.removeOfferRequest(MesosCommon.LOGVIEWER_OFFERS_REQUEST_KEY);
     }
   }
@@ -792,11 +795,11 @@ public class MesosNimbus implements INimbus {
     String frameworkName = Optional.fromNullable((String) mesosStormConf.get(CONF_MESOS_FRAMEWORK_NAME)).or("Storm!!!");
     String frameworkUser = Optional.fromNullable((String) mesosStormConf.get(CONF_MESOS_FRAMEWORK_USER)).or("");
     FrameworkInfo.Builder finfo = FrameworkInfo.newBuilder()
-        .setName(frameworkName)
-        .setFailoverTimeout(failoverTimeout.doubleValue())
-        .setUser("")
-        .setRole(role)
-        .setCheckpoint(checkpoint);
+                                               .setName(frameworkName)
+                                               .setFailoverTimeout(failoverTimeout.doubleValue())
+                                               .setUser(frameworkUser)
+                                               .setRole(role)
+                                               .setCheckpoint(checkpoint);
 
     String id = _state.get(FRAMEWORK_ID);
 
