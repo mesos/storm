@@ -122,7 +122,7 @@ public class NimbusMesosScheduler implements Scheduler {
   private void updateLogviewerState(TaskStatus status) {
     String taskId = status.getTaskId().getValue();
     if (!taskId.contains(MesosCommon.MESOS_COMPONENT_ID_DELIMITER)) {
-      LOG.error("updateLogviewerState: taskId for logviewer, {}, isn't formatted correctly", taskId);
+      LOG.error("updateLogviewerState: taskId for logviewer, {}, isn't formatted correctly so ignoring task update", taskId);
       return;
     }
     String nodeId = taskId.split("\\" + MesosCommon.MESOS_COMPONENT_ID_DELIMITER)[1];
@@ -138,6 +138,7 @@ public class NimbusMesosScheduler implements Scheduler {
         checkRunningLogviewerState(logviewerZKPath);
         return;
       case TASK_LOST:
+        // this status update can be triggered by the explicit kill and isn't terminal, do not kill again
         break;
       default:
         // explicitly kill the logviewer task to ensure logviewer is terminated

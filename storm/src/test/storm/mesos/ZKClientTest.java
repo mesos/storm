@@ -8,9 +8,6 @@ import static org.junit.Assert.*;
 import storm.mesos.util.ZKClient;
 import org.apache.curator.test.TestingServer;
 
-/**
- * Created by rtang on 7/21/17.
- */
 public class ZKClientTest {
   /**
    * Testing target.

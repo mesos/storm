@@ -12,8 +12,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Created by rtang on 7/21/17.
+ * ZKClient allows you to interact with ZooKeeper. Primarily used for tracking logviewer state on hosts thus far but
+ * can be used to track any metadata needed in the future.
  */
+
 public class ZKClient {
   CuratorFramework _client;
   public static final Logger LOG = LoggerFactory.getLogger(ZKClient.class);
