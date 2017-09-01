@@ -29,6 +29,7 @@ import org.apache.mesos.SchedulerDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import storm.mesos.schedulers.StormSchedulerImpl;
+import storm.mesos.util.MesosCommon;
 import storm.mesos.util.ZKClient;
 
 import java.util.List;
@@ -42,7 +43,6 @@ public class NimbusMesosScheduler implements Scheduler {
   private String logviewerZkDir;
   private CountDownLatch _registeredLatch = new CountDownLatch(1);
   public static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
-  public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = "|";
 
   public NimbusMesosScheduler(MesosNimbus mesosNimbus, ZKClient zkClient, String logviewerZkDir) {
     this.mesosNimbus = mesosNimbus;
@@ -137,10 +137,12 @@ public class NimbusMesosScheduler implements Scheduler {
       case TASK_RUNNING:
         checkRunningLogviewerState(logviewerZKPath);
         return;
+      case TASK_LOST:
+        break;
       default:
+        // explicitly kill the logviewer task to ensure logviewer is terminated
+        mesosNimbus._driver.killTask(status.getTaskId());
     }
-    // explicitly kill the logviewer task to ensure logviewer is terminated
-    mesosNimbus._driver.killTask(status.getTaskId());
     // if it gets to this point it means logviewer terminated; update ZK with new logviewer state
     if (zkClient.nodeExists(logviewerZKPath)) {
       LOG.info("updateLogviewerState: Remove logviewer state in zk at {} for logviewer task {}", logviewerZKPath, taskId);
