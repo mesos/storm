@@ -180,7 +180,7 @@ public class MesosNimbusTest {
 
   private String getTopologyIdFromTaskName(String taskName) {
     String info[] = taskName.split("\\|");
-    return info[1];
+    return info[2];
   }
 
   private Map<String, List<Protos.TaskInfo>> getTopologyIDtoTaskInfoMap(List<Protos.TaskInfo> taskInfoList) {
