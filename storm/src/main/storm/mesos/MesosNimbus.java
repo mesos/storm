@@ -42,6 +42,7 @@ import org.apache.mesos.Protos.OfferID;
 import org.apache.mesos.Protos.Resource;
 import org.apache.mesos.Protos.TaskID;
 import org.apache.mesos.Protos.TaskInfo;
+import org.apache.mesos.Protos.TaskStatus;
 import org.apache.mesos.Protos.Value.Range;
 import org.apache.mesos.Protos.Value.Ranges;
 import org.apache.mesos.Protos.Value.Scalar;
@@ -84,6 +85,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import static storm.mesos.util.PrettyProtobuf.offerIDListToString;
 import static storm.mesos.util.PrettyProtobuf.offerToString;
@@ -108,9 +111,13 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_CONTAINER_DOCKER_IMAGE = "mesos.container.docker.image";
   public static final String CONF_MESOS_SUPERVISOR_STORM_LOCAL_DIR = "mesos.supervisor.storm.local.dir";
   public static final String FRAMEWORK_ID = "FRAMEWORK_ID";
+  public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = "|";
 
   public static final String CONF_ZOOKEEPER_SERVERS = "storm.zookeeper.servers";
   public static final String CONF_ZOOKEEPER_PORT = "storm.zookeeper.port";
+  public static final String CONF_STORM_LOGVIEWER_ZK_DIR = "storm.logviewer.zookeeper.dir";
+
+  public static final int TASK_RECONCILIATION_INTERVAL = 300000; // 5 minutes
 
   private static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
   private final Object _offersLock = new Object();
@@ -120,6 +127,7 @@ public class MesosNimbus implements INimbus {
   protected volatile SchedulerDriver _driver;
   private volatile boolean _registeredAndInitialized = false;
   private ZKClient _zkClient;
+  private String _logviewerZkDir;
   private Timer _timer = new Timer();
   private Map mesosStormConf;
   private Set<String> _allowedHosts;
@@ -219,13 +227,14 @@ public class MesosNimbus implements INimbus {
     if (zooKeeperPort == null || zooKeeperServers == null) {
       LOG.error("ZooKeeper configs are not found in storm.yaml");
     } else {
-      String connectionString = "";
+      StringBuilder connectionString = new StringBuilder();
       for (String server : zooKeeperServers) {
-        connectionString += server + ":" + zooKeeperPort + ",";
+        connectionString.append(String.format("%s:%s,", server, zooKeeperPort));
       }
       _zkClient = new ZKClient(connectionString.substring(0, connectionString.length() - 1));
-      if (!_zkClient.nodeExists("/logviewers")) {
-        _zkClient.createNode("/logviewers");
+      if (!_zkClient.nodeExists(_logviewerZkDir)) {
+        _zkClient.createNode(_logviewerZkDir);
+        LOG.info("Created general ZK directory for logviewer state at: {}", _logviewerZkDir);
       }
     }
 
@@ -235,7 +244,7 @@ public class MesosNimbus implements INimbus {
     }
 
     _container = Optional.fromNullable((String) conf.get(CONF_MESOS_CONTAINER_DOCKER_IMAGE));
-    _mesosScheduler = new NimbusMesosScheduler(this);
+    _mesosScheduler = new NimbusMesosScheduler(this, _zkClient, _logviewerZkDir);
 
     // Generate YAML to be served up to clients
     _generatedConfPath = Paths.get(
@@ -275,6 +284,17 @@ public class MesosNimbus implements INimbus {
 
     _state.put(FRAMEWORK_ID, id.getValue());
     _offers = new HashMap<Protos.OfferID, Protos.Offer>();
+
+    _timer.scheduleAtFixedRate(new TimerTask() {
+      @Override
+      public void run() {
+        // performing "implicit" reconciliation; master will respond with the latest state for all currently known
+        // non-terminal tasks
+        Collection<TaskStatus> taskStatuses = new ArrayList<TaskStatus>();
+        _driver.reconcileTasks(taskStatuses);
+        LOG.info("Performing tasking reconciliation between scheduler and master");
+      }
+    }, TASK_RECONCILIATION_INTERVAL, TASK_RECONCILIATION_INTERVAL); // reconciliation performed every 5 minutes
   }
 
   public void shutdown() throws Exception {
@@ -353,7 +373,9 @@ public class MesosNimbus implements INimbus {
       return new ArrayList<WorkerSlot>();
     }
     synchronized (_offersLock) {
-      launchLogviewer(existingSupervisors);
+      if (!_container.isPresent()) {
+        launchLogviewer(existingSupervisors);
+      }
       return _stormScheduler.allSlotsAvailableForScheduling(
               _offers,
               existingSupervisors,
@@ -388,9 +410,9 @@ public class MesosNimbus implements INimbus {
       List<TaskInfo> logviewerTask = new ArrayList<TaskInfo>();
       LOG.info("launchLogviewer: Supervisor ID: {}", supervisor.getId());
 
-      String nodeId = supervisor.getId().split("|")[0];
+      String nodeId = supervisor.getId().split("\\" + DEFAULT_MESOS_COMPONENT_NAME_DELIMITER)[0];
 
-      if (_zkClient.nodeExists(String.format("/logviewers/%s", nodeId))) {
+      if (_zkClient.nodeExists(String.format("%s/%s", _logviewerZkDir, nodeId))) {
         LOG.info("launchLogviewer: Logviewer already exists on this host: {}", nodeId);
         continue;
       }
@@ -422,7 +444,7 @@ public class MesosNimbus implements INimbus {
               .setValue(logviewerCommand);
 
       TaskID taskId = TaskID.newBuilder()
-              .setValue(String.format("%s-logviewer", nodeId))
+              .setValue(String.format("%s%slogviewer",  nodeId, DEFAULT_MESOS_COMPONENT_NAME_DELIMITER))
               .build();
 
       TaskInfo task = TaskInfo.newBuilder()
@@ -442,9 +464,9 @@ public class MesosNimbus implements INimbus {
         _offers.remove(offerID);
       }
 
-      String logviewerZKNodeName = String.format("/logviewers/%s", nodeId);
-      _zkClient.createNode(logviewerZKNodeName);
-      LOG.info("launchLogviewer: Updating logviewer state in zk: {}", logviewerZKNodeName);
+      String logviewerZKPath = String.format("%s/%s", _logviewerZkDir, nodeId);
+      _zkClient.createNode(logviewerZKPath);
+      LOG.info("launchLogviewer: Create logviewer state in zk: {}", logviewerZKPath);
     }
   }
 
@@ -812,9 +834,5 @@ public class MesosNimbus implements INimbus {
       credential = credentialBuilder.build();
     }
     return credential;
-  }
-
-  private void createLogviewer() {
-
   }
 }

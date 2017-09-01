@@ -28,6 +28,7 @@ import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.mesos.util.ZKClient;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -36,11 +37,16 @@ import static storm.mesos.util.PrettyProtobuf.taskStatusToString;
 
 public class NimbusMesosScheduler implements Scheduler {
   private MesosNimbus mesosNimbus;
+  private ZKClient zkClient;
+  private String logviewerZkDir;
   private CountDownLatch _registeredLatch = new CountDownLatch(1);
   public static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
+  public static final String DEFAULT_MESOS_COMPONENT_NAME_DELIMITER = "|";
 
-  public NimbusMesosScheduler(MesosNimbus mesosNimbus) {
+  public NimbusMesosScheduler(MesosNimbus mesosNimbus, ZKClient zkClient, String logviewerZkDir) {
     this.mesosNimbus = mesosNimbus;
+    this.zkClient = zkClient;
+    this.logviewerZkDir = logviewerZkDir;
   }
 
   public void waitUntilRegistered() throws InterruptedException {
@@ -88,6 +94,9 @@ public class NimbusMesosScheduler implements Scheduler {
   @Override
   public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
     String msg = String.format("Received status update: %s", taskStatusToString(status));
+    if (status.getTaskId().getValue().contains("logviewer")) {
+      updateLogviewerState(status);
+    }
     switch (status.getState()) {
       case TASK_STAGING:
       case TASK_STARTING:
