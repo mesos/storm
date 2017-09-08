@@ -11,6 +11,8 @@ import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
+
 /**
  * ZKClient allows you to interact with ZooKeeper. Primarily used for tracking logviewer state on hosts thus far but
  * can be used to track any metadata needed in the future.
@@ -87,15 +89,24 @@ public class ZKClient {
     }
   }
 
-  public String getNodeData(String path) {
+  public boolean updateNodeData(String path, byte[] data) {
+    try {
+      _client.setData().forPath(path, data);
+      return true;
+    } catch (Exception e) {
+      LOG.error(e.toString());
+      return false;
+    }
+  }
+
+  public byte[] getNodeData(String path) {
     byte[] rawData = null;
     try {
       rawData = _client.getData().forPath(path);
-      return new String(rawData, "UTF-8");
     } catch (Exception e) {
       LOG.error(e.toString());
-      return "";
     }
+    return rawData;
   }
 
   public boolean nodeExists(String path) {
@@ -109,6 +120,16 @@ public class ZKClient {
       LOG.error(e.toString());
       return false;
     }
+  }
+
+  public List<String> getChildren(String path) {
+    List<String> children = null;
+    try {
+      children = _client.getChildren().forPath(path);
+    } catch (Exception e) {
+      LOG.error(e.toString());
+    }
+    return children;
   }
 
   public void close() {
