@@ -17,6 +17,7 @@
  */
 package storm.mesos;
 
+import com.google.protobuf.InvalidProtocolBufferException;
 import org.apache.storm.Config;
 import org.apache.storm.scheduler.INimbus;
 import org.apache.storm.scheduler.IScheduler;
@@ -46,6 +47,7 @@ import org.apache.mesos.Protos.TaskStatus;
 import org.apache.mesos.Protos.Value.Range;
 import org.apache.mesos.Protos.Value.Ranges;
 import org.apache.mesos.Protos.Value.Scalar;
+import org.apache.mesos.Protos.TaskState;
 import org.apache.mesos.SchedulerDriver;
 import org.json.simple.JSONValue;
 import org.slf4j.Logger;
@@ -282,13 +284,28 @@ public class MesosNimbus implements INimbus {
     _timer.scheduleAtFixedRate(new TimerTask() {
       @Override
       public void run() {
-        // performing "implicit" reconciliation; master will respond with the latest state for all currently known
-        // non-terminal tasks in the framework scheduler's statusUpdate() method
+        // performing "explicit" reconciliation; master will respond with the latest state for all logviewer tasks
+        // in the framework scheduler's statusUpdate() method
         Collection<TaskStatus> taskStatuses = new ArrayList<TaskStatus>();
+        List<String> logviewerPaths = _zkClient.getChildren(_logviewerZkDir);
+        if (logviewerPaths == null) {
+          _driver.reconcileTasks(taskStatuses);
+          return;
+        }
+        for (String path : logviewerPaths) {
+          TaskID logviewerTaskId = TaskID.newBuilder()
+                                          .setValue(new String(_zkClient.getNodeData(String.format("%s/%s", _logviewerZkDir, path))))
+                                          .build();
+          TaskStatus logviewerTaskStatus = TaskStatus.newBuilder()
+                                                     .setTaskId(logviewerTaskId)
+                                                     .setState(TaskState.TASK_RUNNING)
+                                                     .build();
+          taskStatuses.add(logviewerTaskStatus);
+        }
         _driver.reconcileTasks(taskStatuses);
-        LOG.info("Performing task reconciliation between scheduler and master");
+        LOG.info("Performing task reconciliation between scheduler and master on following tasks: {}", taskStatuses.toString());
       }
-    }, TASK_RECONCILIATION_INTERVAL, TASK_RECONCILIATION_INTERVAL); // reconciliation performed every 5 minutes
+    }, 0, TASK_RECONCILIATION_INTERVAL); // reconciliation performed every 5 minutes
   }
 
   public void shutdown() throws Exception {
@@ -484,6 +501,7 @@ public class MesosNimbus implements INimbus {
 
       String logviewerZKPath = String.format("%s/%s", _logviewerZkDir, nodeId);
       _zkClient.createNode(logviewerZKPath);
+      _zkClient.updateNodeData(logviewerZKPath, taskId.getValue());
       LOG.info("launchLogviewer: Create logviewer state in zk: {}", logviewerZKPath);
     }
     if (needLogviewer) {
