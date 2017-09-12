@@ -96,6 +96,7 @@ import static storm.mesos.util.PrettyProtobuf.offerIDListToString;
 import static storm.mesos.util.PrettyProtobuf.offerToString;
 import static storm.mesos.util.PrettyProtobuf.offerMapToString;
 import static storm.mesos.util.PrettyProtobuf.taskInfoListToString;
+import static storm.mesos.util.PrettyProtobuf.taskStatusListToTaskIDsString;
 
 public class MesosNimbus implements INimbus {
   public static final String CONF_EXECUTOR_URI = "mesos.executor.uri";
@@ -221,19 +222,19 @@ public class MesosNimbus implements INimbus {
     _allowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_ALLOWED_HOSTS));
     _disallowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_DISALLOWED_HOSTS));
 
-    Set<String> zooKeeperServers = listIntoSet((List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS));
-    String zooKeeperPort = String.valueOf(conf.get(Config.STORM_ZOOKEEPER_PORT));
+    Set<String> zkServerSet = listIntoSet((List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS));
+    String zkPort = String.valueOf(conf.get(Config.STORM_ZOOKEEPER_PORT));
     _logviewerZkDir = Optional.fromNullable((String) conf.get(Config.STORM_ZOOKEEPER_ROOT)).or("") + "/storm-mesos/logviewers";
     LOG.info("Logviewer information will be stored under {}", _logviewerZkDir);
 
-    if (zooKeeperPort == null || zooKeeperServers == null) {
-      LOG.error("ZooKeeper configs are not found in storm.yaml");
+    if (zkPort == null || zkServerSet == null) {
+      throw new RuntimeException("ZooKeeper configs are not found in storm.yaml: " + Config.STORM_ZOOKEEPER_SERVERS + ", " + Config.STORM_ZOOKEEPER_PORT);
     } else {
-      StringBuilder connectionString = new StringBuilder();
-      for (String server : zooKeeperServers) {
-        connectionString.append(String.format("%s:%s,", server, zooKeeperPort));
+      List<String> zkConnectionList = new ArrayList<>();
+      for (String server : zkServerSet) {
+        zkConnectionList.add(String.format("%s:%s", server, zkPort));
       }
-      _zkClient = new ZKClient(connectionString.substring(0, connectionString.length() - 1));
+      _zkClient = new ZKClient(StringUtils.join(zkConnectionList, ','));
     }
 
     Boolean preferReservedResources = (Boolean) conf.get(CONF_MESOS_PREFER_RESERVED_RESOURCES);
@@ -288,7 +289,7 @@ public class MesosNimbus implements INimbus {
       public void run() {
         // performing "explicit" reconciliation; master will respond with the latest state for all logviewer tasks
         // in the framework scheduler's statusUpdate() method
-        Collection<TaskStatus> taskStatuses = new ArrayList<TaskStatus>();
+        List<TaskStatus> taskStatuses = new ArrayList<TaskStatus>();
         List<String> logviewerPaths = _zkClient.getChildren(_logviewerZkDir);
         if (logviewerPaths == null) {
           _driver.reconcileTasks(taskStatuses);
@@ -305,7 +306,7 @@ public class MesosNimbus implements INimbus {
           taskStatuses.add(logviewerTaskStatus);
         }
         _driver.reconcileTasks(taskStatuses);
-        LOG.info("Performing task reconciliation between scheduler and master on following tasks: {}", taskStatuses.toString());
+        LOG.info("Performing task reconciliation between scheduler and master on following tasks: {}", taskStatusListToTaskIDsString(taskStatuses));
       }
     }, 0, TASK_RECONCILIATION_INTERVAL); // reconciliation performed every 5 minutes
   }
@@ -510,7 +511,7 @@ public class MesosNimbus implements INimbus {
       LOG.info("launchLogviewer: No offers for logviewer, requesting offers");
       stormScheduler.addOfferRequest(MesosCommon.LOGVIEWER_OFFERS_REQUEST_KEY);
     } else {
-      LOG.info("launchLogviewer: Logviewer already running on all hosts containing storm bits");
+      LOG.debug("launchLogviewer: Logviewer already running on all hosts containing storm bits");
       stormScheduler.removeOfferRequest(MesosCommon.LOGVIEWER_OFFERS_REQUEST_KEY);
     }
   }

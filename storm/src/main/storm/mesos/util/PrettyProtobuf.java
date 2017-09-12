@@ -262,4 +262,16 @@ public class PrettyProtobuf {
     List<String> offerIDsAsStrings = Lists.transform(offerIDList, offerIDToStringTransform);
     return String.format("[%s]", StringUtils.join(offerIDsAsStrings, ", "));
   }
+
+  private static Function<TaskStatus, String> taskStatusToTaskIDStringTransform =
+      new Function<TaskStatus, String>() {
+        public String apply(TaskStatus t) {
+          return String.format("\"%s\"", t.getTaskId().getValue().toString());
+        }
+      };
+
+  public static String taskStatusListToTaskIDsString(List<TaskStatus> taskStatusList) {
+    List<String> taskIDsAsStrings = Lists.transform(taskStatusList, taskStatusToTaskIDStringTransform);
+    return String.format("[%s]", StringUtils.join(taskIDsAsStrings, ", "));
+  }
 }
