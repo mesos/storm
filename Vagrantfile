@@ -65,7 +65,7 @@ fi
 install_package "libcurl3"
 install_package "zookeeperd"
 install_package "aria2"
-install_package "mesos=0.25.0-0.2.70.ubuntu1404"
+install_package "mesos=0.28.2-2.0.27.ubuntu1404"
 
 echo "${PREFIX} Done installing packages"
 echo "${PREFIX} Successfully provisioned machine for storm development"
@@ -105,8 +105,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     node.vm.network :private_network, ip: master_ip
     # storm UI port
     node.vm.network "forwarded_port",  guest: 8080, host: 8080
+    # storm logviewer port
+    node.vm.network "forwarded_port",  guest: 8000, host: 8000
     # nimbus thrift port
     node.vm.network "forwarded_port",  guest: 6627, host: 6627
+    # Default IntelliJ debugging port (can be used to connec to nimbus, workers, etc. depending on your JVM options)
+    node.vm.network "forwarded_port",  guest: 5005, host: 5005
+    # mesos UI port
+    node.vm.network "forwarded_port",  guest: 5050, host: 5050
     node.vm.provision "shell", path: "vagrant/start-mesos-master-and-slave.sh", args: [master_ip, slave_ip]
     node.vm.provision "shell", path: "vagrant/start-nimbus.sh"
     node.vm.provision "shell", inline: "echo 'Sleeping for 30 seconds, it can take some time for " +
