@@ -54,11 +54,12 @@ public class SchedulerUtilsTest {
   public void testSupervisorExists() throws Exception {
     Collection<SupervisorDetails> existingSupervisors = new ArrayList<>();
     String hostName = "host1.east";
+    String frameworkName = "Storm!!!";
 
-    existingSupervisors.add(new SupervisorDetails(MesosCommon.supervisorId(hostName, "test-topology1-65-1442255385"), hostName));
-    existingSupervisors.add(new SupervisorDetails(MesosCommon.supervisorId(hostName, "test-topology10-65-1442255385"), hostName));
+    existingSupervisors.add(new SupervisorDetails(MesosCommon.supervisorId(frameworkName, hostName, "test-topology1-65-1442255385"), hostName));
+    existingSupervisors.add(new SupervisorDetails(MesosCommon.supervisorId(frameworkName, hostName, "test-topology10-65-1442255385"), hostName));
 
-    assertEquals(true, SchedulerUtils.supervisorExists(hostName, existingSupervisors, "test-topology1-65-1442255385"));
-    assertEquals(false, SchedulerUtils.supervisorExists(hostName, existingSupervisors, "test-topology2-65-1442255385"));
+    assertEquals(true, SchedulerUtils.supervisorExists(frameworkName, hostName, existingSupervisors, "test-topology1-65-1442255385"));
+    assertEquals(false, SchedulerUtils.supervisorExists(frameworkName, hostName, existingSupervisors, "test-topology2-65-1442255385"));
   }
 }

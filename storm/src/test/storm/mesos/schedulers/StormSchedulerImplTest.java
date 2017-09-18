@@ -68,6 +68,7 @@ public class StormSchedulerImplTest {
   private SchedulerDriver driver;
   private final String sampleTopologyId = "test-topology1-65-1442255385";
   private final String sampleHost = "host1.example.org";
+  private final String sampleFrameworkName = "Storm!!!";
   private final int samplePort = 3100;
 
   private Cluster getSpyCluster() {
@@ -158,8 +159,8 @@ public class StormSchedulerImplTest {
     topologiesMissingAssignments.add("test-topology1-65-1442255385");
 
     existingSupervisors = new ArrayList<>();
-    existingSupervisors.add(new SupervisorDetails(MesosCommon.supervisorId(sampleHost, "test-topology1-65-1442255385"), sampleHost, null, null));
-    existingSupervisors.add(new SupervisorDetails(MesosCommon.supervisorId(sampleHost, "test-topology10-65-1442255385"), sampleHost, null, null));
+    existingSupervisors.add(new SupervisorDetails(MesosCommon.supervisorId(sampleFrameworkName, sampleHost, "test-topology1-65-1442255385"), sampleHost, null, null));
+    existingSupervisors.add(new SupervisorDetails(MesosCommon.supervisorId(sampleFrameworkName, sampleHost, "test-topology10-65-1442255385"), sampleHost, null, null));
 
     topologyMap = new HashMap<>();
     topologyMap.put(sampleTopologyId, TestUtils.constructTopologyDetails(sampleTopologyId, 1, 0.1, 100));
