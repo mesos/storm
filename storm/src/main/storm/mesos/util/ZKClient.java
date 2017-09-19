@@ -59,9 +59,18 @@ public class ZKClient {
     }
   }
 
+  /**
+   * We don't care about the data in the node for this particular method variant, so we accept the default payload of `new byte[0]`:
+   *
+   *  CuratorFrameworkFactory.Builder.defaultData is defined as `new byte[0]` via this code chain:
+   *   https://github.com/apache/curator/blob/apache-curator-2.12.0/curator-framework/src/main/java/org/apache/curator/framework/CuratorFrameworkFactory.java#L131
+   *  which references:
+   *   https://github.com/apache/curator/blob/apache-curator-2.12.0/curator-framework/src/main/java/org/apache/curator/framework/CuratorFrameworkFactory.java#L54
+   *  which calls:
+   *   https://github.com/apache/curator/blob/apache-curator-2.12.0/curator-framework/src/main/java/org/apache/curator/framework/CuratorFrameworkFactory.java#L118
+   */
   public boolean createNode(String path) {
     try {
-      // default payload of byte[0]
       _client.create().creatingParentsIfNeeded().forPath(path);
       return true;
     } catch (Exception e) {
