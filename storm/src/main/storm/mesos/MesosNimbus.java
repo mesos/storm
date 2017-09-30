@@ -110,6 +110,7 @@ public class MesosNimbus implements INimbus {
   public static final String CONF_MESOS_CHECKPOINT = "mesos.framework.checkpoint";
   public static final String CONF_MESOS_LOCAL_FILE_SERVER_PORT = "mesos.local.file.server.port";
   public static final String CONF_MESOS_FRAMEWORK_NAME = "mesos.framework.name";
+  public static final String CONF_MESOS_FRAMEWORK_USER = "mesos.framework.user";
   public static final String CONF_MESOS_PREFER_RESERVED_RESOURCES = "mesos.prefer.reserved.resources";
   public static final String CONF_MESOS_CONTAINER_DOCKER_IMAGE = "mesos.container.docker.image";
   public static final String CONF_MESOS_SUPERVISOR_STORM_LOCAL_DIR = "mesos.supervisor.storm.local.dir";
@@ -810,7 +811,6 @@ public class MesosNimbus implements INimbus {
     Number failoverTimeout = Optional.fromNullable((Number) mesosStormConf.get(CONF_MASTER_FAILOVER_TIMEOUT_SECS)).or(24 * 7 * 3600);
     String role = Optional.fromNullable((String) mesosStormConf.get(CONF_MESOS_ROLE)).or("*");
     Boolean checkpoint = Optional.fromNullable((Boolean) mesosStormConf.get(CONF_MESOS_CHECKPOINT)).or(false);
-    String frameworkName = Optional.fromNullable((String) mesosStormConf.get(CONF_MESOS_FRAMEWORK_NAME)).or("Storm!!!");
     String frameworkUser = Optional.fromNullable((String) mesosStormConf.get(CONF_MESOS_FRAMEWORK_USER)).or("");
     FrameworkInfo.Builder finfo = FrameworkInfo.newBuilder()
                                                .setName(frameworkName)
