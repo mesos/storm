@@ -97,7 +97,9 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
 
     do {
       slotFound = false;
-      for (String currentNode : aggregatedOffersPerNode.keySet()) {
+      List<String> hostsWithOffers = new ArrayList<String>(aggregatedOffersPerNode.keySet());
+      Collections.shuffle(hostsWithOffers);
+      for (String currentNode : hostsWithOffers) {
         AggregatedOffers aggregatedOffers = aggregatedOffersPerNode.get(currentNode);
 
         boolean supervisorExists = nodesWithExistingSupervisors.contains(currentNode);
