@@ -546,9 +546,11 @@ public class MesosNimbus implements INimbus {
         executorData.put(MesosCommon.SUPERVISOR_ID, MesosCommon.supervisorId(slot.getNodeId(), topologyDetails.getId()));
         executorData.put(MesosCommon.ASSIGNMENT_ID, workerPrefix + slot.getNodeId());
 
+        String frameworkName = Optional.fromNullable((String) mesosStormConf.get(CONF_MESOS_FRAMEWORK_NAME)).or("storm-worker");
+
         String topologyAndNodeId = topologyDetails.getId() + " | " + slot.getNodeId();
         String executorName = "storm-supervisor | " + topologyAndNodeId;
-        String taskName = "storm-worker | " + topologyAndNodeId + ":" + slot.getPort();
+        String taskName = frameworkName + " | " + topologyAndNodeId + ":" + slot.getPort();
         String executorDataStr = JSONValue.toJSONString(executorData);
         String extraConfig = "";
 
