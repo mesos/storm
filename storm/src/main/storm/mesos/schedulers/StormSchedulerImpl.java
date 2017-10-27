@@ -178,26 +178,6 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
         driver.suppressOffers();
         offersSuppressed = true;
       }
-      log.info("Declining all offers that are currently buffered because no topologies need assignments");
-      for (Protos.OfferID offerId : offers.keySet()) {
-        driver.declineOffer(offerId);
-      }
-      offers.clear();
-      // Since we don't have any topologies that need assignments, we will suppress Offers from Mesos as we do not need more
-      if (!offersSuppressed) {
-        driver.suppressOffers();
-        offersSuppressed = true;
-      }
-      return new ArrayList<>();
-    }
-
-    if (offers.isEmpty()) {
-      if (offersSuppressed) {
-        // Since we had previously suppressed Offers, and we now have topologies needing assignment, we will revive offers from Mesos
-        driver.reviveOffers();
-        offersSuppressed = false;
-      }
-      // Note: We still have the offersLock at this point, so we return the empty ArrayList so that we can release the lock and acquire new offers
       return new ArrayList<>();
     }
 
