@@ -29,6 +29,9 @@ import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import storm.mesos.schedulers.StormSchedulerImpl;
+import storm.mesos.util.MesosCommon;
+import storm.mesos.util.ZKClient;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -37,11 +40,15 @@ import static storm.mesos.util.PrettyProtobuf.taskStatusToString;
 
 public class NimbusMesosScheduler implements Scheduler {
   private MesosNimbus mesosNimbus;
+  private ZKClient zkClient;
+  private String logviewerZkDir;
   private CountDownLatch _registeredLatch = new CountDownLatch(1);
   public static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
 
-  public NimbusMesosScheduler(MesosNimbus mesosNimbus) {
+  public NimbusMesosScheduler(MesosNimbus mesosNimbus, ZKClient zkClient, String logviewerZkDir) {
     this.mesosNimbus = mesosNimbus;
+    this.zkClient = zkClient;
+    this.logviewerZkDir = logviewerZkDir;
   }
 
   public void waitUntilRegistered() throws InterruptedException {
@@ -89,6 +96,9 @@ public class NimbusMesosScheduler implements Scheduler {
   @Override
   public void statusUpdate(SchedulerDriver driver, TaskStatus status) {
     String msg = String.format("Received status update: %s", taskStatusToString(status));
+    if (status.getTaskId().getValue().contains("logviewer")) {
+      updateLogviewerState(status);
+    }
     switch (status.getState()) {
       case TASK_STAGING:
       case TASK_STARTING:
@@ -107,6 +117,48 @@ public class NimbusMesosScheduler implements Scheduler {
       default:
         LOG.warn("Received unrecognized status update: {}", taskStatusToString(status));
         break;
+    }
+  }
+
+  private void updateLogviewerState(TaskStatus status) {
+    String taskId = status.getTaskId().getValue();
+    if (!taskId.contains(MesosCommon.MESOS_COMPONENT_ID_DELIMITER)) {
+      LOG.error("updateLogviewerState: taskId for logviewer, {}, isn't formatted correctly so ignoring task update", taskId);
+      return;
+    }
+    String nodeId = taskId.split("\\" + MesosCommon.MESOS_COMPONENT_ID_DELIMITER)[1];
+    String logviewerZKPath = String.format("%s/%s", logviewerZkDir, nodeId);
+    switch (status.getState()) {
+      case TASK_STAGING:
+        checkRunningLogviewerState(logviewerZKPath);
+        return;
+      case TASK_STARTING:
+        checkRunningLogviewerState(logviewerZKPath);
+        return;
+      case TASK_RUNNING:
+        checkRunningLogviewerState(logviewerZKPath);
+        return;
+      case TASK_LOST:
+        // this status update can be triggered by the explicit kill and isn't terminal, do not kill again
+        break;
+      default:
+        // explicitly kill the logviewer task to ensure logviewer is terminated
+        mesosNimbus._driver.killTask(status.getTaskId());
+    }
+    // if it gets to this point it means logviewer terminated; update ZK with new logviewer state
+    if (zkClient.nodeExists(logviewerZKPath)) {
+      LOG.info("updateLogviewerState: Remove logviewer state in zk at {} for logviewer task {}", logviewerZKPath, taskId);
+      zkClient.deleteNode(logviewerZKPath);
+      LOG.info("updateLogviewerState: Add offer request for logviewer");
+      StormSchedulerImpl stormScheduler = (StormSchedulerImpl) mesosNimbus.getForcedScheduler();
+      stormScheduler.addOfferRequest(MesosCommon.LOGVIEWER_OFFERS_REQUEST_KEY);
+    }
+  }
+
+  private void checkRunningLogviewerState(String logviewerZKPath) {
+    if (!zkClient.nodeExists(logviewerZKPath)) {
+      LOG.error("checkRunningLogviewerState: Running mesos logviewer task exists for logviewer that isn't tracked in ZooKeeper");
+      zkClient.createNode(logviewerZKPath);
     }
   }
 
