@@ -188,14 +188,16 @@ public class StormSchedulerImpl implements IScheduler, IMesosStormScheduler {
 
     log.info("Topologies that need assignments: {}", topologiesMissingAssignments.toString());
 
-    if (offers.isEmpty()) {
-      if (offersSuppressed) {
-        log.info("(REVIVE OFFERS) We have topologies or tasks that need assignments, but offers are currently suppressed. Reviving offers.");
-        driver.reviveOffers();
-        offersSuppressed = false;
+    if (offersSuppressed) {
+      log.info("(REVIVE OFFERS) We have topologies or tasks that need assignments, but offers are currently suppressed. Reviving offers.");
+      driver.reviveOffers();
+      offersSuppressed = false;
+      // Note: We still have _offersLock at this point, so we return the empty ArrayList if we happen to have no offers
+      // this way we can release the lock and acquire new offers. Otherwise proceed through the logic below to see if we
+      // can make any slots on the offer(s) we do have
+      if (offers.isEmpty()) {
+        return new ArrayList<>();
       }
-      // Note: We still have the offersLock at this point, so we return the empty ArrayList so that we can release the lock and acquire new offers
-      return new ArrayList<>();
     }
 
     List<WorkerSlot> allSlots = new ArrayList<>();
