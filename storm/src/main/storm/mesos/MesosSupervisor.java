@@ -154,7 +154,7 @@ public class MesosSupervisor implements ISupervisor {
   }
 
   protected boolean startLogViewer(Map conf) {
-    return MesosCommon.autoStartLogViewer(conf);
+    return MesosCommon.enabledLogviewerSidecar(conf);
   }
 
   class StormExecutor implements Executor {

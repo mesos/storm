@@ -43,7 +43,7 @@ public class MesosCommon {
   public static final String SUICIDE_CONF = "mesos.supervisor.suicide.inactive.timeout.secs";
   public static final String SUPERVISOR_STORM_LOCAL_DIR_CONF = "mesos.supervisor.storm.local.dir";
   public static final String CONF_MESOS_ROLE = "mesos.framework.role";
-  public static final String AUTO_START_LOGVIEWER_CONF = "supervisor.autostart.logviewer";
+  public static final String LOGVIEWER_SIDECAR_ENABLED = "mesos.logviewer.sidecar.enabled";
   // Should we prefix the Worker Task ID with a configurable string (as well as the topology name)?
   public static final String WORKER_NAME_PREFIX = "topology.mesos.worker.prefix";
   public static final String WORKER_NAME_PREFIX_DELIMITER = "topology.mesos.worker.prefix.delimiter";
@@ -117,8 +117,8 @@ public class MesosCommon {
     return String.format("%s%s%s%s%s", frameworkName, MESOS_COMPONENT_ID_DELIMITER, nodeid, MESOS_COMPONENT_ID_DELIMITER, topologyId);
   }
 
-  public static boolean autoStartLogViewer(Map conf) {
-    return Optional.fromNullable((Boolean) conf.get(AUTO_START_LOGVIEWER_CONF)).or(true);
+  public static boolean enabledLogviewerSidecar(Map conf) {
+    return Optional.fromNullable((Boolean) conf.get(LOGVIEWER_SIDECAR_ENABLED)).or(true);
   }
 
   public static int portFromTaskId(String taskId) {
