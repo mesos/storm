@@ -171,10 +171,10 @@ public class MesosCommonTest {
   @Test
   public void testStartLogViewer() throws Exception {
     // Test the default (true)
-    boolean result = MesosCommon.autoStartLogViewer(conf);
+    boolean result = MesosCommon.enabledLogviewerSidecar(conf);
     assertTrue(result);
-    conf.put(MesosCommon.AUTO_START_LOGVIEWER_CONF, false);
-    result = MesosCommon.autoStartLogViewer(conf);
+    conf.put(MesosCommon.LOGVIEWER_SIDECAR_ENABLED, false);
+    result = MesosCommon.enabledLogviewerSidecar(conf);
     assertTrue(!result);
   }
 
