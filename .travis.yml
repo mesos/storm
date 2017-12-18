@@ -22,8 +22,8 @@ script:
 matrix:
   fast_finish: true
   include:
-  - env: STORM_RELEASE="1.0.3" MESOS_RELEASE="1.1.0"
-  - env: STORM_RELEASE="1.0.3" MESOS_RELEASE="0.28.2"
+  - env: STORM_RELEASE="1.0.4" MESOS_RELEASE="1.1.0"
+  - env: STORM_RELEASE="1.0.4" MESOS_RELEASE="0.28.2"
 before_deploy:
 - travis_retry make images
 - travis_retry make images JAVA_PRODUCT_VERSION=8

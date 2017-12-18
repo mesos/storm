@@ -41,6 +41,7 @@ public class MesosCommonTest {
   private Map conf;
   private TopologyDetails info;
   private String topologyName = "t_name";
+  private String topologyOwner = "t_owner";
   private static final double DELTA_FOR_DOUBLE_COMPARISON = 0.0001;
   private final MesosNimbus mesosNimbus;
 
@@ -61,7 +62,7 @@ public class MesosCommonTest {
   @Before
   public void initTest() {
     initConf();
-    info = new TopologyDetails("t1", conf, new StormTopology(), 1);
+    info = new TopologyDetails("t1", conf, new StormTopology(), 1, topologyOwner);
   }
 
   @Test
@@ -86,7 +87,7 @@ public class MesosCommonTest {
     // Test explicit value of prefix
     String prefix = ":(";
     conf.put(MesosCommon.WORKER_NAME_PREFIX, prefix);
-    info = new TopologyDetails("t2", conf, new StormTopology(), 1);
+    info = new TopologyDetails("t2", conf, new StormTopology(), 1, topologyOwner);
     result = MesosCommon.getWorkerPrefix(conf, info);
     expectedResult = prefix + topologyName + MesosCommon.DEFAULT_WORKER_NAME_PREFIX_DELIMITER;
     assertEquals(result, expectedResult);
@@ -95,14 +96,14 @@ public class MesosCommonTest {
     // Test explicit value of delimiter
     String delimiter = ":)";
     conf.put(MesosCommon.WORKER_NAME_PREFIX_DELIMITER, delimiter);
-    info = new TopologyDetails("t3", conf, new StormTopology(), 1);
+    info = new TopologyDetails("t3", conf, new StormTopology(), 1, topologyOwner);
     result = MesosCommon.getWorkerPrefix(conf, info);
     expectedResult = topologyName + delimiter;
     assertEquals(result, expectedResult);
 
     // Test explicit value of prefix and delimiter
     conf.put(MesosCommon.WORKER_NAME_PREFIX, prefix);
-    info = new TopologyDetails("t4", conf, new StormTopology(), 2);
+    info = new TopologyDetails("t4", conf, new StormTopology(), 2, topologyOwner);
     result = MesosCommon.getWorkerPrefix(conf, info);
     expectedResult = prefix + topologyName + delimiter;
     assertEquals(result, expectedResult);
@@ -118,7 +119,7 @@ public class MesosCommonTest {
     assertEquals(result, expectedResult);
 
     // Test explicit value
-    info = new TopologyDetails("t2", conf, new StormTopology(), 2);
+    info = new TopologyDetails("t2", conf, new StormTopology(), 2, topologyOwner);
     String delimiter = "-";
     conf.put(MesosCommon.MESOS_COMPONENT_NAME_DELIMITER, delimiter);
     result = MesosCommon.getMesosComponentNameDelimiter(conf, info);
@@ -126,7 +127,7 @@ public class MesosCommonTest {
     assertEquals(result, expectedResult);
 
     // Test explicit value
-    info = new TopologyDetails("t2", conf, new StormTopology(), 2);
+    info = new TopologyDetails("t2", conf, new StormTopology(), 2, topologyOwner);
     initConf();
     result = MesosCommon.getMesosComponentNameDelimiter(conf, info);
     expectedResult = delimiter;
@@ -135,7 +136,7 @@ public class MesosCommonTest {
     // Test explicit value overridden in topology config
     initConf();
     conf.put(MesosCommon.MESOS_COMPONENT_NAME_DELIMITER, delimiter);
-    info = new TopologyDetails("t3", conf, new StormTopology(), 3);
+    info = new TopologyDetails("t3", conf, new StormTopology(), 3, topologyOwner);
     Map nimbusConf = new HashMap<>();
     nimbusConf.put(MesosCommon.MESOS_COMPONENT_NAME_DELIMITER, "--");
     result = MesosCommon.getMesosComponentNameDelimiter(nimbusConf, info);
@@ -210,7 +211,7 @@ public class MesosCommonTest {
     TestUtils.initializeStormTopologyConfig(topologyConf);
     topologyConf.put("TEST_TOPOLIGY_CONFIG", 3);
     topologyConf.put("TEST_TOPOLOGY_OVERRIDE", 4);
-    TopologyDetails info = new TopologyDetails("t1", topologyConf, new StormTopology(), 2);
+    TopologyDetails info = new TopologyDetails("t1", topologyConf, new StormTopology(), 2, topologyOwner);
     Map result = MesosCommon.getFullTopologyConfig(nimbusConf, info);
     Map expectedResult = new HashMap<>();
     TestUtils.initializeStormTopologyConfig(expectedResult);
@@ -244,7 +245,7 @@ public class MesosCommonTest {
 
     // Test explicit value
     conf.put(MesosCommon.WORKER_CPU_CONF, 1.5);
-    info = new TopologyDetails("t2", conf, new StormTopology(), 2);
+    info = new TopologyDetails("t2", conf, new StormTopology(), 2, topologyOwner);
     result = MesosCommon.topologyWorkerCpu(conf, info);
     expectedResult = 1.5;
     assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
@@ -252,7 +253,7 @@ public class MesosCommonTest {
     // Test string passed in
     initConf();
     conf.put(MesosCommon.WORKER_CPU_CONF, "2");
-    info = new TopologyDetails("t3", conf, new StormTopology(), 1);
+    info = new TopologyDetails("t3", conf, new StormTopology(), 1, topologyOwner);
     result = MesosCommon.topologyWorkerCpu(conf, info);
     expectedResult = 1;
     assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
@@ -262,7 +263,7 @@ public class MesosCommonTest {
     nimbusConf.put(MesosCommon.WORKER_CPU_CONF, 2);
     initConf();
     conf.put(MesosCommon.WORKER_CPU_CONF, 1.5);
-    info = new TopologyDetails("t4", conf, new StormTopology(), 1);
+    info = new TopologyDetails("t4", conf, new StormTopology(), 1, topologyOwner);
     result = MesosCommon.topologyWorkerCpu(nimbusConf, info);
     expectedResult = 1.5;
     assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
@@ -291,14 +292,14 @@ public class MesosCommonTest {
 
     // Test explicit value
     conf.put(MesosCommon.WORKER_MEM_CONF, 1200);
-    info = new TopologyDetails("t2", conf, new StormTopology(), 2);
+    info = new TopologyDetails("t2", conf, new StormTopology(), 2, topologyOwner);
     result = MesosCommon.topologyWorkerMem(conf, info);
     expectedResult = 1200;
     assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
 
     // Test string passed in
     conf.put(MesosCommon.WORKER_MEM_CONF, "1200");
-    info = new TopologyDetails("t3", conf, new StormTopology(), 1);
+    info = new TopologyDetails("t3", conf, new StormTopology(), 1, topologyOwner);
     result = MesosCommon.topologyWorkerMem(conf, info);
     expectedResult = 1000;
     assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);
@@ -307,7 +308,7 @@ public class MesosCommonTest {
     Map nimbusConf = new HashMap<>();
     nimbusConf.put(MesosCommon.WORKER_MEM_CONF, 200);
     conf.put(MesosCommon.WORKER_MEM_CONF, 150);
-    info = new TopologyDetails("t4", conf, new StormTopology(), 1);
+    info = new TopologyDetails("t4", conf, new StormTopology(), 1, topologyOwner);
     result = MesosCommon.topologyWorkerMem(nimbusConf, info);
     expectedResult = 150;
     assertEquals(result, expectedResult, DELTA_FOR_DOUBLE_COMPARISON);

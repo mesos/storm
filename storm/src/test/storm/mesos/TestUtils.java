@@ -44,7 +44,7 @@ public class TestUtils {
   }
 
   public static TopologyDetails constructTopologyDetails(String topologyName, int numWorkers) {
-    return new TopologyDetails(topologyName, initializeStormTopologyConfig(new HashMap<>()), new StormTopology(), numWorkers);
+    return new TopologyDetails(topologyName, initializeStormTopologyConfig(new HashMap<>()), new StormTopology(), numWorkers, "root");
   }
 
   public static TopologyDetails constructTopologyDetails(String topologyName, int numWorkers, double numCpus, double memSize) {
