@@ -17,12 +17,14 @@
  */
 package storm.mesos;
 
+import backtype.storm.Config;
 import backtype.storm.scheduler.Topologies;
 import backtype.storm.scheduler.TopologyDetails;
 import backtype.storm.scheduler.WorkerSlot;
 import org.apache.mesos.Protos;
 import org.apache.mesos.Protos.Offer;
 import org.apache.mesos.Protos.OfferID;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -30,6 +32,7 @@ import storm.mesos.resources.AggregatedOffers;
 import storm.mesos.resources.ResourceType;
 import storm.mesos.util.MesosCommon;
 
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -49,7 +52,7 @@ public class MesosNimbusTest {
   private Map<OfferID, Offer> map = null;
   Map<String, Collection<WorkerSlot>> slotsForTopologiesNeedingAssignments = null;
   MesosNimbus mesosNimbus = null;
-  Map<String, String> mesosStormConf;
+  Map mesosStormConf;
 
   private boolean hasResources(String role, List<Protos.Resource> resourceList, Double cpus, Double mem, Long port) {
     Double actualCpu = 0.0d, actualMem = 0.0d;
@@ -202,6 +205,8 @@ public class MesosNimbusTest {
     slotsForTopologiesNeedingAssignments = new HashMap<>();
 
     mesosStormConf = new HashMap<>();
+    mesosStormConf.put(Config.STORM_ZOOKEEPER_SERVERS, new ArrayList<>(Arrays.asList("localhost")));
+    mesosStormConf.put(Config.STORM_ZOOKEEPER_PORT, "2181");
     mesosStormConf.put(MesosNimbus.CONF_EXECUTOR_URI, "/fake/path/to/storm-mesos.tgz");
     mesosStormConf.put(MesosCommon.CONF_MESOS_ROLE, FRAMEWORK_ROLE);
     mesosNimbus = Mockito.spy(new MesosNimbus());

@@ -17,6 +17,7 @@
  */
 package storm.mesos;
 
+import backtype.storm.Config;
 import backtype.storm.generated.StormTopology;
 import backtype.storm.scheduler.TopologyDetails;
 import org.apache.mesos.Protos;
@@ -27,6 +28,8 @@ import storm.mesos.resources.ReservationType;
 import storm.mesos.resources.ResourceType;
 import storm.mesos.util.MesosCommon;
 
+import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,9 +45,11 @@ public class MesosCommonTest {
   private final MesosNimbus mesosNimbus;
 
   public MesosCommonTest() {
-    Map mesosStromConfig = new HashMap();
+    Map mesosStormConfig = new HashMap<>();
+    mesosStormConfig.put(Config.STORM_ZOOKEEPER_SERVERS, new ArrayList<>(Arrays.asList("localhost")));
+    mesosStormConfig.put(Config.STORM_ZOOKEEPER_PORT, "2181");
     mesosNimbus = new MesosNimbus();
-    mesosNimbus.initializeMesosStormConf(mesosStromConfig, "/mock");
+    mesosNimbus.initializeMesosStormConf(mesosStormConfig, "/mock");
   }
 
   @Before
