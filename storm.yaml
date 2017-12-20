@@ -28,7 +28,7 @@ logviewer.port: 8000
 logviewer.childopts: "-Xmx128m"
 logviewer.cleanup.age.mins: 10080
 logviewer.appender.name: "A1"
-supervisor.autostart.logviewer: true
+mesos.logviewer.sidecar.enabled: true
 
 # Use the public Mesosphere Storm build
 # Please note that it won't work with other distributions.

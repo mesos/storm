@@ -137,6 +137,7 @@ public class MesosNimbus implements INimbus {
   private String frameworkName;
 
   private boolean _preferReservedResources = true;
+  private boolean _enabledLogviewerSidecar = true;
   private Optional<String> _container = Optional.absent();
   private Path _generatedConfPath;
 
@@ -219,20 +220,23 @@ public class MesosNimbus implements INimbus {
 
     _allowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_ALLOWED_HOSTS));
     _disallowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_DISALLOWED_HOSTS));
+    _enabledLogviewerSidecar = MesosCommon.enabledLogviewerSidecar(conf);
 
-    Set<String> zkServerSet = listIntoSet((List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS));
-    String zkPort = String.valueOf(conf.get(Config.STORM_ZOOKEEPER_PORT));
-    _logviewerZkDir = Optional.fromNullable((String) conf.get(Config.STORM_ZOOKEEPER_ROOT)).or("") + "/storm-mesos/logviewers";
-    LOG.info("Logviewer information will be stored under {}", _logviewerZkDir);
+    if (_enabledLogviewerSidecar) {
+      Set<String> zkServerSet = listIntoSet((List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS));
+      String zkPort = String.valueOf(conf.get(Config.STORM_ZOOKEEPER_PORT));
+      _logviewerZkDir = Optional.fromNullable((String) conf.get(Config.STORM_ZOOKEEPER_ROOT)).or("") + "/storm-mesos/logviewers";
+      LOG.info("Logviewer information will be stored under {}", _logviewerZkDir);
 
-    if (zkPort == null || zkServerSet == null) {
-      throw new RuntimeException("ZooKeeper configs are not found in storm.yaml: " + Config.STORM_ZOOKEEPER_SERVERS + ", " + Config.STORM_ZOOKEEPER_PORT);
-    } else {
-      List<String> zkConnectionList = new ArrayList<>();
-      for (String server : zkServerSet) {
-        zkConnectionList.add(String.format("%s:%s", server, zkPort));
+      if (zkPort == null || zkServerSet == null) {
+        throw new RuntimeException("ZooKeeper configs are not found in storm.yaml: " + Config.STORM_ZOOKEEPER_SERVERS + ", " + Config.STORM_ZOOKEEPER_PORT);
+      } else {
+        List<String> zkConnectionList = new ArrayList<>();
+        for (String server : zkServerSet) {
+          zkConnectionList.add(String.format("%s:%s", server, zkPort));
+        }
+        _zkClient = new ZKClient(StringUtils.join(zkConnectionList, ','));
       }
-      _zkClient = new ZKClient(StringUtils.join(zkConnectionList, ','));
     }
 
     Boolean preferReservedResources = (Boolean) conf.get(CONF_MESOS_PREFER_RESERVED_RESOURCES);
@@ -282,31 +286,34 @@ public class MesosNimbus implements INimbus {
     _state.put(FRAMEWORK_ID, id.getValue());
     _offers = new HashMap<Protos.OfferID, Protos.Offer>();
 
-    _timer.scheduleAtFixedRate(new TimerTask() {
-      @Override
-      public void run() {
-        // performing "explicit" reconciliation; master will respond with the latest state for all logviewer tasks
-        // in the framework scheduler's statusUpdate() method
-        List<TaskStatus> taskStatuses = new ArrayList<TaskStatus>();
-        List<String> logviewerPaths = _zkClient.getChildren(_logviewerZkDir);
-        if (logviewerPaths == null) {
+    if (_enabledLogviewerSidecar) {
+
+      _timer.scheduleAtFixedRate(new TimerTask() {
+        @Override
+        public void run() {
+          // performing "explicit" reconciliation; master will respond with the latest state for all logviewer tasks
+          // in the framework scheduler's statusUpdate() method
+          List<TaskStatus> taskStatuses = new ArrayList<TaskStatus>();
+          List<String> logviewerPaths = _zkClient.getChildren(_logviewerZkDir);
+          if (logviewerPaths == null) {
+            _driver.reconcileTasks(taskStatuses);
+            return;
+          }
+          for (String path : logviewerPaths) {
+            TaskID logviewerTaskId = TaskID.newBuilder()
+                                           .setValue(new String(_zkClient.getNodeData(String.format("%s/%s", _logviewerZkDir, path))))
+                                           .build();
+            TaskStatus logviewerTaskStatus = TaskStatus.newBuilder()
+                                                       .setTaskId(logviewerTaskId)
+                                                       .setState(TaskState.TASK_RUNNING)
+                                                       .build();
+            taskStatuses.add(logviewerTaskStatus);
+          }
           _driver.reconcileTasks(taskStatuses);
-          return;
+          LOG.info("Performing task reconciliation between scheduler and master on following tasks: {}", taskStatusListToTaskIDsString(taskStatuses));
         }
-        for (String path : logviewerPaths) {
-          TaskID logviewerTaskId = TaskID.newBuilder()
-                                          .setValue(new String(_zkClient.getNodeData(String.format("%s/%s", _logviewerZkDir, path))))
-                                          .build();
-          TaskStatus logviewerTaskStatus = TaskStatus.newBuilder()
-                                                     .setTaskId(logviewerTaskId)
-                                                     .setState(TaskState.TASK_RUNNING)
-                                                     .build();
-          taskStatuses.add(logviewerTaskStatus);
-        }
-        _driver.reconcileTasks(taskStatuses);
-        LOG.info("Performing task reconciliation between scheduler and master on following tasks: {}", taskStatusListToTaskIDsString(taskStatuses));
-      }
-    }, 0, TASK_RECONCILIATION_INTERVAL); // reconciliation performed every 5 minutes
+      }, 0, TASK_RECONCILIATION_INTERVAL); // reconciliation performed every 5 minutes
+    }
   }
 
   public void shutdown() throws Exception {
@@ -389,7 +396,7 @@ public class MesosNimbus implements INimbus {
        *  Not currently supporting automated logviewer launch for Docker containers
        *  ISSUE #215: https://github.com/mesos/storm/issues/215
        */
-      if (!_container.isPresent()) {
+      if (_enabledLogviewerSidecar && !_container.isPresent()) {
         launchLogviewer(existingSupervisors);
       }
       return _stormScheduler.allSlotsAvailableForScheduling(

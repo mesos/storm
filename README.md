@@ -169,8 +169,8 @@ For local development and familiarizing yourself with Storm/Mesos, please see th
 * `mesos.framework.principal`: Framework principal to use to register with Mesos
 * `mesos.framework.secret.file`:  Location of file that contains the principal's secret. Secret cannot end with a NL.
 * `mesos.prefer.reserved.resources`: Prefer reserved resources over unreserved (i.e., `"*"` role). Defaults to "true".
-* `supervisor.autostart.logviewer`: Default is true. If you disable the logviewer, you may want to
-  subtract 128*1.2 from `topology.mesos.executor.mem.mb` (depending on your settings).
+* `mesos.logviewer.sidecar.enabled`: Default is "true". If you disable this setting, you will want to launch a logviewer
+  process on each worker and nimbus host under supervision if you want to view logs in the Storm UI.
 
 ## Resource configuration
 
