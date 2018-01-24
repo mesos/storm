@@ -67,7 +67,12 @@ public class MesosSupervisor implements ISupervisor {
 
     try {
       Supervisor supervisor = new Supervisor(conf, null, new MesosSupervisor());
-      supervisor.launchDaemon();
+      // For storm-1.0.5, we use reflection to call the private method, 'launchDaemon', which calls 'launch'
+      Method m = Supervisor.class.getDeclaredMethod("launchDaemon");
+      m.setAccessible(true);
+      m.invoke(supervisor);
+      // Once storm-1.0.6 is available we will remove the code above and just call launchDaemon directly:
+      // supervisor.launchDaemon();
     } catch (Exception e) {
       String msg = String.format("main: Exception: %s", e.getMessage());
       LOG.error(msg);
