@@ -35,7 +35,6 @@ import org.apache.mesos.Protos.TaskStatus;
 import org.json.simple.JSONValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import storm.mesos.logviewer.LogViewerController;
 import storm.mesos.util.MesosCommon;
 
 import java.lang.reflect.Method;
@@ -90,13 +89,6 @@ public class MesosSupervisor implements ISupervisor {
     _conf = conf;
     try {
       _executor.waitUntilRegistered();
-
-      if (startLogViewer(conf)) {
-        LOG.info("Starting logviewer...");
-        LogViewerController logController = new LogViewerController(conf);
-        logController.start();
-      }
-
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
@@ -163,10 +155,6 @@ public class MesosSupervisor implements ISupervisor {
         .setTaskId(taskId)
         .build();
     _driver.sendStatusUpdate(status);
-  }
-
-  protected boolean startLogViewer(Map conf) {
-    return MesosCommon.enabledLogviewerSidecar(conf);
   }
 
   class StormExecutor implements Executor {

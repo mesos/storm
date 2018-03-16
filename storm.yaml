@@ -21,14 +21,14 @@ supervisor.childopts: "-Xmx400m"
 # Configs for Resource Aware Scheduler
 topology.worker.max.heap.size.mb: 768.0  # default max heap size, can be overriden in topologies' configs
 
-# The default behavior is to launch the logviewer unless autostart is false.
-# If you enable the logviewer, you'll need to add memory overhead to the
-# executor for the logviewer.
+# By default this framework will launch a logviewer mesos executor on each mesos host where Storm workers are launched.
+# Set to false to disable logviewer from being automatically launched.
+mesos.logviewer.sidecar.enabled: true
+# This port must be available on every mesos host where Storm workers are launched.
 logviewer.port: 8000
 logviewer.childopts: "-Xmx128m"
 logviewer.cleanup.age.mins: 10080
 logviewer.appender.name: "A1"
-mesos.logviewer.sidecar.enabled: true
 
 # Use the public Mesosphere Storm build
 # Please note that it won't work with other distributions.
