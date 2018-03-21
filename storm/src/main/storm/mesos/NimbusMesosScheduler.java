@@ -17,7 +17,13 @@
  */
 package storm.mesos;
 
-import org.apache.mesos.Protos.*;
+import org.apache.mesos.Protos.ExecutorID;
+import org.apache.mesos.Protos.FrameworkID;
+import org.apache.mesos.Protos.MasterInfo;
+import org.apache.mesos.Protos.Offer;
+import org.apache.mesos.Protos.OfferID;
+import org.apache.mesos.Protos.SlaveID;
+import org.apache.mesos.Protos.TaskStatus;
 import org.apache.mesos.Scheduler;
 import org.apache.mesos.SchedulerDriver;
 import org.slf4j.Logger;
@@ -94,7 +100,6 @@ public class NimbusMesosScheduler implements Scheduler {
     if (status.getTaskId().getValue().contains("logviewer")) {
       updateLogviewerState(status);
     }
-
     switch (status.getState()) {
       case TASK_STAGING:
       case TASK_STARTING:
@@ -122,25 +127,22 @@ public class NimbusMesosScheduler implements Scheduler {
       LOG.error("updateLogviewerState: taskId for logviewer, {}, isn't formatted correctly so ignoring task update", taskId);
       return;
     }
-
     String nodeId = taskId.split("\\" + MesosCommon.MESOS_COMPONENT_ID_DELIMITER)[1];
     String logviewerZKPath = String.format("%s/%s", logviewerZkDir, nodeId);
-
     if (!enableLogViewers) {
       LOG.info("Logviewers are disabled. Reaping existing logviewer task {}", taskId);
       reapLogviewerTask(logviewerZKPath, status);
       return;
     }
-
     switch (status.getState()) {
       case TASK_STAGING:
-        ensureZNodeExists(logviewerZKPath);
+        ensureLogviewerZNodeExists(logviewerZKPath);
         return;
       case TASK_STARTING:
-        ensureZNodeExists(logviewerZKPath);
+        ensureLogviewerZNodeExists(logviewerZKPath);
         return;
       case TASK_RUNNING:
-        ensureZNodeExists(logviewerZKPath);
+        ensureLogviewerZNodeExists(logviewerZKPath);
         return;
       case TASK_LOST:
         // this status update can be triggered by the explicit kill and isn't terminal, do not kill again
@@ -160,9 +162,9 @@ public class NimbusMesosScheduler implements Scheduler {
     }
   }
 
-  private void ensureZNodeExists(String logviewerZKPath) {
+  private void ensureLogviewerZNodeExists(String logviewerZKPath) {
     if (!zkClient.nodeExists(logviewerZKPath)) {
-      LOG.warn("ensureZNodeExists: Running mesos logviewer task exists for logviewer that isn't tracked in ZooKeeper");
+      LOG.warn("ensureLogviewerZNodeExists: Running mesos logviewer task exists for logviewer that isn't tracked in ZooKeeper");
       zkClient.createNode(logviewerZKPath);
     }
   }
