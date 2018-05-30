@@ -12,6 +12,11 @@ To use a release, you first need to unpack the distribution, fill in configurati
 
 **Note:** It is **not** necessary to repack the distribution - the configuration is automatically pushed out to the slaves from Nimbus.
 
+# Known Deficiencies Versus non-Mesos Storm
+
+* Storm's topology 'rebalance' action is not supported and is explicitly disabled in the custom Storm version used to build this project.
+* Supervisor logs cannot be loaded via the Storm UI's link to each worker's logviewer, because the Supervisor logs are specialized per-topology when running under Mesos.
+
 # Building
 
 Run [`bin/build-release.sh`](bin/build-release.sh) to download storm distribution and bundle Storm with this framework into one tar release.
