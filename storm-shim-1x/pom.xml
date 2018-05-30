@@ -3,7 +3,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.apache.mesos</groupId>
   <artifactId>storm-shim-1x</artifactId>
-  <version>0.2.7</version>
+  <version>0.2.8-SNAPSHOT</version>
   <name>storm-shim-1x</name>
   <description>0.1.x impl shim to ease Storm Version differences</description>
 
@@ -11,13 +11,13 @@
     <connection>scm:git:git://github.com/mesos/storm.git</connection>
     <developerConnection>scm:git:ssh://git@github.com/mesos/storm.git</developerConnection>
     <url>https://github.com/mesos/storm</url>
-    <tag>v0.2.7</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <parent>
     <artifactId>storm-parent</artifactId>
     <groupId>org.apache.mesos</groupId>
-    <version>0.2.7</version>
+    <version>0.2.8-SNAPSHOT</version>
   </parent>
 
   <properties>
