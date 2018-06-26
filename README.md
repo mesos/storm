@@ -190,6 +190,23 @@ For local development and familiarizing yourself with Storm/Mesos, please see th
     overhead for each task.  For example, with `-Xmx500m`, you should set `topology.mesos.executor.mem.mb: 620`. By
     default this is platform dependent.
 
+## Automatic Launching of Logviewer
+
+Storm-on-mesos supports automatically launching the logviewer process on each mesos worker host.
+
+The logviewer is launched as a Mesos executor that acts as a "sidecar container" -- one logviewer is launched one each host that holds a Storm Worker for a particular framework.
+
+Caveats:
+* The logviewer TCP port should not be one of those managed by Mesos and offered to the frameworks in the cluster.  e.g., you can use port 8000, which is the default in Storm.
+* The logviewer TCP port must be unique for each Storm framework that runs in a given Mesos cluster.  e.g., 8000 for one framework, and 8001 for another framework.
+
+Configurations:
+* `mesos.logviewer.sidecar.enabled`: Set to "true" (which is the default).
+* `logviewer.port`: Set to a chosen port number, such as 8000 (which is the default).
+
+Note that the storm-on-mesos framework attempts to discover missing logviewers and launch them, recording the logviewer processes into ZooKeeper in a subdirectory of `storm.zookeeper.root` (as configured in your `storm.yaml` configuration file).  Specifically, it is recorded in `{storm.zookeeper.root}/storm-mesos/logviewers/`.
+
+
 ## Running Storm on Marathon
 
 To get started quickly, you can run Storm on Mesos with Marathon and Docker, provided you have Mesos-DNS configured
