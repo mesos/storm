@@ -194,7 +194,7 @@ For local development and familiarizing yourself with Storm/Mesos, please see th
 
 Storm-on-mesos supports automatically launching the logviewer process on each mesos worker host.
 
-The logviewer is launched as a Mesos executor that acts as a "sidecar container" -- one logviewer is launched one each host that holds a Storm Worker for a particular framework.
+The logviewer is launched as a Mesos executor that acts as a "sidecar container" -- one logviewer is launched on each host that holds a Storm Worker for a particular framework.
 
 Caveats:
 * The logviewer TCP port should not be one of those managed by Mesos and offered to the frameworks in the cluster.  e.g., you can use port 8000, which is the default in Storm.
