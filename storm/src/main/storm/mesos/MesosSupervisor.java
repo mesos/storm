@@ -74,9 +74,41 @@ public class MesosSupervisor implements ISupervisor {
     }
   }
 
+  /**
+   * These ports are what is currently assigned to this supervisor instance.
+   *
+   * The storm-core supervisor takes the assignment from ZK (created by the Nimbus) and then
+   * calls MesosSupervisor.confirmAssigned() on each port to verify whether the MesosNimbus has
+   * assigned that port to this supervisor.
+   *
+   * @param ports The worker ports currently assigned to this supervisor. If empty, then this allows
+   * the MesosSupervisor to learn there are no workers still assigned to this supervisor, and thus
+   * triggers the eventual suicide of the MesosSupervisor to release any previously used ports.
+   *
+   * That "suicide" path deserves some explanation. This is the standard mechanism for a
+   * MesosSupervisor to die. The "ports" parameter being empty means that the Nimbus has removed
+   * all of this topology's workers from this host. So this tells the MesosSupervisor that there
+   * are no more workers running, and as long as this state is maintained for some time, the
+   * MesosSupervisor has no need to continue running.
+   *
+   * Note that if the supervisor is just killed (e.g., by "kill -9" on the CLI) then the held
+   * worker ports will be released automatically by Mesos.
+   *
+   * Note that the suicide of the MesosSupervisor isn't necessary to release its ports under
+   * normal conditions -- instead the storm-core supervisor will normally call
+   * MesosSupervisor.killedWorker() to allow the MesosSupervisor to release a worker port
+   * back to Mesos.  However, there exists a race condition wherein the MesosSupervisor.launchTask()
+   * call will have recorded an assigned port into _taskAssignments, but the storm-core supervisor
+   * never actually launched the worker because the Nimbus scheduled away the worker before the
+   * storm-core supervisor saw the assignment in ZK. And so storm-core supervisor would never call
+   * MesosSupervisor.killedWorker() to release the port.  Hence the need for this
+   * MesosSupervisor.assigned() logic.  See this GitHub issue for further explanation:
+   *   https://github.com/mesos/storm/issues/227#issuecomment-338819387
+   */
   @Override
   public void assigned(Collection<Integer> ports) {
     if (ports == null) ports = new HashSet<>();
+    LOG.info("storm-core supervisor has these ports assigned to it: {}", ports);
     _supervisorViewOfAssignedPorts.set(new HashSet<>(ports));
   }
 
@@ -105,7 +137,9 @@ public class MesosSupervisor implements ISupervisor {
    */
   @Override
   public boolean confirmAssigned(int port) {
-    return _taskAssignments.confirmAssigned(port);
+    boolean isAssigned = _taskAssignments.confirmAssigned(port);
+    LOG.debug("confirming assignment for port {} as {}", port, isAssigned);
+    return isAssigned;
   }
 
   @Override
