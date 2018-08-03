@@ -43,11 +43,11 @@ import org.apache.mesos.Protos.OfferID;
 import org.apache.mesos.Protos.Resource;
 import org.apache.mesos.Protos.TaskID;
 import org.apache.mesos.Protos.TaskInfo;
+import org.apache.mesos.Protos.TaskState;
 import org.apache.mesos.Protos.TaskStatus;
 import org.apache.mesos.Protos.Value.Range;
 import org.apache.mesos.Protos.Value.Ranges;
 import org.apache.mesos.Protos.Value.Scalar;
-import org.apache.mesos.Protos.TaskState;
 import org.apache.mesos.SchedulerDriver;
 import org.json.simple.JSONValue;
 import org.slf4j.Logger;
@@ -60,8 +60,8 @@ import storm.mesos.resources.ResourceEntries.ScalarResourceEntry;
 import storm.mesos.resources.ResourceEntry;
 import storm.mesos.resources.ResourceNotAvailableException;
 import storm.mesos.resources.ResourceType;
-import storm.mesos.schedulers.StormSchedulerImpl;
 import storm.mesos.schedulers.IMesosStormScheduler;
+import storm.mesos.schedulers.StormSchedulerImpl;
 import storm.mesos.shims.CommandLineShimFactory;
 import storm.mesos.shims.ICommandLineShim;
 import storm.mesos.shims.LocalStateShim;
@@ -91,8 +91,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 import static storm.mesos.util.PrettyProtobuf.offerIDListToString;
-import static storm.mesos.util.PrettyProtobuf.offerToString;
 import static storm.mesos.util.PrettyProtobuf.offerMapToString;
+import static storm.mesos.util.PrettyProtobuf.offerToString;
 import static storm.mesos.util.PrettyProtobuf.taskInfoListToString;
 import static storm.mesos.util.PrettyProtobuf.taskStatusListToTaskIDsString;
 
@@ -222,22 +222,9 @@ public class MesosNimbus implements INimbus {
     _disallowedHosts = listIntoSet((List<String>) conf.get(CONF_MESOS_DISALLOWED_HOSTS));
     _enabledLogviewerSidecar = MesosCommon.enabledLogviewerSidecar(conf);
 
-    if (_enabledLogviewerSidecar) {
-      Set<String> zkServerSet = listIntoSet((List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS));
-      String zkPort = String.valueOf(conf.get(Config.STORM_ZOOKEEPER_PORT));
-      _logviewerZkDir = Optional.fromNullable((String) conf.get(Config.STORM_ZOOKEEPER_ROOT)).or("") + "/storm-mesos/logviewers";
-      LOG.info("Logviewer information will be stored under {}", _logviewerZkDir);
-
-      if (zkPort == null || zkServerSet == null) {
-        throw new RuntimeException("ZooKeeper configs are not found in storm.yaml: " + Config.STORM_ZOOKEEPER_SERVERS + ", " + Config.STORM_ZOOKEEPER_PORT);
-      } else {
-        List<String> zkConnectionList = new ArrayList<>();
-        for (String server : zkServerSet) {
-          zkConnectionList.add(String.format("%s:%s", server, zkPort));
-        }
-        _zkClient = new ZKClient(StringUtils.join(zkConnectionList, ','));
-      }
-    }
+    initializeZkClient(conf);
+    _logviewerZkDir = Optional.fromNullable((String) conf.get(Config.STORM_ZOOKEEPER_ROOT)).or("") + "/storm-mesos/logviewers";
+    LOG.info("Logviewer ZK path: {}", _logviewerZkDir);
 
     Boolean preferReservedResources = (Boolean) conf.get(CONF_MESOS_PREFER_RESERVED_RESOURCES);
     if (preferReservedResources != null) {
@@ -245,7 +232,7 @@ public class MesosNimbus implements INimbus {
     }
 
     _container = Optional.fromNullable((String) conf.get(CONF_MESOS_CONTAINER_DOCKER_IMAGE));
-    _mesosScheduler = new NimbusMesosScheduler(this, _zkClient, _logviewerZkDir);
+    _mesosScheduler = new NimbusMesosScheduler(this, _zkClient, _logviewerZkDir, _enabledLogviewerSidecar);
 
     // Generate YAML to be served up to clients
     _generatedConfPath = Paths.get(
@@ -272,6 +259,21 @@ public class MesosNimbus implements INimbus {
     }
   }
 
+  private void initializeZkClient(Map conf) {
+    Set<String> zkServerSet = listIntoSet((List<String>) conf.get(Config.STORM_ZOOKEEPER_SERVERS));
+    String zkPort = String.valueOf(conf.get(Config.STORM_ZOOKEEPER_PORT));
+
+    if (zkPort == null || zkServerSet == null) {
+      throw new RuntimeException("ZooKeeper configs are not found in storm.yaml: " + Config.STORM_ZOOKEEPER_SERVERS + ", " + Config.STORM_ZOOKEEPER_PORT);
+    } else {
+      List<String> zkConnectionList = new ArrayList<>();
+      for (String server : zkServerSet) {
+        zkConnectionList.add(String.format("%s:%s", server, zkPort));
+      }
+      _zkClient = new ZKClient(StringUtils.join(zkConnectionList, ','));
+    }
+  }
+
   @SuppressWarnings("unchecked")
   protected void startLocalHttpServer() throws Exception {
     createLocalServerPort();
@@ -286,34 +288,32 @@ public class MesosNimbus implements INimbus {
     _state.put(FRAMEWORK_ID, id.getValue());
     _offers = new HashMap<Protos.OfferID, Protos.Offer>();
 
-    if (_enabledLogviewerSidecar) {
-
-      _timer.scheduleAtFixedRate(new TimerTask() {
-        @Override
-        public void run() {
-          // performing "explicit" reconciliation; master will respond with the latest state for all logviewer tasks
-          // in the framework scheduler's statusUpdate() method
-          List<TaskStatus> taskStatuses = new ArrayList<TaskStatus>();
-          List<String> logviewerPaths = _zkClient.getChildren(_logviewerZkDir);
-          if (logviewerPaths == null) {
-            _driver.reconcileTasks(taskStatuses);
-            return;
-          }
-          for (String path : logviewerPaths) {
-            TaskID logviewerTaskId = TaskID.newBuilder()
-                                           .setValue(new String(_zkClient.getNodeData(String.format("%s/%s", _logviewerZkDir, path))))
-                                           .build();
-            TaskStatus logviewerTaskStatus = TaskStatus.newBuilder()
-                                                       .setTaskId(logviewerTaskId)
-                                                       .setState(TaskState.TASK_RUNNING)
-                                                       .build();
-            taskStatuses.add(logviewerTaskStatus);
-          }
+    _timer.scheduleAtFixedRate(new TimerTask() {
+      @Override
+      public void run() {
+        // performing "explicit" reconciliation; master will respond with the latest state for all logviewer tasks
+        // in the framework scheduler's statusUpdate() method
+        List<TaskStatus> taskStatuses = new ArrayList<TaskStatus>();
+        List<String> logviewerPaths = _zkClient.getChildren(_logviewerZkDir);
+        if (logviewerPaths == null || !_enabledLogviewerSidecar) {
           _driver.reconcileTasks(taskStatuses);
-          LOG.info("Performing task reconciliation between scheduler and master on following tasks: {}", taskStatusListToTaskIDsString(taskStatuses));
+          return;
         }
-      }, 0, TASK_RECONCILIATION_INTERVAL); // reconciliation performed every 5 minutes
-    }
+
+        for (String path : logviewerPaths) {
+          TaskID logviewerTaskId = TaskID.newBuilder()
+                                         .setValue(new String(_zkClient.getNodeData(String.format("%s/%s", _logviewerZkDir, path))))
+                                         .build();
+          TaskStatus logviewerTaskStatus = TaskStatus.newBuilder()
+                                                     .setTaskId(logviewerTaskId)
+                                                     .setState(TaskState.TASK_RUNNING)
+                                                     .build();
+          taskStatuses.add(logviewerTaskStatus);
+        }
+        _driver.reconcileTasks(taskStatuses);
+        LOG.info("Performing task reconciliation between scheduler and master on following tasks: {}", taskStatusListToTaskIDsString(taskStatuses));
+      }
+    }, 0, TASK_RECONCILIATION_INTERVAL); // reconciliation performed every 5 minutes
   }
 
   public void shutdown() throws Exception {

@@ -42,12 +42,14 @@ public class NimbusMesosScheduler implements Scheduler {
   private ZKClient zkClient;
   private String logviewerZkDir;
   private CountDownLatch _registeredLatch = new CountDownLatch(1);
+  private boolean enableLogViewers;
   public static final Logger LOG = LoggerFactory.getLogger(MesosNimbus.class);
 
-  public NimbusMesosScheduler(MesosNimbus mesosNimbus, ZKClient zkClient, String logviewerZkDir) {
+  public NimbusMesosScheduler(MesosNimbus mesosNimbus, ZKClient zkClient, String logviewerZkDir, boolean enableLogViewers) {
     this.mesosNimbus = mesosNimbus;
     this.zkClient = zkClient;
     this.logviewerZkDir = logviewerZkDir;
+    this.enableLogViewers = enableLogViewers;
   }
 
   public void waitUntilRegistered() throws InterruptedException {
@@ -127,23 +129,29 @@ public class NimbusMesosScheduler implements Scheduler {
     }
     String nodeId = taskId.split("\\" + MesosCommon.MESOS_COMPONENT_ID_DELIMITER)[1];
     String logviewerZKPath = String.format("%s/%s", logviewerZkDir, nodeId);
+    if (!enableLogViewers) {
+      LOG.info("Logviewers are disabled. Reaping existing logviewer task {}", taskId);
+      reapLogviewerTask(logviewerZKPath, status);
+      return;
+    }
     switch (status.getState()) {
       case TASK_STAGING:
-        checkRunningLogviewerState(logviewerZKPath);
+        ensureLogviewerZNodeExists(logviewerZKPath);
         return;
       case TASK_STARTING:
-        checkRunningLogviewerState(logviewerZKPath);
+        ensureLogviewerZNodeExists(logviewerZKPath);
         return;
       case TASK_RUNNING:
-        checkRunningLogviewerState(logviewerZKPath);
+        ensureLogviewerZNodeExists(logviewerZKPath);
         return;
       case TASK_LOST:
         // this status update can be triggered by the explicit kill and isn't terminal, do not kill again
         break;
       default:
-        // explicitly kill the logviewer task to ensure logviewer is terminated
+        // explicitly kill the logviewer task to ensure it is terminated
         mesosNimbus._driver.killTask(status.getTaskId());
     }
+
     // if it gets to this point it means logviewer terminated; update ZK with new logviewer state
     if (zkClient.nodeExists(logviewerZKPath)) {
       LOG.info("updateLogviewerState: Remove logviewer state in zk at {} for logviewer task {}", logviewerZKPath, taskId);
@@ -154,10 +162,31 @@ public class NimbusMesosScheduler implements Scheduler {
     }
   }
 
-  private void checkRunningLogviewerState(String logviewerZKPath) {
+  private void ensureLogviewerZNodeExists(String logviewerZKPath) {
     if (!zkClient.nodeExists(logviewerZKPath)) {
-      LOG.error("checkRunningLogviewerState: Running mesos logviewer task exists for logviewer that isn't tracked in ZooKeeper");
+      LOG.warn("ensureLogviewerZNodeExists: Running mesos logviewer task exists for logviewer that isn't tracked in ZooKeeper");
       zkClient.createNode(logviewerZKPath);
+    }
+  }
+
+  private void reapLogviewerTask(String logviewerZKPath, TaskStatus status) {
+    String taskId = status.getTaskId().getValue();
+    if (zkClient.nodeExists(logviewerZKPath)) {
+      LOG.info("reapLogviewerTask: Remove logviewer state in zk at {} for logviewer task {}", logviewerZKPath, taskId);
+      zkClient.deleteNode(logviewerZKPath);
+    }
+
+    switch (status.getState()) {
+      case TASK_FAILED:
+      case TASK_FINISHED:
+      case TASK_KILLED:
+      case TASK_LOST:
+        // terminal states
+        break;
+      default:
+        // explicitly kill the logviewer task to ensure it is terminated
+        LOG.info("reapLogviewerTask: Killing logviewer mesos task {}", logviewerZKPath, taskId);
+        mesosNimbus._driver.killTask(status.getTaskId());
     }
   }
 
