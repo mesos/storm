@@ -11,26 +11,26 @@ env:
   - DOCKER_REPO=$TRAVIS_REPO_SLUG
 before_install:
 - apt-cache madison docker-ce
-- travis_retry sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-ce
+- sudo apt-get -o Dpkg::Options::="--force-confnew" install -y docker-ce
 install: mvn install -DskipTests=true -Dmaven.javadoc.skip=true
 script:
 - jdk_switcher use oraclejdk8
 - mvn test
 - jdk_switcher use openjdk7
 - mvn test
-- travis_retry bin/build-release.sh
+- bin/build-release.sh
 matrix:
   fast_finish: true
   include:
   - env: STORM_RELEASE="1.0.6"  MESOS_RELEASE="1.1.0" STORM_URL="https://github.com/erikdw/storm/releases/download/v1.0.6-storm-mesos4/apache-storm-1.0.6-storm-mesos4.tar.gz"
   - env: STORM_RELEASE="1.0.6" MESOS_RELEASE="0.28.2" STORM_URL="https://github.com/erikdw/storm/releases/download/v1.0.6-storm-mesos4/apache-storm-1.0.6-storm-mesos4.tar.gz"
 before_deploy:
-- travis_retry make images
-- travis_retry make images JAVA_PRODUCT_VERSION=8
+- make images
+- make images JAVA_PRODUCT_VERSION=8
 - docker images
-- travis_retry docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
-- travis_retry make push
-- travis_retry make push JAVA_PRODUCT_VERSION=8
+- docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+- make push
+- make push JAVA_PRODUCT_VERSION=8
 deploy:
   provider: releases
   api_key:
